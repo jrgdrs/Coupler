@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coupler — Font Kerning Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+<style>
+:root {
+  --bg:     #0d0f11; --bg2: #141618; --bg3: #1c1f23; --bg4: #252a2f;
+  --border: #2e3338; --border2: #3d4450;
+  --accent: #e8a020; --accent2: #c07010;
+  --green:  #4caf7d; --red: #e05555; --blue: #5b9cf6; --purple: #a97cf8;
+  --text:   #d4d8de; --text2: #8a9099; --text3: #5a6070;
+  --mono:   'JetBrains Mono','Cascadia Code','Fira Code',monospace;
+  --sans:   'IBM Plex Sans','Segoe UI',sans-serif;
+  --r:      4px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;min-height:100vh;}
+
+/* Header */
+header{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border);background:var(--bg2);}
+.logo-mark{font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);letter-spacing:-0.04em;}
+.logo-sub{font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text3);margin-top:1px;}
+.header-title{display:flex;flex-direction:column;line-height:1.2;}
+.header-sep{width:1px;height:28px;background:var(--border);margin:0 4px;}
+.header-font-info{font-family:var(--mono);font-size:11px;color:var(--text3);}
+.header-font-info strong{color:var(--text2);}
+#global-status{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text3);}
+#global-status.active{color:var(--green);}
+#global-status.error{color:var(--red);}
+#global-status.busy{color:var(--accent);}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:296px 1fr;grid-template-rows:auto 1fr;height:calc(100vh - 47px);}
+
+/* Left panel */
+.left-panel{grid-row:1/3;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;}
+
+/* Drop zone */
+.drop-zone{margin:12px 12px 0;border:2px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(232,160,32,.05);}
+.drop-zone.loaded{border-color:var(--green);border-style:solid;background:rgba(76,175,125,.05);}
+.drop-icon{font-size:22px;margin-bottom:5px;opacity:.45;}
+.drop-label{font-size:11px;color:var(--text2);line-height:1.5;}
+.drop-fname{font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;margin-top:3px;word-break:break-all;}
+
+/* Params */
+.params-section{flex:1;overflow-y:auto;padding:0 12px 12px;}
+.sec{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:10px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.sec-action{margin-left:auto;font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--border2);border-radius:10px;background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.06em;}
+.sec-action:hover{border-color:var(--accent);color:var(--accent);}
+
+.pr{display:grid;grid-template-columns:1fr 76px;gap:5px;align-items:start;margin-bottom:8px;position:relative;}
+.pl{font-size:12px;color:var(--text2);padding-top:5px;cursor:help;}
+.pl span{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:1px;}
+
+/* Tooltip */
+.pl[data-tip]{position:relative;}
+.pl[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 4px);z-index:99;background:#1a1d21;border:1px solid var(--border2);border-radius:4px;padding:6px 9px;font-size:11px;font-family:var(--sans);color:var(--text2);line-height:1.5;white-space:pre-wrap;width:220px;box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none;}
+
+input[type=number]{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 7px;text-align:right;outline:none;transition:border-color .1s;}
+input[type=number]:focus{border-color:var(--accent);}
+input[type=number]::-webkit-inner-spin-button{opacity:.4;}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;}
+.sb{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:6px 9px;}
+.sv{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);}
+.sk{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
+
+/* Progress */
+.prog{margin:0 12px 8px;height:2px;background:var(--border);border-radius:1px;overflow:hidden;flex-shrink:0;}
+.prog-fill{height:100%;width:0%;background:var(--accent);transition:width .2s;border-radius:1px;}
+
+/* Compute btn */
+.btn-run{margin:0 12px 8px;width:calc(100% - 24px);padding:9px;background:var(--accent);color:#000;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;border:none;border-radius:var(--r);cursor:pointer;transition:background .15s,transform .1s;flex-shrink:0;}
+.btn-run:hover{background:#f0b030;}
+.btn-run:active{transform:scale(.98);}
+.btn-run:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;}
+
+/* Log */
+.logbox{padding:5px 12px;font-family:var(--mono);font-size:10px;color:var(--text3);border-top:1px solid var(--border);max-height:56px;overflow-y:auto;flex-shrink:0;}
+.logbox .ll{line-height:1.55;}
+.ll.ok{color:var(--green);} .ll.err{color:var(--red);} .ll.info{color:var(--accent);}
+
+/* Preview panel */
+.preview-panel{border-bottom:1px solid var(--border);background:var(--bg);padding:14px 18px;}
+.ph{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ph .sec{margin:0;padding:0;border:none;}
+.pcontrols{display:flex;gap:8px;align-items:center;margin-left:auto;}
+.pcontrols label{font-size:11px;color:var(--text3);}
+.pcontrols input[type=range]{width:80px;accent-color:var(--accent);}
+.pcontrols input[type=number]{width:50px;text-align:center;}
+
+#preview-canvas{display:block;width:100%;height:130px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);}
+
+.ptextrow{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;}
+.ptextrow label{font-size:11px;color:var(--text3);white-space:nowrap;}
+#preview-text{flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 9px;outline:none;transition:border-color .1s;}
+#preview-text:focus{border-color:var(--accent);}
+#preset-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text2);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;cursor:pointer;}
+#preset-select:focus{border-color:var(--accent);}
+
+.trow{display:flex;gap:10px;margin-top:7px;flex-wrap:wrap;}
+.tbtn{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;}
+.tbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.1);}
+.tbtn.on-green{border-color:var(--green);color:var(--green);background:rgba(76,175,125,.1);}
+
+/* Results panel */
+.results-panel{overflow:hidden;display:flex;flex-direction:column;background:var(--bg);}
+.rh{display:flex;align-items:center;gap:8px;padding:8px 18px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.rh .sec{margin:0;padding:0;border:none;}
+.filter-group{display:flex;gap:5px;align-items:center;margin-left:auto;}
+.search-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 9px;width:150px;outline:none;transition:border-color .1s;}
+.search-box:focus{border-color:var(--accent);}
+.regex-toggle{font-family:var(--mono);font-size:10px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.04em;}
+.regex-toggle.on{border-color:var(--purple);color:var(--purple);background:rgba(169,124,248,.1);}
+.regex-err{font-family:var(--mono);font-size:9px;color:var(--red);padding:0 6px;}
+.btn-exp{font-family:var(--mono);font-size:11px;padding:4px 11px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer;transition:all .15s;}
+.btn-exp:hover{border-color:var(--accent);color:var(--accent);}
+
+.tbl-wrap{flex:1;overflow:auto;}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
+thead tr{position:sticky;top:0;background:var(--bg2);z-index:1;}
+th{padding:6px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+th:hover{color:var(--text2);}
+th.sorted{color:var(--accent);}
+td{padding:4px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+tr:hover td{background:var(--bg3);}
+.vneg{color:var(--red);} .vpos{color:var(--green);} .vzero{color:var(--text3);}
+.cc{font-size:13px;color:var(--text);}
+.tuc{color:var(--blue);font-size:10px;} .tlc{color:var(--text3);font-size:10px;} .tmix{color:var(--accent);font-size:10px;} .tcap{color:var(--red);font-size:10px;margin-left:3px;}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--text3);font-family:var(--mono);font-size:12px;gap:7px;}
+.empty .eico{font-size:28px;opacity:.25;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">
+    <div class="logo-mark">Coupler</div>
+    <div class="logo-sub">Font Kerning Analyzer</div>
+  </div>
+  <div class="header-sep"></div>
+  <div class="header-font-info" id="header-font-info">No font loaded</div>
+  <div id="global-status">—</div>
+</header>
+
+<div class="layout">
+
+<!-- ══ LEFT ══ -->
+<div class="left-panel">
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('fi').click()">
+    <div class="drop-icon">⊕</div>
+    <div class="drop-label">Drop TTF / OTF font here<br>or click to browse</div>
+    <div class="drop-fname" id="drop-fname"></div>
+    <input type="file" id="fi" accept=".ttf,.otf" style="display:none">
+  </div>
+
+  <div class="params-section">
+
+    <div class="sec">
+      Parameters
+      <button class="sec-action" onclick="resetParams()" title="Restore all defaults">↺ Defaults</button>
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Number of equal-height zones spanning the em height (ascender to descender).\n\nMore zones = finer vertical resolution.\nFewer zones = faster computation.\n\nRecommended: 9–16 for most fonts.\nDefault: 9">
+        Zones<span>--zones · height divisions</span>
+      </div>
+      <input type="number" id="p-zones" value="9" min="1" max="64">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Maximum allowed difference between adjacent zone margins, expressed as a percentage of zone height.\n\nSmoothing anchors at the zone with the smallest margin (= maximum glyph extent) and propagates outward. The anchor value is never changed.\n\nSet to 0 to disable smoothing entirely.\nDefault: 40">
+        Smooth %<span>--smooth · neighbor delta cap</span>
+      </div>
+      <input type="number" id="p-smooth" value="40" min="0" max="300">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Kerning correction rounding module. The final kerning value is snapped to the nearest multiple of this number.\n\nExample: 46 → values like −92, −46, 0, 46 …\nUse 1 for no module rounding (still rounds to integer).\nDefault: 1">
+        Round module<span>--round · kern snap value</span>
+      </div>
+      <input type="number" id="p-round" value="1" min="1">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Each zone is subdivided into N sub-zones. The margin of each sub-zone is computed independently, then averaged.\n\nThis prevents cliff artifacts at zone boundaries caused by curves that cross a boundary at an oblique angle.\n\nHigher = more accurate, slower.\nDefault: 10">
+        Supersample<span>--supersample · sub-zones/zone</span>
+      </div>
+      <input type="number" id="p-supersample" value="10" min="1" max="50">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Minimum spacing floor as a percentage of the font's full em size (UPM).\n\nAfter computing a correction, Coupler ensures that the tightest zone gap after applying the correction never falls below this percentage of the UPM.\n\nExample: 8% of UPM 1000 = floor of 80 font units.\nSmaller value = more aggressive kerning allowed.\nDefault: 8">
+        Min gap %<span>--mingap · % of UPM · floor</span>
+      </div>
+      <input type="number" id="p-mingap" value="8" min="0" max="100" step="0.5">
+    </div>
+
+    <div class="sec" style="margin-top:4px">Results</div>
+    <div class="stats">
+      <div class="sb"><div class="sv" id="s-glyphs">—</div><div class="sk">Glyphs</div></div>
+      <div class="sb"><div class="sv" id="s-pairs">—</div><div class="sk">Pairs</div></div>
+      <div class="sb"><div class="sv" id="s-baseLc">—</div><div class="sk">Base LC</div></div>
+      <div class="sb"><div class="sv" id="s-baseUc">—</div><div class="sk">Base UC</div></div>
+    </div>
+
+  </div>
+
+  <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
+  <button class="btn-run" id="btn-run" disabled onclick="runAnalysis()">▶ Compute Kerning</button>
+  <div class="logbox" id="logbox"></div>
+
+</div>
+
+<!-- ══ RIGHT TOP: PREVIEW ══ -->
+<div class="preview-panel">
+  <div class="ph">
+    <div class="sec">Preview</div>
+    <div class="pcontrols">
+      <label>Size</label>
+      <input type="range" id="psize" min="20" max="220" value="72" oninput="syncSize(this.value);renderPreview()">
+      <input type="number" id="psize-n" value="72" min="10" max="500" style="width:50px" oninput="syncSize(this.value);renderPreview()">
+      <label>px</label>
+    </div>
+  </div>
+
+  <canvas id="preview-canvas"></canvas>
+
+  <div class="ptextrow">
+    <label>Text</label>
+    <input type="text" id="preview-text" value="AVATAWAVE Coupling" oninput="renderPreview()">
+    <select id="preset-select" onchange="applyPreset(this.value)" title="Load a text preset">
+      <option value="">— presets —</option>
+      <option value="AVATAWAVE Coupling">Caps pairs · AVATAWAVE</option>
+      <option value="Kerning AV AT AW AY LT LV LY">Classic UC pairs</option>
+      <option value="fffi ffl Th Ty To">Ligature &amp; mixed</option>
+      <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">Full uppercase</option>
+      <option value="abcdefghijklmnopqrstuvwxyz">Full lowercase</option>
+      <option value="0123456789">Digits</option>
+      <option value="Hamburgefonstiv">Pangram sample</option>
+      <option value="A man, a plan, a canal: Panama">Sentence test</option>
+      <option value="WAV AV VA AT TA AW WA AY YA FA TF">Diagonal stress</option>
+      <option value="Tight Spacing Test: fluff, cliff, staff">Lowercase diagonals</option>
+    </select>
+  </div>
+
+  <div class="trow">
+    <button class="tbtn on-green" id="tbtn-kern" onclick="toggleKern()">⟷ Kerning ON</button>
+    <button class="tbtn" id="tbtn-metrics" onclick="toggleMetrics()">Margins</button>
+    <button class="tbtn" id="tbtn-baseline" onclick="toggleBaseline()">Baseline</button>
+    <button class="tbtn" id="tbtn-xheight" onclick="toggleXheight()">x-Height</button>
+  </div>
+</div>
+
+<!-- ══ RIGHT BOTTOM: TABLE ══ -->
+<div class="results-panel">
+  <div class="rh">
+    <div class="sec">Coupling Table</div>
+    <div class="filter-group">
+      <span class="regex-err" id="rx-err"></span>
+      <input type="text" class="search-box" id="search-box" placeholder="Filter pairs…" oninput="filterTable()">
+      <button class="regex-toggle" id="rx-btn" onclick="toggleRegex()" title="Toggle regex mode">.*</button>
+      <button class="btn-exp" onclick="exportCSV()">↓ CSV</button>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <div class="empty" id="empty-state">
+      <div class="eico">⊘</div>
+      <div>Drop a font file to get started</div>
+    </div>
+    <table id="results-table" style="display:none">
+      <thead><tr>
+        <th onclick="sortBy('left')">Left</th>
+        <th onclick="sortBy('right')">Right</th>
+        <th onclick="sortBy('correction')">Correction</th>
+        <th onclick="sortBy('mean')">Pair Mean</th>
+        <th onclick="sortBy('base')">Base</th>
+        <th>Class</th>
+        <th>Zones</th>
+      </tr></thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /layout -->
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let fontObj=null, fontBuffer=null, fontName='';
+let glyphCache={}, kerningData=[], filteredData=[];
+let sortCol='correction', sortAsc=false;
+let showKerning=true, showMetrics=false, showBaseline=false, showXheight=false;
+let useRegex=false;
+let baseValueLC=0, baseValueUC=0;
+let currentUPM=1000;
+
+const DEFAULTS={zones:9,smooth:40,round:1,supersample:10,mingap:8};
+
+function P(){
+  return{
+    zones:       +document.getElementById('p-zones').value       ||DEFAULTS.zones,
+    smooth:      +document.getElementById('p-smooth').value      /100,
+    round:       +document.getElementById('p-round').value       ||DEFAULTS.round,
+    supersample: +document.getElementById('p-supersample').value ||DEFAULTS.supersample,
+    mingap:      +document.getElementById('p-mingap').value      /100, // fraction of UPM
+  };
+}
+
+function resetParams(){
+  document.getElementById('p-zones').value=DEFAULTS.zones;
+  document.getElementById('p-smooth').value=DEFAULTS.smooth;
+  document.getElementById('p-round').value=DEFAULTS.round;
+  document.getElementById('p-supersample').value=DEFAULTS.supersample;
+  document.getElementById('p-mingap').value=DEFAULTS.mingap;
+}
+
+// ═══════════════════════════════════════════
+// LOG / STATUS
+// ═══════════════════════════════════════════
+function log(msg,cls=''){
+  const el=document.getElementById('logbox');
+  const d=document.createElement('div');
+  d.className='ll '+(cls?cls:'');
+  d.textContent=msg;
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+function setStatus(msg,cls=''){
+  const el=document.getElementById('global-status');
+  el.textContent=msg; el.className=cls;
+}
+function setProgress(p){document.getElementById('prog-fill').style.width=p+'%';}
+
+// ═══════════════════════════════════════════
+// DROP / LOAD
+// ═══════════════════════════════════════════
+const dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');const f=e.dataTransfer.files[0];if(f)loadFont(f);});
+document.getElementById('fi').addEventListener('change',e=>{if(e.target.files[0])loadFont(e.target.files[0]);});
+
+function loadFont(file){
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      fontBuffer=ev.target.result;
+      fontObj=opentype.parse(fontBuffer);
+      fontName=file.name;
+      currentUPM=fontObj.unitsPerEm;
+      dz.classList.add('loaded');
+      document.getElementById('drop-fname').textContent=file.name;
+      const fn=fontObj.names.fullName?.en||file.name;
+      document.getElementById('header-font-info').innerHTML=`<strong>${fn}</strong> &nbsp; UPM:${currentUPM}`;
+      document.getElementById('btn-run').disabled=false;
+      setStatus('Loaded','active');
+      log(`Loaded: ${fn} — ${Object.keys(fontObj.glyphs.glyphs).length} glyphs`,'ok');
+      runAnalysis();
+    }catch(err){setStatus('Load error','error');log('Error: '+err.message,'err');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════
+// BEZIER / GEOMETRY
+// ═══════════════════════════════════════════
+function cubicXY(p0,p1,p2,p3,t){
+  const mt=1-t,mt2=mt*mt,t2=t*t;
+  return{x:mt2*mt*p0.x+3*mt2*t*p1.x+3*mt*t2*p2.x+t2*t*p3.x,
+         y:mt2*mt*p0.y+3*mt2*t*p1.y+3*mt*t2*p2.y+t2*t*p3.y};
+}
+function quadXY(p0,p1,p2,t){
+  const mt=1-t;
+  return{x:mt*mt*p0.x+2*mt*t*p1.x+t*t*p2.x,y:mt*mt*p0.y+2*mt*t*p1.y+t*t*p2.y};
+}
+function bisectCurve(yFn,xFn,yt,t0,t1,res){
+  const y0=yFn(t0),y1=yFn(t1);
+  if((y0-yt)*(y1-yt)>0&&(t1-t0)<.05)return;
+  if(t1-t0<.05){res.push(Math.abs(y0-yt)<Math.abs(y1-yt)?xFn(t0):xFn(t1));return;}
+  const m=(t0+t1)/2;
+  bisectCurve(yFn,xFn,yt,t0,m,res);
+  bisectCurve(yFn,xFn,yt,m,t1,res);
+}
+function segXRng(xyFn,yLo,yHi){
+  let xMn=Infinity,xMx=-Infinity;
+  for(let i=0;i<=512;i++){const t=i/512,p=xyFn(t);if(p.y>=yLo&&p.y<=yHi){if(p.x<xMn)xMn=p.x;if(p.x>xMx)xMx=p.x;}}
+  for(const yB of[yLo,yHi]){const xs=[];bisectCurve(t=>xyFn(t).y,t=>xyFn(t).x,yB,0,1,xs);for(const x of xs){if(x<xMn)xMn=x;if(x>xMx)xMx=x;}}
+  return isFinite(xMn)?{xMin:xMn,xMax:xMx}:null;
+}
+function pathXZones(path,zones,yBot,yTop){
+  const zH=(yTop-yBot)/zones;
+  const mn=new Float64Array(zones).fill(Infinity),mx=new Float64Array(zones).fill(-Infinity);
+  let cx=0,cy=0,sx=0,sy=0;
+  function pSeg(xyFn){
+    let syMn=Infinity,syMx=-Infinity;
+    for(let i=0;i<=32;i++){const y=-xyFn(i/32).y;if(y<syMn)syMn=y;if(y>syMx)syMx=y;}
+    const zS=Math.max(0,Math.floor((syMn-yBot)/zH));
+    const zE=Math.min(zones-1,Math.ceil((syMx-yBot)/zH));
+    const fn=t=>{const p=xyFn(t);return{x:p.x,y:-p.y};};
+    for(let z=zS;z<=zE;z++){
+      const lo=yBot+z*zH,hi=lo+zH;
+      const r=segXRng(fn,lo,hi);
+      if(r){if(r.xMin<mn[z])mn[z]=r.xMin;if(r.xMax>mx[z])mx[z]=r.xMax;}
+    }
+  }
+  for(const cmd of path.commands){
+    switch(cmd.type){
+      case'M':cx=cmd.x;cy=cmd.y;sx=cx;sy=cy;break;
+      case'L':{const x0=cx,y0=cy,x1=cmd.x,y1=cmd.y;pSeg(t=>({x:x0+t*(x1-x0),y:y0+t*(y1-y0)}));cx=cmd.x;cy=cmd.y;break;}
+      case'Q':{const p0={x:cx,y:cy},p1={x:cmd.x1,y:cmd.y1},p2={x:cmd.x,y:cmd.y};pSeg(t=>quadXY(p0,p1,p2,t));cx=cmd.x;cy=cmd.y;break;}
+      case'C':{const p0={x:cx,y:cy},p1={x:cmd.x1,y:cmd.y1},p2={x:cmd.x2,y:cmd.y2},p3={x:cmd.x,y:cmd.y};pSeg(t=>cubicXY(p0,p1,p2,p3,t));cx=cmd.x;cy=cmd.y;break;}
+      case'Z':if(cx!==sx||cy!==sy){const x0=cx,y0=cy,x1=sx,y1=sy;pSeg(t=>({x:x0+t*(x1-x0),y:y0+t*(y1-y0)}));}cx=sx;cy=sy;break;
+    }
+  }
+  return Array.from({length:zones},(_,z)=>isFinite(mn[z])?{xMin:mn[z],xMax:mx[z]}:null);
+}
+
+// ═══════════════════════════════════════════
+// SMOOTHING
+// ═══════════════════════════════════════════
+function r1(v){return Math.round(v*10)/10;}
+function smoothMargins(arr,zH,pct){
+  if(pct<=0)return arr.slice();
+  const mD=pct*zH,n=arr.length,out=arr.slice();
+  let aZ=-1,aV=Infinity;
+  for(let z=0;z<n;z++)if(arr[z]!==-1&&arr[z]<aV){aV=arr[z];aZ=z;}
+  if(aZ===-1)return out;
+  let prev=aZ;
+  for(let z=aZ-1;z>=0;z--){if(out[z]===-1)continue;const mA=r1(out[prev]+mD);if(out[z]>mA)out[z]=mA;if(out[z]<aV)out[z]=r1(aV);prev=z;}
+  prev=aZ;
+  for(let z=aZ+1;z<n;z++){if(out[z]===-1)continue;const mA=r1(out[prev]+mD);if(out[z]>mA)out[z]=mA;if(out[z]<aV)out[z]=r1(aV);prev=z;}
+  return out;
+}
+
+// ═══════════════════════════════════════════
+// GLYPH MARGINS
+// ═══════════════════════════════════════════
+function computeGlyphMargins(glyph,upm,p,yBot,yTop){
+  const aw=glyph.advanceWidth??0;
+  const zH=(yTop-yBot)/p.zones;
+  const rawPath=glyph.getPath(0,0,upm);
+  const subs=p.zones*p.supersample;
+  const subR=pathXZones(rawPath,subs,yBot,yTop);
+  const lR=[],rR=[];
+  for(let z=0;z<p.zones;z++){
+    const s0=z*p.supersample;
+    let sL=0,sR=0,cnt=0;
+    for(let s=0;s<p.supersample;s++){const sub=subR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
+    if(cnt===0){lR.push(-1);rR.push(-1);}
+    else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+  }
+  const left=smoothMargins(lR,zH,p.smooth);
+  const right=smoothMargins(rR,zH,p.smooth);
+  let unicode=null;
+  if(glyph.unicodes?.length>0)unicode=glyph.unicodes[0];
+  return{left,right,leftRaw:lR,rightRaw:rR,advanceWidth:aw,unicode};
+}
+
+// ═══════════════════════════════════════════
+// CLASSIFICATION
+// ═══════════════════════════════════════════
+function classifyGlyph(unicode,name){
+  if(unicode===null)return /^[A-Z]/.test(name)?'UC':'LC';
+  if(unicode>=48&&unicode<=57)return'UC';
+  if(unicode>=65&&unicode<=90)return'UC';
+  if((unicode>=192&&unicode<=214)||(unicode>=216&&unicode<=222))return'UC';
+  if(unicode>=256&&unicode<=382&&unicode%2===0)return'UC';
+  if(unicode>=0x0391&&unicode<=0x03A9)return'UC';
+  if(unicode>=0x0410&&unicode<=0x042F)return'UC';
+  return'LC';
+}
+
+// ═══════════════════════════════════════════
+// PAIR MEAN
+// ═══════════════════════════════════════════
+function pairMean(rA,lB){
+  const zv=[];let sum=0;
+  for(let z=0;z<rA.length;z++){const a=rA[z],b=lB[z];if(a===-1||b===-1)continue;const s=a+b;sum+=s;zv.push({z,rA:a,lB:b,sum:r1(s)});}
+  if(zv.length===0)return null;
+  return{mean:sum/zv.length,validCount:zv.length,zoneValues:zv};
+}
+function rtm(v,mod){if(mod<=1)return Math.round(v);return Math.round(v/mod)*mod;}
+
+// ═══════════════════════════════════════════
+// CHAR LABEL
+// ═══════════════════════════════════════════
+const PN={"0021":"exclam","0022":"quotedbl","0023":"numbersign","0024":"dollar","0025":"percent","0026":"ampersand","0027":"quotesingle","0028":"parenleft","0029":"parenright","002A":"asterisk","002B":"plus","002C":"comma","002D":"hyphen","002E":"period","002F":"slash","0030":"zero","0031":"one","0032":"two","0033":"three","0034":"four","0035":"five","0036":"six","0037":"seven","0038":"eight","0039":"nine","003A":"colon","003B":"semicolon","003C":"less","003D":"equal","003E":"greater","003F":"question","0040":"at","005B":"bracketleft","005C":"backslash","005D":"bracketright","005E":"asciicircum","005F":"underscore","0060":"grave","007B":"braceleft","007C":"verticalbar","007D":"braceright","007E":"asciitilde","00A1":"exclamdown","00A2":"cent","00A3":"sterling","00A5":"yen","00AB":"guillemotleft","00BB":"guillemotright","00BF":"questiondown","2013":"endash","2014":"emdash","2018":"quoteleft","2019":"quoteright","201C":"quotedblleft","201D":"quotedblright","20AC":"euro","FB00":"ff","FB01":"fi","FB02":"fl","FB03":"ffi","FB04":"ffl","F730":"zerooldstyle","F731":"oneoldstyle","F732":"twooldstyle","F733":"threeoldstyle","F734":"fouroldstyle","F735":"fiveoldstyle","F736":"sixoldstyle","F737":"sevenoldstyle","F738":"eightoldstyle","F739":"nineoldstyle"};
+function cLbl(unicode,gn,gk){
+  if(unicode!==null){const h=unicode.toString(16).toUpperCase().padStart(4,'0');if(PN[h])return PN[h];if(gn&&!/^glyph\d+$/i.test(gn))return gn;try{return String.fromCodePoint(unicode);}catch(_){}}
+  return gk;
+}
+
+// ═══════════════════════════════════════════
+// MAIN ANALYSIS
+// ═══════════════════════════════════════════
+async function runAnalysis(){
+  if(!fontObj){setStatus('No font','error');return;}
+  const p=P();
+  const btn=document.getElementById('btn-run');
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>Computing…';
+  setStatus('Computing…','busy'); setProgress(0);
+  kerningData=[]; glyphCache={};
+  await new Promise(r=>setTimeout(r,10));
+
+  try{
+    const upm=fontObj.unitsPerEm;
+    currentUPM=upm;
+    let yBot=-(upm*.2),yTop=upm*.8;
+    if(fontObj.tables?.os2){const o=fontObj.tables.os2;if(o.sTypoDescender!==undefined)yBot=o.sTypoDescender;if(o.sTypoAscender!==undefined)yTop=o.sTypoAscender;}
+    else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;if(fontObj.tables.hhea.ascender!==undefined)yTop=fontObj.tables.hhea.ascender;}
+
+    log(`Params: zones=${p.zones} smooth=${Math.round(p.smooth*100)}% super=${p.supersample} round=${p.round} mingap=${Math.round(p.mingap*100)}%UPM`,'info');
+
+    // Step 1: margins
+    const allKeys=Object.keys(fontObj.glyphs.glyphs);
+    let done=0;
+    for(const key of allKeys){
+      const g=fontObj.glyphs.glyphs[key];
+      if(!g.path||g.path.commands.length===0){done++;continue;}
+      const{left,right,leftRaw,rightRaw,advanceWidth,unicode}=computeGlyphMargins(g,upm,p,yBot,yTop);
+      const gk=g.name??`glyph_${key}`;
+      const cl=cLbl(unicode,g.name,gk);
+      const cls=classifyGlyph(unicode,gk);
+      glyphCache[gk]={left,right,leftRaw,rightRaw,charLabel:cl,unicode,glyphName:gk,cls,advanceWidth};
+      done++;
+      if(done%50===0){setProgress(done/allKeys.length*40);await new Promise(r=>setTimeout(r,0));}
+    }
+    setProgress(40);
+    log(`Margins: ${Object.keys(glyphCache).length} glyphs`,'ok');
+
+    // Step 2: baselines
+    const nD=glyphCache['n'],oD=glyphCache['O'];
+    const lcC=nD?pairMean(nD.right,nD.left):null;
+    baseValueLC=lcC?lcC.mean:0;
+    const ucC=oD?pairMean(oD.right,oD.left):null;
+    baseValueUC=ucC?ucC.mean:baseValueLC;
+    log(`Base LC (n+n): Ø${r1(baseValueLC)}   Base UC (O+O): Ø${r1(baseValueUC)}`,'info');
+    document.getElementById('s-baseLc').textContent=r1(baseValueLC);
+    document.getElementById('s-baseUc').textContent=r1(baseValueUC);
+    setProgress(45);
+
+    // Step 3: pairs
+    const gks=Object.keys(glyphCache);
+    const gc=gks.length;
+    const minGapFU=upm*p.mingap; // min gap in font units = UPM × mingap%
+    done=0;
+    for(const kA of gks){
+      const{right:rA,charLabel:cA,unicode:uA,glyphName:nA,cls:clA}=glyphCache[kA];
+      for(const kB of gks){
+        const{left:lB,charLabel:cB,unicode:uB,glyphName:nB,cls:clB}=glyphCache[kB];
+        const calc=pairMean(rA,lB);
+        if(!calc)continue;
+        const bothUC=clA==='UC'&&clB==='UC';
+        const base=bothUC?baseValueUC:baseValueLC;
+        const tag=bothUC?'UC':(clA==='UC'||clB==='UC')?'mixed':'LC';
+        let corr=rtm(base-calc.mean,p.round);
+        const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
+        const maxNeg=r1(minZG-minGapFU);
+        let capped=false;
+        if(corr<0&&corr<-maxNeg){corr=rtm(-(minZG-minGapFU),p.round);capped=true;}
+        kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(',')});
+      }
+      done+=gc;
+      if(done%(gc*Math.max(1,Math.floor(gc/20)))===0){setProgress(45+done/(gc*gc)*50);await new Promise(r=>setTimeout(r,0));}
+    }
+
+    setProgress(100);
+    document.getElementById('s-glyphs').textContent=gc;
+    document.getElementById('s-pairs').textContent=kerningData.length.toLocaleString();
+    const nz=kerningData.filter(d=>d.correction!==0).length;
+    log(`Pairs: ${kerningData.length.toLocaleString()}  non-zero: ${nz.toLocaleString()}`,'ok');
+
+    filteredData=kerningData.slice();
+    sortAndRender();
+    buildKernMap();
+    renderPreview();
+    setStatus(`Done · ${gc} glyphs · ${kerningData.length.toLocaleString()} pairs`,'active');
+  }catch(err){
+    log('Error: '+err.message,'err');
+    setStatus('Error','error');
+    console.error(err);
+  }
+  btn.disabled=false; btn.innerHTML='▶ Recompute';
+}
+
+// ═══════════════════════════════════════════
+// TABLE
+// ═══════════════════════════════════════════
+function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=col!=='correction';}sortAndRender();}
+function sortAndRender(){
+  filteredData.sort((a,b)=>{let va=a[sortCol],vb=b[sortCol];if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}return sortAsc?(va>vb?1:-1):(va<vb?1:-1);});
+  renderTable();
+}
+
+function filterTable(){
+  const q=document.getElementById('search-box').value;
+  document.getElementById('rx-err').textContent='';
+  if(!q){filteredData=kerningData.slice();sortAndRender();return;}
+  if(useRegex){
+    let rx;
+    try{rx=new RegExp(q,'i');}
+    catch(e){document.getElementById('rx-err').textContent='⚠ '+e.message.slice(0,30);filteredData=[];renderTable();return;}
+    filteredData=kerningData.filter(d=>rx.test(d.left)||rx.test(d.right));
+  } else {
+    // exact word match on glyph names (not substring)
+    const qL=q.toLowerCase();
+    const parts=qL.split(/\s+/).filter(Boolean);
+    filteredData=kerningData.filter(d=>{
+      const lft=d.left.toLowerCase(), rgt=d.right.toLowerCase();
+      // if single term: exact match OR correction number match
+      if(parts.length===1){
+        const t=parts[0];
+        return lft===t||rgt===t||String(d.correction)===t;
+      }
+      // two terms: left=parts[0] AND right=parts[1]
+      if(parts.length>=2)return lft===parts[0]&&rgt===parts[1];
+      return false;
+    });
+  }
+  sortAndRender();
+}
+
+function toggleRegex(){
+  useRegex=!useRegex;
+  const b=document.getElementById('rx-btn');
+  b.className='regex-toggle'+(useRegex?' on':'');
+  filterTable();
+}
+
+function renderTable(){
+  const tbody=document.getElementById('results-tbody');
+  const MAX=600,rows=filteredData.slice(0,MAX);
+  if(rows.length===0){
+    document.getElementById('results-table').style.display='none';
+    document.getElementById('empty-state').style.display='flex';
+    document.querySelector('#empty-state div:last-child').textContent=kerningData.length?'No pairs match the filter':'Drop a font file to get started';
+    return;
+  }
+  document.getElementById('results-table').style.display='table';
+  document.getElementById('empty-state').style.display='none';
+  tbody.innerHTML='';
+  for(const d of rows){
+    const tr=document.createElement('tr');
+    const cc=d.correction<0?'vneg':d.correction>0?'vpos':'vzero';
+    const tc=d.tag==='UC'?'tuc':d.tag==='mixed'?'tmix':'tlc';
+    const cap=d.capped?'<span class="tcap">⚑</span>':'';
+    tr.innerHTML=`<td class="cc">${esc(d.left)}</td><td class="cc">${esc(d.right)}</td><td class="${cc}" style="font-weight:700">${d.correction}${cap}</td><td>${d.mean}</td><td>${d.base}</td><td class="${tc}">${d.tag}</td><td style="color:var(--text3);font-size:11px">${d.zones}</td>`;
+    tbody.appendChild(tr);
+  }
+  if(filteredData.length>MAX){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td colspan="7" style="color:var(--text3);text-align:center;padding:9px">… ${(filteredData.length-MAX).toLocaleString()} more rows — refine filter to narrow</td>`;
+    tbody.appendChild(tr);
+  }
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ═══════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════
+function exportCSV(){
+  if(!kerningData.length){alert('No data to export.');return;}
+  const p=P();
+  const lines=[
+    `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% round=${p.round} super=${p.supersample} mingap=${Math.round(p.mingap*100)}%`,
+    `# Format: Left;Right;Correction (Class zones)`,
+    ...kerningData.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
+  ];
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=fontName.replace(/\.[^.]+$/,'')+'.csv';
+  a.click();
+}
+
+// ═══════════════════════════════════════════
+// PREVIEW TOGGLES
+// ═══════════════════════════════════════════
+function toggleKern(){
+  showKerning=!showKerning;
+  const b=document.getElementById('tbtn-kern');
+  b.textContent=showKerning?'⟷ Kerning ON':'⟷ Kerning OFF';
+  b.className='tbtn '+(showKerning?'on-green':'');
+  renderPreview();
+}
+function toggleMetrics(){showMetrics=!showMetrics;document.getElementById('tbtn-metrics').className='tbtn'+(showMetrics?' on':'');renderPreview();}
+function toggleBaseline(){showBaseline=!showBaseline;document.getElementById('tbtn-baseline').className='tbtn'+(showBaseline?' on':'');renderPreview();}
+function toggleXheight(){showXheight=!showXheight;document.getElementById('tbtn-xheight').className='tbtn'+(showXheight?' on':'');renderPreview();}
+
+function syncSize(v){
+  document.getElementById('psize').value=v;
+  document.getElementById('psize-n').value=v;
+}
+
+function applyPreset(val){
+  if(!val)return;
+  document.getElementById('preview-text').value=val;
+  document.getElementById('preset-select').value='';
+  renderPreview();
+}
+
+// ═══════════════════════════════════════════
+// KERN MAP
+// ═══════════════════════════════════════════
+let kernMap={};
+function buildKernMap(){kernMap={};for(const d of kerningData)kernMap[d.left+':'+d.right]=d.correction;}
+function getKern(a,b){return kernMap[a+':'+b]??0;}
+
+// ═══════════════════════════════════════════
+// RENDER PREVIEW
+// ═══════════════════════════════════════════
+function renderPreview(){
+  const canvas=document.getElementById('preview-canvas');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth,H=canvas.offsetHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  ctx.fillStyle='#141618';
+  ctx.fillRect(0,0,W,H);
+
+  if(!fontObj){
+    ctx.fillStyle='#3d4450';ctx.font='12px monospace';
+    ctx.fillText('Drop a font file to preview',18,H/2);
+    return;
+  }
+
+  const fontSize=+document.getElementById('psize').value||72;
+  const text=document.getElementById('preview-text').value||'';
+  const upm=fontObj.unitsPerEm;
+  const sc=fontSize/upm;
+  const baseY=H*0.76;
+
+  // x-height line
+  if(showXheight&&fontObj.tables?.os2){
+    const xh=fontObj.tables.os2.sxHeight;
+    if(xh){
+      ctx.strokeStyle='rgba(91,156,246,0.2)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+      const yxh=baseY-xh*sc;
+      ctx.beginPath();ctx.moveTo(0,yxh);ctx.lineTo(W,yxh);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(91,156,246,0.35)';ctx.font='9px monospace';
+      ctx.fillText('x-height',4,yxh-3);
+    }
+  }
+
+  // baseline
+  if(showBaseline){
+    ctx.strokeStyle='rgba(232,160,32,.22)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(W,baseY);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  let x=16;
+  const chars=[...text];
+
+  for(let i=0;i<chars.length;i++){
+    const ch=chars[i];
+    const cp=ch.codePointAt(0);
+    if(cp===32){x+=fontSize*0.28;continue;}
+    const glyph=fontObj.charToGlyph(ch);
+    if(!glyph||!glyph.name)continue;
+
+    const gk=glyph.name??'';
+    const lbl=cLbl(cp,glyph.name,gk);
+    const aw=(glyph.advanceWidth??0)*sc;
+
+    // advance width box
+    if(showMetrics){
+      ctx.fillStyle='rgba(91,156,246,.06)';
+      ctx.fillRect(x,baseY-fontSize*.88,aw,fontSize*1.08);
+      ctx.strokeStyle='rgba(91,156,246,.2)';ctx.lineWidth=.5;
+      ctx.strokeRect(x+.25,baseY-fontSize*.88+.25,aw-.5,fontSize*1.08-.5);
+    }
+
+    // draw glyph
+    const path=glyph.getPath(x,baseY,fontSize);
+    ctx.fillStyle=showKerning?'#d4d8de':'#7080a0';
+    ctx.fill(new Path2D(path.toPathData(2)));
+
+    // margin overlays when metrics ON
+    if(showMetrics&&kerningData.length>0){
+      const gc=glyphCache[gk];
+      if(gc){
+        const zH_fu=(fontObj.tables?.os2?fontObj.tables.os2.sTypoAscender-fontObj.tables.os2.sTypoDescender:upm)/P().zones;
+        const yBot_fu=fontObj.tables?.os2?fontObj.tables.os2.sTypoDescender:-(upm*.2);
+        const zones=P().zones;
+        for(let z=0;z<zones;z++){
+          const lv=gc.left[z],rv=gc.right[z];
+          const zLo=baseY-(yBot_fu+z*zH_fu)*sc;
+          const zHi=baseY-(yBot_fu+(z+1)*zH_fu)*sc;
+          const top=Math.min(zLo,zHi),bot=Math.max(zLo,zHi);
+          if(lv!==-1){
+            ctx.fillStyle='rgba(232,160,32,.15)';
+            ctx.fillRect(x,top,lv*sc,bot-top);
+          }
+          if(rv!==-1){
+            ctx.fillStyle='rgba(76,175,125,.15)';
+            ctx.fillRect(x+aw-rv*sc,top,rv*sc,bot-top);
+          }
+        }
+      }
+    }
+
+    // kerning offset for next char
+    let kern=0;
+    if(showKerning&&kerningData.length>0&&i+1<chars.length){
+      const nch=chars[i+1];
+      if(nch.codePointAt(0)!==32){
+        const ng=fontObj.charToGlyph(nch);
+        if(ng){const nlbl=cLbl(nch.codePointAt(0),ng.name??'',ng.name??'');kern=getKern(lbl,nlbl)*sc;}
+      }
+    }
+    x+=aw+kern;
+  }
+
+  // status label
+  ctx.fillStyle='#3a4050';ctx.font='10px monospace';
+  const stxt=`${fontSize}px · ${showKerning?(kerningData.length?'Coupler kerning':'no kerning data'):'kern OFF'}`;
+  ctx.fillText(stxt,W-ctx.measureText(stxt).width-8,H-7);
+}
+
+const ro=new ResizeObserver(()=>renderPreview());
+ro.observe(document.getElementById('preview-canvas'));
+renderPreview();
+</script>
+</body>
+</html>

@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Font Kerning Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+<style>
+  :root {
+    --bg:        #0d0f11;
+    --bg2:       #141618;
+    --bg3:       #1c1f23;
+    --bg4:       #252a2f;
+    --border:    #2e3338;
+    --border2:   #3d4450;
+    --accent:    #e8a020;
+    --accent2:   #c07010;
+    --green:     #4caf7d;
+    --red:       #e05555;
+    --blue:      #5b9cf6;
+    --text:      #d4d8de;
+    --text2:     #8a9099;
+    --text3:     #5a6070;
+    --mono:      'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+    --sans:      'IBM Plex Sans', 'Segoe UI', sans-serif;
+    --radius:    4px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  header .logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    border: 1px solid var(--accent2);
+    padding: 3px 7px;
+    border-radius: var(--radius);
+  }
+  header h1 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  header .status {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  header .status.active { color: var(--green); }
+  header .status.error  { color: var(--red); }
+  header .status.busy   { color: var(--accent); }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: auto 1fr;
+    height: calc(100vh - 49px);
+  }
+
+  /* ── Left Panel ── */
+  .left-panel {
+    grid-row: 1 / 3;
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Drop Zone ── */
+  .drop-zone {
+    margin: 14px;
+    border: 2px dashed var(--border2);
+    border-radius: 6px;
+    padding: 20px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(232,160,32,0.05);
+  }
+  .drop-zone.loaded {
+    border-color: var(--green);
+    border-style: solid;
+    background: rgba(76,175,125,0.05);
+  }
+  .drop-zone .drop-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+  .drop-zone .drop-label {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+  .drop-zone .font-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    font-weight: 700;
+    margin-top: 4px;
+    word-break: break-all;
+  }
+  .drop-zone input[type=file] { display: none; }
+
+  /* ── Parameters ── */
+  .params-section {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 14px 14px;
+  }
+  .section-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 12px 0 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+
+  .param-row {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: 6px;
+    align-items: start;
+    margin-bottom: 10px;
+  }
+  .param-label {
+    font-size: 12px;
+    color: var(--text2);
+    padding-top: 6px;
+  }
+  .param-label span {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+  input[type=number] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 5px 8px;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.1s;
+  }
+  input[type=number]:focus {
+    border-color: var(--accent);
+  }
+  input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+
+  /* ── Compute Button ── */
+  .btn-compute {
+    margin: 0 14px 14px;
+    width: calc(100% - 28px);
+    padding: 10px;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+  .btn-compute:hover { background: #f0b030; }
+  .btn-compute:active { transform: scale(0.98); }
+  .btn-compute:disabled {
+    background: var(--bg4);
+    color: var(--text3);
+    cursor: not-allowed;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    margin: 0 14px 10px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.2s;
+    border-radius: 2px;
+  }
+
+  /* ── Stats ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .stat-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+  }
+  .stat-box .stat-val {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-box .stat-key {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Right Top: Preview ── */
+  .preview-panel {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    padding: 16px 20px;
+  }
+  .preview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .preview-header .section-title { margin: 0; padding: 0; border: none; }
+  .preview-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+  }
+  .preview-controls label {
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .preview-controls input[type=range] {
+    width: 80px;
+    accent-color: var(--accent);
+  }
+  .preview-controls input[type=number] {
+    width: 60px;
+    text-align: center;
+  }
+
+  /* Canvas preview */
+  #preview-canvas {
+    display: block;
+    width: 100%;
+    height: 120px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: text;
+  }
+
+  /* Text input for preview */
+  .preview-text-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: center;
+  }
+  .preview-text-row label {
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+  #preview-text {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 5px 10px;
+    outline: none;
+    transition: border-color 0.1s;
+  }
+  #preview-text:focus { border-color: var(--accent); }
+
+  /* kerning toggle */
+  .toggle-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .toggle-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232,160,32,0.1);
+  }
+
+  /* ── Right Bottom: Results ── */
+  .results-panel {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+  .results-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .results-header .section-title { margin: 0; padding: 0; border: none; }
+  .search-box {
+    margin-left: auto;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 10px;
+    width: 160px;
+    outline: none;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .btn-export {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+
+  .results-table-wrap {
+    flex: 1;
+    overflow: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  thead tr {
+    position: sticky;
+    top: 0;
+    background: var(--bg2);
+    z-index: 1;
+  }
+  th {
+    padding: 7px 14px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--text2); }
+  th.sorted { color: var(--accent); }
+  td {
+    padding: 5px 14px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tr:hover td { background: var(--bg3); }
+  .val-neg { color: var(--red); }
+  .val-pos { color: var(--green); }
+  .val-zero { color: var(--text3); }
+  .char-cell {
+    font-size: 14px;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+  .pair-cell {
+    letter-spacing: 0.02em;
+    color: var(--text2);
+  }
+  .tag-uc   { color: var(--blue); font-size: 10px; }
+  .tag-lc   { color: var(--text3); font-size: 10px; }
+  .tag-mix  { color: var(--accent); font-size: 10px; }
+  .tag-cap  { color: var(--red); font-size: 10px; margin-left: 4px; }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 12px;
+    gap: 8px;
+  }
+  .empty-state .icon { font-size: 32px; opacity: 0.3; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  /* log */
+  .log-area {
+    padding: 6px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    border-top: 1px solid var(--border);
+    max-height: 60px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .log-area .log-line { line-height: 1.6; }
+  .log-area .log-ok  { color: var(--green); }
+  .log-area .log-err { color: var(--red); }
+  .log-area .log-info { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FK</div>
+  <h1>Font Kerning Analyzer</h1>
+  <div class="status" id="global-status">No font loaded</div>
+</header>
+
+<div class="layout">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="left-panel">
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="drop-icon">⊕</div>
+      <div class="drop-label">Drop TTF / OTF font here<br>or click to browse</div>
+      <div class="font-name" id="font-name-label"></div>
+      <input type="file" id="file-input" accept=".ttf,.otf">
+    </div>
+
+    <!-- Parameters -->
+    <div class="params-section">
+      <div class="section-title">Parameters</div>
+
+      <div class="param-row">
+        <div class="param-label">Zones<span>Height divisions (--zones)</span></div>
+        <input type="number" id="p-zones" value="9" min="1" max="64">
+      </div>
+      <div class="param-row">
+        <div class="param-label">Smooth %<span>Max neighbor delta (--smooth)</span></div>
+        <input type="number" id="p-smooth" value="40" min="0" max="200">
+      </div>
+      <div class="param-row">
+        <div class="param-label">Round module<span>Kern rounding module (--round)</span></div>
+        <input type="number" id="p-round" value="1" min="1">
+      </div>
+      <div class="param-row">
+        <div class="param-label">Supersample<span>Subzones per zone (--supersample)</span></div>
+        <input type="number" id="p-supersample" value="10" min="1" max="50">
+      </div>
+      <div class="param-row">
+        <div class="param-label">Min gap div<span>Floor = base / N (--mingap)</span></div>
+        <input type="number" id="p-mingap" value="4" min="1">
+      </div>
+
+      <div class="section-title" style="margin-top:6px">Results</div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-box"><div class="stat-val" id="s-glyphs">—</div><div class="stat-key">Glyphs</div></div>
+        <div class="stat-box"><div class="stat-val" id="s-pairs">—</div><div class="stat-key">Pairs</div></div>
+        <div class="stat-box"><div class="stat-val" id="s-baseLc">—</div><div class="stat-key">Base LC</div></div>
+        <div class="stat-box"><div class="stat-val" id="s-baseUc">—</div><div class="stat-key">Base UC</div></div>
+      </div>
+    </div>
+
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <button class="btn-compute" id="btn-compute" disabled onclick="runAnalysis()">▶ Compute Kerning</button>
+    <div class="log-area" id="log-area"></div>
+
+  </div>
+
+  <!-- ── RIGHT: PREVIEW ── -->
+  <div class="preview-panel">
+    <div class="preview-header">
+      <div class="section-title">Live Preview</div>
+      <div class="preview-controls">
+        <label>Size</label>
+        <input type="range" id="preview-size" min="24" max="200" value="72" oninput="renderPreview()">
+        <input type="number" id="preview-size-num" value="72" min="12" max="400"
+               style="width:52px" oninput="document.getElementById('preview-size').value=this.value;renderPreview()">
+        <label>px</label>
+      </div>
+    </div>
+
+    <canvas id="preview-canvas"></canvas>
+
+    <div class="preview-text-row">
+      <label>Text</label>
+      <input type="text" id="preview-text" value="AVATAWAVE Kerning" oninput="renderPreview()">
+    </div>
+
+    <div class="toggle-row">
+      <button class="toggle-btn active" id="toggle-kern" onclick="toggleKern()">Kerning ON</button>
+      <button class="toggle-btn" id="toggle-metrics" onclick="toggleMetrics()">Show Metrics</button>
+      <button class="toggle-btn" id="toggle-baseline" onclick="toggleBaseline()">Baseline</button>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: RESULTS TABLE ── -->
+  <div class="results-panel">
+    <div class="results-header">
+      <div class="section-title">Kerning Table</div>
+      <input type="text" class="search-box" id="search-box" placeholder="Filter pairs…" oninput="filterTable()">
+      <button class="btn-export" onclick="exportCSV()">↓ Export CSV</button>
+    </div>
+    <div class="results-table-wrap">
+      <div class="empty-state" id="empty-state">
+        <div class="icon">⊘</div>
+        <div>Load a font and compute to see results</div>
+      </div>
+      <table id="results-table" style="display:none">
+        <thead>
+          <tr>
+            <th onclick="sortBy('left')">Left</th>
+            <th onclick="sortBy('right')">Right</th>
+            <th onclick="sortBy('correction')">Correction</th>
+            <th onclick="sortBy('mean')">Pair Mean</th>
+            <th onclick="sortBy('base')">Base</th>
+            <th>Class</th>
+            <th>Zones</th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let fontObj       = null;   // opentype.js font
+let fontBuffer    = null;
+let fontName      = '';
+let glyphCache    = {};     // glyphKey → {left,right,charLabel,unicode}
+let kerningData   = [];     // [{left,right,correction,mean,base,tag,capped,zones}]
+let filteredData  = [];
+let sortCol       = 'correction';
+let sortAsc       = false;
+let showKerning   = true;
+let showMetrics   = false;
+let showBaseline  = false;
+let baseValueLC   = 0;
+let baseValueUC   = 0;
+
+// params
+const P = () => ({
+  zones:       +document.getElementById('p-zones').value       || 9,
+  smooth:      +document.getElementById('p-smooth').value      / 100 || 0.4,
+  round:       +document.getElementById('p-round').value       || 1,
+  supersample: +document.getElementById('p-supersample').value || 10,
+  mingap:      +document.getElementById('p-mingap').value      || 4,
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// LOGGING
+// ═══════════════════════════════════════════════════════════════════
+function log(msg, cls='') {
+  const el = document.getElementById('log-area');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + (cls ? 'log-'+cls : '');
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(msg, cls='') {
+  const el = document.getElementById('global-status');
+  el.textContent = msg;
+  el.className = 'status ' + cls;
+}
+
+function setProgress(pct) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DROP / FILE LOAD
+// ═══════════════════════════════════════════════════════════════════
+const dropZone = document.getElementById('drop-zone');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFont(file);
+});
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFont(e.target.files[0]);
+});
+
+function loadFont(file) {
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      fontBuffer = ev.target.result;
+      fontObj    = opentype.parse(fontBuffer);
+      fontName   = file.name;
+      dropZone.classList.add('loaded');
+      document.getElementById('font-name-label').textContent = file.name;
+      document.getElementById('btn-compute').disabled = false;
+      setStatus('Font loaded: ' + (fontObj.names.fullName?.en || file.name), 'active');
+      log('Loaded: ' + file.name + ' — ' + Object.keys(fontObj.glyphs.glyphs).length + ' glyphs', 'ok');
+      // Auto-run
+      runAnalysis();
+    } catch(err) {
+      setStatus('Error loading font', 'error');
+      log('Error: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BEZIER / GEOMETRY  (ported from font-margins.js)
+// ═══════════════════════════════════════════════════════════════════
+function cubicXY(p0,p1,p2,p3,t) {
+  const mt=1-t, mt2=mt*mt, t2=t*t;
+  return {
+    x: mt2*mt*p0.x+3*mt2*t*p1.x+3*mt*t2*p2.x+t2*t*p3.x,
+    y: mt2*mt*p0.y+3*mt2*t*p1.y+3*mt*t2*p2.y+t2*t*p3.y,
+  };
+}
+function quadXY(p0,p1,p2,t) {
+  const mt=1-t;
+  return { x:mt*mt*p0.x+2*mt*t*p1.x+t*t*p2.x, y:mt*mt*p0.y+2*mt*t*p1.y+t*t*p2.y };
+}
+
+const DENSE = 512;
+function segmentXRangeInZone(xyFn, yLo, yHi) {
+  let xMin=Infinity, xMax=-Infinity;
+  for (let i=0; i<=DENSE; i++) {
+    const t=i/DENSE, p=xyFn(t);
+    if (p.y>=yLo && p.y<=yHi) { if(p.x<xMin)xMin=p.x; if(p.x>xMax)xMax=p.x; }
+  }
+  // boundary bisection
+  for (const yB of [yLo,yHi]) {
+    const xs=[];
+    bisectCurve(t=>xyFn(t).y, t=>xyFn(t).x, yB, 0,1, xs);
+    for (const x of xs) { if(x<xMin)xMin=x; if(x>xMax)xMax=x; }
+  }
+  return isFinite(xMin) ? {xMin,xMax} : null;
+}
+
+function bisectCurve(yFn,xFn,yTarget,t0,t1,results) {
+  const y0=yFn(t0), y1=yFn(t1);
+  if ((y0-yTarget)*(y1-yTarget)>0 && (t1-t0)<0.05) return;
+  if (t1-t0<0.05) { results.push(Math.abs(y0-yTarget)<Math.abs(y1-yTarget)?xFn(t0):xFn(t1)); return; }
+  const tM=(t0+t1)/2;
+  bisectCurve(yFn,xFn,yTarget,t0,tM,results);
+  bisectCurve(yFn,xFn,yTarget,tM,t1,results);
+}
+
+function pathXRangesPerZone(opentypePath, zones, yBottom, yTop) {
+  const zH=(yTop-yBottom)/zones;
+  const xMin=new Float64Array(zones).fill(Infinity);
+  const xMax=new Float64Array(zones).fill(-Infinity);
+  let cx=0,cy=0,sx=0,sy=0;
+
+  function processSeg(xyFn) {
+    let sYMin=Infinity, sYMax=-Infinity;
+    for (let i=0;i<=32;i++) { const y=-xyFn(i/32).y; if(y<sYMin)sYMin=y; if(y>sYMax)sYMax=y; }
+    const zS=Math.max(0,Math.floor((sYMin-yBottom)/zH));
+    const zE=Math.min(zones-1,Math.ceil((sYMax-yBottom)/zH));
+    const fn=t=>{const p=xyFn(t);return{x:p.x,y:-p.y};};
+    for (let z=zS;z<=zE;z++) {
+      const lo=yBottom+z*zH, hi=lo+zH;
+      const r=segmentXRangeInZone(fn,lo,hi);
+      if (r) { if(r.xMin<xMin[z])xMin[z]=r.xMin; if(r.xMax>xMax[z])xMax[z]=r.xMax; }
+    }
+  }
+
+  for (const cmd of opentypePath.commands) {
+    switch(cmd.type) {
+      case 'M': cx=cmd.x;cy=cmd.y;sx=cx;sy=cy; break;
+      case 'L': { const x0=cx,y0=cy,x1=cmd.x,y1=cmd.y; processSeg(t=>({x:x0+t*(x1-x0),y:y0+t*(y1-y0)})); cx=cmd.x;cy=cmd.y; break; }
+      case 'Q': { const p0={x:cx,y:cy},p1={x:cmd.x1,y:cmd.y1},p2={x:cmd.x,y:cmd.y}; processSeg(t=>quadXY(p0,p1,p2,t)); cx=cmd.x;cy=cmd.y; break; }
+      case 'C': { const p0={x:cx,y:cy},p1={x:cmd.x1,y:cmd.y1},p2={x:cmd.x2,y:cmd.y2},p3={x:cmd.x,y:cmd.y}; processSeg(t=>cubicXY(p0,p1,p2,p3,t)); cx=cmd.x;cy=cmd.y; break; }
+      case 'Z': if(cx!==sx||cy!==sy){const x0=cx,y0=cy,x1=sx,y1=sy;processSeg(t=>({x:x0+t*(x1-x0),y:y0+t*(y1-y0)}));} cx=sx;cy=sy; break;
+    }
+  }
+  return Array.from({length:zones},(_,z)=>isFinite(xMin[z])?{xMin:xMin[z],xMax:xMax[z]}:null);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SMOOTHING
+// ═══════════════════════════════════════════════════════════════════
+function r1(v) { return Math.round(v*10)/10; }
+
+function smoothMargins(arr, zoneHeight, smoothPct) {
+  if (smoothPct <= 0) return arr.slice();
+  const maxDelta = smoothPct * zoneHeight;
+  const n = arr.length;
+  const out = arr.slice();
+  let anchorZ=-1, anchorVal=Infinity;
+  for (let z=0;z<n;z++) if(arr[z]!==-1&&arr[z]<anchorVal){anchorVal=arr[z];anchorZ=z;}
+  if (anchorZ===-1) return out;
+  let prev=anchorZ;
+  for (let z=anchorZ-1;z>=0;z--) {
+    if(out[z]===-1)continue;
+    const maxA=r1(out[prev]+maxDelta);
+    if(out[z]>maxA)out[z]=maxA;
+    if(out[z]<anchorVal)out[z]=r1(anchorVal);
+    prev=z;
+  }
+  prev=anchorZ;
+  for (let z=anchorZ+1;z<n;z++) {
+    if(out[z]===-1)continue;
+    const maxA=r1(out[prev]+maxDelta);
+    if(out[z]>maxA)out[z]=maxA;
+    if(out[z]<anchorVal)out[z]=r1(anchorVal);
+    prev=z;
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GLYPH MARGINS
+// ═══════════════════════════════════════════════════════════════════
+function computeGlyphMargins(glyph, upm, p, yBottom, yTop) {
+  const aw = glyph.advanceWidth ?? 0;
+  const zH = (yTop-yBottom)/p.zones;
+  const rawPath = glyph.getPath(0,0,upm);
+  const totalSubs = p.zones * p.supersample;
+  const subRanges = pathXRangesPerZone(rawPath, totalSubs, yBottom, yTop);
+
+  const leftRaw=[], rightRaw=[];
+  for (let z=0;z<p.zones;z++) {
+    const s0=z*p.supersample;
+    let sumL=0,sumR=0,cnt=0;
+    for (let s=0;s<p.supersample;s++) {
+      const sub=subRanges[s0+s];
+      if(!sub)continue;
+      sumL+=sub.xMin; sumR+=aw-sub.xMax; cnt++;
+    }
+    if(cnt===0){leftRaw.push(-1);rightRaw.push(-1);}
+    else{leftRaw.push(r1(sumL/cnt));rightRaw.push(r1(sumR/cnt));}
+  }
+  const left  = smoothMargins(leftRaw,  zH, p.smooth);
+  const right = smoothMargins(rightRaw, zH, p.smooth);
+  let unicode=null;
+  if(glyph.unicodes?.length>0) unicode=glyph.unicodes[0];
+  return {left,right,advanceWidth:aw,unicode};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLASSIFICATION
+// ═══════════════════════════════════════════════════════════════════
+function classifyGlyph(unicode, name) {
+  if(unicode===null){return /^[A-Z]/.test(name)?'UC':'LC';}
+  if(unicode>=48&&unicode<=57)return'UC';
+  if(unicode>=65&&unicode<=90)return'UC';
+  if((unicode>=192&&unicode<=214)||(unicode>=216&&unicode<=222))return'UC';
+  if(unicode>=256&&unicode<=382&&unicode%2===0)return'UC';
+  if(unicode>=0x0391&&unicode<=0x03A9)return'UC';
+  if(unicode>=0x0410&&unicode<=0x042F)return'UC';
+  return'LC';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PAIR MEAN
+// ═══════════════════════════════════════════════════════════════════
+function pairMean(rightA, leftB) {
+  const zv=[]; let sum=0;
+  for(let z=0;z<rightA.length;z++){
+    const rA=rightA[z],lB=leftB[z];
+    if(rA===-1||lB===-1)continue;
+    const s=rA+lB; sum+=s;
+    zv.push({z,rA,lB,sum:r1(s)});
+  }
+  if(zv.length===0)return null;
+  return{mean:sum/zv.length,validCount:zv.length,zoneValues:zv};
+}
+
+function roundToModule(v,mod){
+  if(mod<=1)return Math.round(v);
+  return Math.round(v/mod)*mod;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CHAR LABEL (prodnames subset for common chars)
+// ═══════════════════════════════════════════════════════════════════
+const PN={"0021":"exclam","0022":"quotedbl","0023":"numbersign","0024":"dollar","0025":"percent","0026":"ampersand","0027":"quotesingle","0028":"parenleft","0029":"parenright","002A":"asterisk","002B":"plus","002C":"comma","002D":"hyphen","002E":"period","002F":"slash","0030":"zero","0031":"one","0032":"two","0033":"three","0034":"four","0035":"five","0036":"six","0037":"seven","0038":"eight","0039":"nine","003A":"colon","003B":"semicolon","003C":"less","003D":"equal","003E":"greater","003F":"question","0040":"at","005B":"bracketleft","005C":"backslash","005D":"bracketright","005E":"asciicircum","005F":"underscore","0060":"grave","007B":"braceleft","007C":"verticalbar","007D":"braceright","007E":"asciitilde","00A1":"exclamdown","00A2":"cent","00A3":"sterling","00A5":"yen","00AB":"guillemotleft","00BB":"guillemotright","00BF":"questiondown","2013":"endash","2014":"emdash","2018":"quoteleft","2019":"quoteright","201C":"quotedblleft","201D":"quotedblright","20AC":"euro","FB00":"ff","FB01":"fi","FB02":"fl","FB03":"ffi","FB04":"ffl","F730":"zerooldstyle","F731":"oneoldstyle","F732":"twooldstyle","F733":"threeoldstyle","F734":"fouroldstyle","F735":"fiveoldstyle","F736":"sixoldstyle","F737":"sevenoldstyle","F738":"eightoldstyle","F739":"nineoldstyle"};
+
+function charLabel(unicode, glyphName, glyphKey) {
+  if(unicode!==null){
+    const h=unicode.toString(16).toUpperCase().padStart(4,'0');
+    if(PN[h])return PN[h];
+    if(glyphName&&!/^glyph\d+$/i.test(glyphName))return glyphName;
+    try{return String.fromCodePoint(unicode);}catch(_){}
+  }
+  return glyphKey;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN ANALYSIS  (async with progress)
+// ═══════════════════════════════════════════════════════════════════
+async function runAnalysis() {
+  if(!fontObj){setStatus('No font loaded','error');return;}
+  const p=P();
+  const btn=document.getElementById('btn-compute');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>Computing…';
+  setStatus('Computing…','busy');
+  setProgress(0);
+  kerningData=[];
+  glyphCache={};
+
+  // yield to browser to repaint
+  await new Promise(r=>setTimeout(r,10));
+
+  try {
+    const upm=fontObj.unitsPerEm;
+    let yBottom=-(upm*0.2), yTop=upm*0.8;
+    if(fontObj.tables?.os2){
+      const os2=fontObj.tables.os2;
+      if(os2.sTypoDescender!==undefined)yBottom=os2.sTypoDescender;
+      if(os2.sTypoAscender!==undefined)yTop=os2.sTypoAscender;
+    } else if(fontObj.tables?.hhea){
+      if(fontObj.tables.hhea.descender!==undefined)yBottom=fontObj.tables.hhea.descender;
+      if(fontObj.tables.hhea.ascender!==undefined)yTop=fontObj.tables.hhea.ascender;
+    }
+
+    log(`Font: ${fontObj.names.fullName?.en||fontName}  UPM:${upm}  yBottom:${r1(yBottom)}  yTop:${r1(yTop)}`, 'info');
+    log(`Params: zones=${p.zones} smooth=${Math.round(p.smooth*100)}% super=${p.supersample} round=${p.round} mingap=1/${p.mingap}`);
+
+    // ── Step 1: Compute glyph margins ──────────────────────────────
+    const allKeys=Object.keys(fontObj.glyphs.glyphs);
+    const total=allKeys.length;
+    let done=0;
+
+    for(const key of allKeys){
+      const glyph=fontObj.glyphs.glyphs[key];
+      if(!glyph.path||glyph.path.commands.length===0){done++;continue;}
+      const {left,right,advanceWidth,unicode}=computeGlyphMargins(glyph,upm,p,yBottom,yTop);
+      const gk=glyph.name??`glyph_${key}`;
+      const cl=charLabel(unicode,glyph.name,gk);
+      const cls=classifyGlyph(unicode,gk);
+      glyphCache[gk]={left,right,charLabel:cl,unicode,glyphName:gk,cls};
+      done++;
+      if(done%50===0){
+        setProgress(done/total*40);
+        await new Promise(r=>setTimeout(r,0));
+      }
+    }
+    setProgress(40);
+    log(`Margins computed: ${Object.keys(glyphCache).length} glyphs`,'ok');
+
+    // ── Step 2: Baseline values ─────────────────────────────────────
+    const nData=glyphCache['n'];
+    const oData=glyphCache['O'];
+    if(!nData){log('Warning: glyph "n" not found, LC base = 0','err');}
+    const lcCalc=nData?pairMean(nData.right,nData.left):null;
+    baseValueLC=lcCalc?lcCalc.mean:0;
+    const ucCalc=oData?pairMean(oData.right,oData.left):null;
+    baseValueUC=ucCalc?ucCalc.mean:baseValueLC;
+
+    log(`Base LC (n+n): Ø${r1(baseValueLC)}   Base UC (O+O): Ø${r1(baseValueUC)}`,'info');
+    document.getElementById('s-baseLc').textContent=r1(baseValueLC);
+    document.getElementById('s-baseUc').textContent=r1(baseValueUC);
+    setProgress(45);
+
+    // ── Step 3: Kerning pairs ───────────────────────────────────────
+    const glyphKeys=Object.keys(glyphCache);
+    const glyphCount=glyphKeys.length;
+    const pairCount=glyphCount*glyphCount;
+    done=0; const pairBatch=Math.max(1,Math.floor(glyphCount/20));
+
+    for(const keyA of glyphKeys){
+      const {right:rightA,charLabel:cA,unicode:uA,glyphName:nA,cls:clsA}=glyphCache[keyA];
+      for(const keyB of glyphKeys){
+        const {left:leftB,charLabel:cB,unicode:uB,glyphName:nB,cls:clsB}=glyphCache[keyB];
+        const calc=pairMean(rightA,leftB);
+        if(!calc)continue;
+        const bothUC=clsA==='UC'&&clsB==='UC';
+        const base=bothUC?baseValueUC:baseValueLC;
+        const tag=bothUC?'UC':(clsA==='UC'||clsB==='UC')?'mixed':'LC';
+        let corr=roundToModule(base-calc.mean,p.round);
+        const minGap=base/p.mingap;
+        const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
+        const maxNeg=r1(minZG-minGap);
+        let capped=false;
+        if(corr<0&&corr<-maxNeg){corr=roundToModule(-(minZG-minGap),p.round);capped=true;}
+        kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(',')});
+      }
+      done+=glyphCount;
+      if(done%(glyphCount*pairBatch)===0){
+        setProgress(45+done/pairCount*50);
+        await new Promise(r=>setTimeout(r,0));
+      }
+    }
+
+    setProgress(100);
+    document.getElementById('s-glyphs').textContent=glyphCount;
+    document.getElementById('s-pairs').textContent=kerningData.length.toLocaleString();
+    log(`Kerning pairs: ${kerningData.length.toLocaleString()}  (non-zero: ${kerningData.filter(d=>d.correction!==0).length.toLocaleString()})`,'ok');
+
+    // display
+    filteredData=kerningData.slice();
+    sortAndRender();
+    renderPreview();
+    setStatus(`Done — ${glyphCount} glyphs, ${kerningData.length.toLocaleString()} pairs`,'active');
+
+  } catch(err){
+    log('Error: '+err.message,'err');
+    setStatus('Error during analysis','error');
+    console.error(err);
+  }
+
+  btn.disabled=false;
+  btn.innerHTML='▶ Recompute';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TABLE RENDER
+// ═══════════════════════════════════════════════════════════════════
+function sortBy(col) {
+  if(sortCol===col) sortAsc=!sortAsc;
+  else{sortCol=col;sortAsc=col!=='correction';}
+  sortAndRender();
+}
+
+function sortAndRender() {
+  filteredData.sort((a,b)=>{
+    let va=a[sortCol], vb=b[sortCol];
+    if(typeof va==='string')va=va.toLowerCase();
+    if(typeof vb==='string')vb=vb.toLowerCase();
+    return sortAsc?(va>vb?1:-1):(va<vb?1:-1);
+  });
+  renderTable();
+}
+
+function filterTable() {
+  const q=document.getElementById('search-box').value.toLowerCase();
+  filteredData=kerningData.filter(d=>
+    !q||d.left.toLowerCase().includes(q)||d.right.toLowerCase().includes(q)||String(d.correction).includes(q)
+  );
+  sortAndRender();
+}
+
+function renderTable() {
+  const tbody=document.getElementById('results-tbody');
+  const maxRows=500;
+  const rows=filteredData.slice(0,maxRows);
+
+  if(rows.length===0){
+    document.getElementById('results-table').style.display='none';
+    document.getElementById('empty-state').style.display='flex';
+    return;
+  }
+  document.getElementById('results-table').style.display='table';
+  document.getElementById('empty-state').style.display='none';
+
+  tbody.innerHTML='';
+  for(const d of rows){
+    const tr=document.createElement('tr');
+    const corrCls=d.correction<0?'val-neg':d.correction>0?'val-pos':'val-zero';
+    const tagCls=d.tag==='UC'?'tag-uc':d.tag==='mixed'?'tag-mix':'tag-lc';
+    const capMark=d.capped?'<span class="tag-cap">⚑</span>':'';
+    tr.innerHTML=`
+      <td class="char-cell">${esc(d.left)}</td>
+      <td class="char-cell">${esc(d.right)}</td>
+      <td class="${corrCls}" style="font-weight:700">${d.correction}${capMark}</td>
+      <td>${d.mean}</td>
+      <td>${d.base}</td>
+      <td class="${tagCls}">${d.tag}</td>
+      <td style="color:var(--text3);font-size:11px">${d.zones}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+  if(filteredData.length>maxRows){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td colspan="7" style="color:var(--text3);text-align:center;padding:10px">… ${(filteredData.length-maxRows).toLocaleString()} more rows (use filter to narrow)</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════════════════════════════
+function exportCSV() {
+  if(!kerningData.length){alert('No data to export.');return;}
+  const p=P();
+  const lines=[
+    `# Kerning | Font: ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% round=${p.round} supersample=${p.supersample} mingap=1/${p.mingap}`,
+    `# Format: Left;Right;Correction (Class zones)`,
+    ...kerningData.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
+  ];
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=fontName.replace(/\.[^.]+$/,'')+'.csv';
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LIVE PREVIEW  — renders text on canvas with custom kerning
+// ═══════════════════════════════════════════════════════════════════
+function toggleKern(){
+  showKerning=!showKerning;
+  const b=document.getElementById('toggle-kern');
+  b.textContent=showKerning?'Kerning ON':'Kerning OFF';
+  b.className='toggle-btn'+(showKerning?' active':'');
+  renderPreview();
+}
+function toggleMetrics(){
+  showMetrics=!showMetrics;
+  const b=document.getElementById('toggle-metrics');
+  b.className='toggle-btn'+(showMetrics?' active':'');
+  renderPreview();
+}
+function toggleBaseline(){
+  showBaseline=!showBaseline;
+  const b=document.getElementById('toggle-baseline');
+  b.className='toggle-btn'+(showBaseline?' active':'');
+  renderPreview();
+}
+
+// Build kerning lookup map: "leftLabel:rightLabel" → correction (in font units)
+let kernMap={};
+function buildKernMap() {
+  kernMap={};
+  for(const d of kerningData) kernMap[d.left+':'+d.right]=d.correction;
+}
+
+function getKernValue(labelA, labelB) {
+  return kernMap[labelA+':'+labelB]??0;
+}
+
+function renderPreview() {
+  const canvas=document.getElementById('preview-canvas');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth, H=canvas.offsetHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  // background
+  ctx.fillStyle='#141618';
+  ctx.fillRect(0,0,W,H);
+
+  if(!fontObj||!kerningData.length) {
+    ctx.fillStyle='#3d4450';
+    ctx.font='13px monospace';
+    ctx.fillText('Load a font and compute to preview',20,H/2);
+    return;
+  }
+
+  buildKernMap();
+
+  const fontSize=+document.getElementById('preview-size').value||72;
+  const text=document.getElementById('preview-text').value||'';
+  const upm=fontObj.unitsPerEm;
+  const scale=fontSize/upm;
+
+  // opentype.js renders with y=0 at baseline, positive y downward
+  // we place baseline at 75% of canvas height
+  const baseY=H*0.75;
+  const y=baseY;
+
+  if(showBaseline){
+    ctx.strokeStyle='rgba(232,160,32,0.25)';
+    ctx.lineWidth=1;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw each character with manual advance + kerning
+  let x=14;
+  const chars=[...text];
+
+  for(let i=0;i<chars.length;i++){
+    const ch=chars[i];
+    const cp=ch.codePointAt(0);
+    const glyph=fontObj.charToGlyph(ch);
+    if(!glyph) continue;
+
+    // find label for this char
+    const gk=glyph.name??'';
+    const lbl=charLabel(cp,glyph.name,gk);
+
+    if(showMetrics){
+      const aw=(glyph.advanceWidth??0)*scale;
+      ctx.fillStyle='rgba(91,156,246,0.07)';
+      ctx.fillRect(x,y-fontSize*0.85,aw,fontSize*1.1);
+    }
+
+    // draw glyph path
+    const path=glyph.getPath(x,y,fontSize);
+    const p2d=new Path2D(path.toPathData(2));
+    ctx.fillStyle='#d4d8de';
+    ctx.fill(p2d);
+
+    const aw=(glyph.advanceWidth??0)*scale;
+    let kern=0;
+    if(showKerning&&i+1<chars.length){
+      const nextCh=chars[i+1];
+      const nextCp=nextCh.codePointAt(0);
+      const nextG=fontObj.charToGlyph(nextCh);
+      const nextLbl=charLabel(nextCp,nextG?.name??'',nextG?.name??'');
+      const kernFU=getKernValue(lbl,nextLbl);  // font units
+      kern=kernFU*scale;
+    }
+
+    x+=aw+kern;
+  }
+
+  // label
+  ctx.fillStyle='#3d4450';
+  ctx.font='10px monospace';
+  ctx.fillText(`${fontSize}px  ${showKerning?'kerning ON':'kerning OFF'}`,W-120,H-6);
+}
+
+// resize observer for canvas
+const ro=new ResizeObserver(()=>renderPreview());
+ro.observe(document.getElementById('preview-canvas'));
+document.getElementById('preview-size').addEventListener('input',function(){
+  document.getElementById('preview-size-num').value=this.value;
+});
+
+// initial render
+renderPreview();
+</script>
+</body>
+</html>
