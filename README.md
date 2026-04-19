@@ -711,4 +711,14 @@ CouplerCode · HTML In Safari öffnenSie haben bis 21:00 keine kostenlosen Nach
 
 ---
 
+Nochmal:
+_ die Min Gap funktioniert noch nicht wie sie soll. diese sollte für jedes höhensegment das minimum für das Pair festlegen. Das ist also egal ob linker oder rechter rand, es gilt immer für das pair. die einheit soll bezogen sein in prozent auf die kegel höhe (em spare)
+_ verwende für den smooth-faktor den kehrwert in Prozent, damit ausgeschaltete smooth = 0 bleibt und 99 also für die bislang als 1 bezeichnete einstellung gilt
+_ stelle den help knopf oben rechts in orangegelb deutlich hervor 
+_ mache das logo oben links größer und lösche die unterzeile "font kerning analyser"
+_ der preview oben ist vergrößerbar. es ist gut, dass die oberlängen jetzt immer sichtbar bleiben, aber die unterlängen werden irgendwann bei der skalierung veredckt. sorge dafür, dass diese sichtbar bleiben
+_ stelle oben in der zeile links neben dem testpage-knopf nicht nur die glyph- und pair-anzahl dar, sonden auch die anzahl der aktuell errechneten kernings, die nicht als null ausgegeben werden
+_ hebe den csv-button ebenfalls orangegelb hervor genau wie oben der "help"-knopf und benenne ihn in "Export" um
+_ der basis wert für LC wurde bislang aus der kombination "nn" errechnet und soll jetzt auf "oo" umgestellt werden, genau wie bei UC. passe auch die doku und hilfe hierfür an
+
 

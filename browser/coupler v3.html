@@ -21,8 +21,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13
 
 /* ── Header ── */
 header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
-.logo-mark{font-family:var(--mono);font-size:22px;font-weight:900;color:var(--accent);letter-spacing:-0.04em;}
-
+.logo-mark{font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);letter-spacing:-0.04em;}
+.logo-sub{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-top:1px;}
 .header-title{display:flex;flex-direction:column;line-height:1.2;}
 .header-sep{width:1px;height:26px;background:var(--border);margin:0 4px;}
 .header-font-info{font-family:var(--mono);font-size:11px;color:var(--text3);}
@@ -31,7 +31,6 @@ header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:
 #global-status.active{color:var(--green);}#global-status.error{color:var(--red);}#global-status.busy{color:var(--accent);}
 .header-actions{margin-left:auto;display:flex;gap:8px;align-items:center;}
 .btn-hdr{font-family:var(--mono);font-size:10px;padding:4px 11px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer;transition:all .15s;letter-spacing:.04em;}
-.btn-hdr.accent{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.12);font-weight:700;}
 .btn-hdr:hover{border-color:var(--accent);color:var(--accent);}
 .btn-hdr.testpage{border-color:var(--green);color:var(--green);}
 .btn-hdr.testpage:hover{background:rgba(76,175,125,.1);}
@@ -115,8 +114,8 @@ input[type=number]::-webkit-inner-spin-button{opacity:.4;}
 .filter-mode{font-family:var(--mono);font-size:9px;padding:3px 7px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text3);cursor:pointer;transition:all .15s;}
 .filter-mode.on{border-color:var(--purple);color:var(--purple);background:rgba(169,124,248,.1);}
 .rx-err{font-family:var(--mono);font-size:9px;color:var(--red);padding:0 4px;}
-.btn-exp{font-family:var(--mono);font-size:11px;padding:4px 10px;background:rgba(232,160,32,.12);border:1px solid var(--accent);border-radius:var(--r);color:var(--accent);font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.04em;}
-.btn-exp:hover{background:rgba(232,160,32,.22);}
+.btn-exp{font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer;transition:all .15s;}
+.btn-exp:hover{border-color:var(--accent);color:var(--accent);}
 
 .tbl-wrap{flex:1;overflow:auto;}
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
@@ -161,13 +160,14 @@ tr:hover td{background:var(--bg3);}
 <header>
   <div class="header-title">
     <div class="logo-mark">Coupler</div>
+    <div class="logo-sub">Font Kerning Analyzer</div>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
   <div class="header-actions">
     <div id="global-status">—</div>
     <button class="btn-hdr testpage" onclick="openTestPage()" title="Open A4 landscape test print">Testpage</button>
-    <button class="btn-hdr accent" onclick="document.querySelector('.help-overlay').classList.add('show')" title="Help">? Help</button>
+    <button class="btn-hdr" onclick="document.querySelector('.help-overlay').classList.add('show')" title="Help">? Help</button>
   </div>
 </header>
 
@@ -187,13 +187,13 @@ tr:hover td{background:var(--bg3);}
     </ol>
 
     <h3>How Kerning Is Computed</h3>
-    <p>Each glyph's bounding silhouette is measured at N horizontal zones using Bézier intersection. A baseline reference distance is derived from the pair <strong>o+o</strong> (lowercase) or <strong>O+O</strong> (uppercase). The correction for every pair is: <code style="font-family:var(--mono);color:var(--accent)">correction = base − pairMean</code>, where pairMean is the average gap across all valid zones of the pair.</p>
+    <p>Each glyph's bounding silhouette is measured at N horizontal zones using Bézier intersection. A baseline reference distance is derived from the pair <strong>n+n</strong> (lowercase) or <strong>O+O</strong> (uppercase). The correction for every pair is: <code style="font-family:var(--mono);color:var(--accent)">correction = base − pairMean</code>, where pairMean is the average gap across all valid zones of the pair.</p>
     <p>Negative correction = move closer. Positive = move apart.</p>
 
     <h3>Parameters</h3>
     <dl class="help-kv">
       <dt>Zones (subtlety)</dt><dd>Number of horizontal slices across the em height. More zones = finer contour detail captured, but slower computation.</dd>
-      <dt>Smooth (diagonals and counter)</dt><dd>Reciprocal smoothing scale: 0 = off, 99 = maximum smoothing. Controls the maximum step between adjacent zone margins. Higher values produce smoother contour profiles for diagonal strokes and open counters.</dd>
+      <dt>Smooth (diagonals and counter)</dt><dd>Limits how fast margin values can change between adjacent zones. Anchors at the zone of maximum glyph extent. Helps smooth diagonal strokes and open counters.</dd>
       <dt>Min gap (no touch)</dt><dd>Prevents any correction from bringing glyphs closer than this percentage of the UPM. Acts as a collision guard.</dd>
       <dt>Blur (less details)</dt><dd>Each zone is sampled at N sub-zones internally and the results averaged. Reduces edge quantization artifacts where curves cross zone boundaries obliquely.</dd>
       <dt>Round module (cadence)</dt><dd>Snaps correction values to multiples of N. Useful for systems that prefer a regular grid of kerning values (e.g. multiples of 46 units).</dd>
@@ -210,7 +210,7 @@ tr:hover td{background:var(--bg3);}
 
     <h3>Table Filter</h3>
     <dl class="help-kv">
-      <dt>Exact</dt><dd>Case-sensitive exact glyph name match. "o" finds only the pair where left or right is exactly "o".</dd>
+      <dt>Exact</dt><dd>Case-sensitive exact glyph name match. "n" finds only the pair where left or right is exactly "n".</dd>
       <dt>A B (two terms)</dt><dd>Shows only the pair where left=A and right=B exactly.</dd>
       <dt>.* Regex</dt><dd>Full JavaScript regular expression against glyph names.</dd>
     </dl>
@@ -243,10 +243,10 @@ tr:hover td{background:var(--bg3);}
     </div>
 
     <div class="pr">
-      <div class="pl" data-tip="Smooth (diagonals and counter)&#10;&#10;Controls how aggressively adjacent zone margins are smoothed. Uses a reciprocal scale: 0 = no smoothing (off), higher values = more smoothing.&#10;&#10;99 = maximum smoothing (tight step limit of 1% of zone height between neighbors).&#10;60 = moderate smoothing (step limit of 40% of zone height).&#10;0 = disabled entirely.&#10;&#10;Anchors at the zone with maximum glyph extent. Diagonal strokes and open counters are smoothed toward that anchor.&#10;Default: 60">
-        Smooth <span style="color:var(--text3);font-style:italic;font-size:9px">(diagonals and counter)</span><span>--smooth · 0=off, 99=max smooth</span>
+      <div class="pl" data-tip="Smooth % (diagonals and counter)&#10;&#10;Limits the step size between adjacent zone margins as a % of zone height.&#10;&#10;Anchors at the zone with the smallest margin value (= maximum glyph extent) and propagates outward — so diagonal strokes and open counters are smoothed toward the widest extent, never beyond it.&#10;&#10;Set to 0 to disable smoothing entirely.&#10;Default: 40">
+        Smooth % <span style="color:var(--text3);font-style:italic;font-size:9px">(diagonals and counter)</span><span>--smooth · neighbor delta cap</span>
       </div>
-      <input type="number" id="p-smooth" value="60" min="0" max="99">
+      <input type="number" id="p-smooth" value="40" min="0" max="300">
     </div>
 
     <div class="pr">
@@ -341,7 +341,7 @@ tr:hover td{background:var(--bg3);}
       <span class="rx-err" id="rx-err"></span>
       <input type="text" class="search-box" id="search-box" placeholder="Filter… (exact, A B = pair, .* regex)" oninput="filterTable()">
       <button class="filter-mode" id="rx-btn" onclick="toggleRegex()" title="Toggle regex mode">.*</button>
-      <button class="btn-exp" onclick="exportCSV()">↓ Export</button>
+      <button class="btn-exp" onclick="exportCSV()">↓ CSV</button>
     </div>
   </div>
   <div class="tbl-wrap">
@@ -378,13 +378,13 @@ let useRegex=false;
 let baseValueLC=0,baseValueUC=0;
 let currentUPM=1000,yBotGlobal=0,yTopGlobal=0;
 
-const DEFAULTS={zones:9,smooth:60,round:1,blur:10,mingap:8,threshold:0};
+const DEFAULTS={zones:9,smooth:40,round:1,blur:10,mingap:8,threshold:0};
 
 function P(){
   const mg=parseFloat(document.getElementById('p-mingap').value);
   return{
     zones:     parseInt(document.getElementById('p-zones').value)     ||DEFAULTS.zones,
-    smooth:    (()=>{const s=parseFloat(document.getElementById('p-smooth').value)||0; return s===0?0:(1-s/100);})(),
+    smooth:    parseFloat(document.getElementById('p-smooth').value)  /100,
     round:     parseInt(document.getElementById('p-round').value)     ||DEFAULTS.round,
     blur:      parseInt(document.getElementById('p-blur').value)      ||DEFAULTS.blur,
     mingap:    (isNaN(mg)?DEFAULTS.mingap:mg)/100,
@@ -571,7 +571,7 @@ async function runAnalysis(){
     else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;if(fontObj.tables.hhea.ascender!==undefined)yTop=fontObj.tables.hhea.ascender;}
     yBotGlobal=yBot; yTopGlobal=yTop;
 
-    log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value}(factor) blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold}`,'info');
+    log(`Params: zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold}`,'info');
 
     // Step 1: margins
     const allKeys=Object.keys(fontObj.glyphs.glyphs);
@@ -592,12 +592,12 @@ async function runAnalysis(){
     log(`Margins: ${Object.keys(glyphCache).length} glyphs`,'ok');
 
     // Step 2: baselines — LC = n+n, UC = O+O (both use same-char pair)
-    const nD=glyphCache['o'],oD=glyphCache['O'];
-    const lcC=nD?pairMean(nD.right,nD.left):null; // o+o reference
+    const nD=glyphCache['n'],oD=glyphCache['O'];
+    const lcC=nD?pairMean(nD.right,nD.left):null;
     baseValueLC=lcC?lcC.mean:0;
     const ucC=oD?pairMean(oD.right,oD.left):null;
     baseValueUC=ucC?ucC.mean:baseValueLC;
-    log(`Base LC (o+o): Ø${r1(baseValueLC)}   Base UC (O+O): Ø${r1(baseValueUC)}`,'info');
+    log(`Base LC (n+n): Ø${r1(baseValueLC)}   Base UC (O+O): Ø${r1(baseValueUC)}`,'info');
     document.getElementById('s-baseLc').textContent=r1(baseValueLC);
     document.getElementById('s-baseUc').textContent=r1(baseValueUC);
     setProgress(45);
@@ -619,17 +619,10 @@ async function runAnalysis(){
         const tag=bothUC?'UC':(clA==='UC'||clB==='UC')?'mixed':'LC';
         let corr=rtm(base-calc.mean,p.round);
         let capped=false;
-        // Min gap per zone: each zone gap after correction must stay >= minGapFU.
-        // gap_after[z] = zoneGap[z] + correction  (correction is negative for tightening)
-        // => correction >= minGapFU - zoneGap[z]  for every valid zone z
-        // => most restrictive: correction >= minGapFU - min(zoneGap[z])
-        // i.e. the tightest zone determines how much we can tighten.
+        // Min gap capping
         if(minGapFU>0&&corr<0){
-          // find the tightest existing zone gap among valid zones
           const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
-          // room to tighten: can reduce spacing by at most (minZG - minGapFU)
           const room=minZG-minGapFU;
-          // maxNegCorr is the most negative (tightest) allowed correction
           const maxNeg=room>0?-rtm(room,p.round):0;
           if(corr<maxNeg){corr=maxNeg;capped=true;}
         }
@@ -651,8 +644,7 @@ async function runAnalysis(){
     sortAndRender();
     buildKernMap();
     renderPreview();
-    const nzCount=kerningData.filter(d=>d.correction!==0).length;
-    setStatus(`${gc} gl · ${kerningData.length.toLocaleString()} pairs · ${nzCount.toLocaleString()} kern`,'active');
+    setStatus(`Done · ${gc} glyphs · ${kerningData.length.toLocaleString()} pairs`,'active');
   }catch(err){
     log('Error: '+err.message,'err');
     setStatus('Error','error');
@@ -785,14 +777,12 @@ function renderPreview(){
   const upm=fontObj.unitsPerEm;
   const sc=fontSize/upm;
 
-  // Compute canvas height: ascender above baseline + descender below + padding
+  // Compute needed canvas height from font metrics
   const ascender=yTopGlobal||upm*.8;
-  const descender=yBotGlobal||-(upm*.2);  // negative value (below baseline)
+  const descender=yBotGlobal||-(upm*.2);
   const topPad=16, botPad=16;
-  const ascPx=Math.ceil(ascender*sc);
-  const desPx=Math.ceil(Math.abs(descender)*sc);  // pixels below baseline
-  const H=Math.max(80, ascPx+desPx+topPad+botPad);
-  const baseY=topPad+ascPx;
+  const H=Math.max(80, Math.ceil(ascender*sc)+topPad+botPad);
+  const baseY=topPad+Math.ceil(ascender*sc);
 
   canvas.width=W*dpr; canvas.height=H*dpr;
   canvas.style.height=H+'px';
@@ -964,7 +954,7 @@ body{font-family:'TestFont',serif;background:#fff;color:#000;width:277mm;}
 <body>
 <div class="params">
   <strong>Coupler Testpage</strong> &nbsp;|&nbsp; Font: <strong>${esc(fn)}</strong> &nbsp;|&nbsp;
-  zones=${p.zones} &nbsp; smooth=${document.getElementById('p-smooth').value} &nbsp; blur=${p.blur} &nbsp;
+  zones=${p.zones} &nbsp; smooth=${Math.round(p.smooth*100)}% &nbsp; blur=${p.blur} &nbsp;
   round=${p.round} &nbsp; mingap=${Math.round(p.mingap*100)}% &nbsp;
   threshold=${p.threshold} &nbsp;|&nbsp;
   Base LC: ${r1(baseValueLC)} &nbsp; Base UC: ${r1(baseValueUC)} &nbsp;|&nbsp;
