@@ -3,6 +3,11 @@
 
 is a font analyzer to test an approach for a kerning process
 
+## Demo
+
+
+[Test it online](https://jrgdrs.github.io/Coupler/)
+
 ## Promting
 
 ich arbeite auf der kommandozeile mit node js und habe im unterverzeichnis ./fonts jede menge schriften im ttf und otf format, die mit kubischen und quadratischen bezierkurven beschrieben sind. ich benötige ein javascript, das für jeden dieser fonts iterativ für jedes darin enthaltene zeichen mehrere abstandswerte auf der linken und rechten seite des jeweiligen zeichens ermittelt, die also zwishcne der maximalen ausdehnung des zeichens in dieser höhenzone und dem rand der für das zeichen definierten advanced width flächenrand errechnen und diese werte als array für jedes zeichen als array ausgeben. Für die Berechnung kann die anzahl der zonen (gerechnet auf die kegelhöhe EM spare der jeweiligen schrift = UPM), für die  ein wert erwartet wird angegeben werden, dies entspricht dem teiler für dem upm wert. Ist dieser wert auf 9 in der kommandozeile eingesetellt, wird für jede zone angefangen vom unteren rand für die höhe von jeweils 1/9 der upm berechnet, wie weit der abstand zwischen zeichenrand im maximum und dem rand in dieser höhe ist. Ist in dieser höhenzone gar kein zeicheninhalt vorhanden, wird -1 ausgegeben. Die werte sind aud 1/10 gerundet und als array vom fuß hüber die komplette höhe angegeben, dabeii gibt es für jedes zeichen ein array fpür links und eines für rechts, das die jeweiligen abstände in der höhenzone angibt. die arrays sind für jedes zeichen in ein objekt gehüllz, das weitere metainformationden für das zeichen mitliefert, wie den namen und den unicode sowie gesamtzeichenbreize und advanced width. Das script legt das ergebnis als json file in das unterverzeichnis ./margins und verwendet für diie datei den gleichen dateinamen wie der font, allerdings mit dateierweiterung json
