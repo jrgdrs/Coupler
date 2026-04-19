@@ -6,135 +6,130 @@
 <title>Coupler — Font Kerning Analyzer</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
-:root {
-  --bg:     #0d0f11; --bg2: #141618; --bg3: #1c1f23; --bg4: #252a2f;
-  --border: #2e3338; --border2: #3d4450;
-  --accent: #e8a020; --accent2: #c07010;
-  --green:  #4caf7d; --red: #e05555; --blue: #5b9cf6; --purple: #a97cf8;
-  --text:   #d4d8de; --text2: #8a9099; --text3: #5a6070;
-  --mono:   'JetBrains Mono','Cascadia Code','Fira Code',monospace;
-  --sans:   'IBM Plex Sans','Segoe UI',sans-serif;
-  --r:      4px;
+:root{
+  --bg:#0d0f11;--bg2:#141618;--bg3:#1c1f23;--bg4:#252a2f;
+  --border:#2e3338;--border2:#3d4450;
+  --accent:#e8a020;--accent2:#c07010;
+  --green:#4caf7d;--red:#e05555;--blue:#5b9cf6;--purple:#a97cf8;
+  --text:#d4d8de;--text2:#8a9099;--text3:#5a6070;
+  --mono:'JetBrains Mono','Cascadia Code','Fira Code',monospace;
+  --sans:'IBM Plex Sans','Segoe UI',sans-serif;
+  --r:4px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;min-height:100vh;}
 
-/* Header */
-header{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border);background:var(--bg2);}
+/* ── Header ── */
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
 .logo-mark{font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);letter-spacing:-0.04em;}
-.logo-sub{font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--text3);margin-top:1px;}
+.logo-sub{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--text3);margin-top:1px;}
 .header-title{display:flex;flex-direction:column;line-height:1.2;}
-.header-sep{width:1px;height:28px;background:var(--border);margin:0 4px;}
+.header-sep{width:1px;height:26px;background:var(--border);margin:0 4px;}
 .header-font-info{font-family:var(--mono);font-size:11px;color:var(--text3);}
 .header-font-info strong{color:var(--text2);}
-#global-status{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text3);}
-#global-status.active{color:var(--green);}
-#global-status.error{color:var(--red);}
-#global-status.busy{color:var(--accent);}
+#global-status{font-family:var(--mono);font-size:11px;color:var(--text3);}
+#global-status.active{color:var(--green);}#global-status.error{color:var(--red);}#global-status.busy{color:var(--accent);}
+.header-actions{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.btn-hdr{font-family:var(--mono);font-size:10px;padding:4px 11px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer;transition:all .15s;letter-spacing:.04em;}
+.btn-hdr:hover{border-color:var(--accent);color:var(--accent);}
+.btn-hdr.testpage{border-color:var(--green);color:var(--green);}
+.btn-hdr.testpage:hover{background:rgba(76,175,125,.1);}
 
-/* Layout */
-.layout{display:grid;grid-template-columns:296px 1fr;grid-template-rows:auto 1fr;height:calc(100vh - 47px);}
-
-/* Left panel */
+/* ── Layout ── */
+.layout{display:grid;grid-template-columns:296px 1fr;grid-template-rows:auto 1fr;height:calc(100vh - 45px);}
 .left-panel{grid-row:1/3;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;}
 
-/* Drop zone */
-.drop-zone{margin:12px 12px 0;border:2px dashed var(--border2);border-radius:6px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .15s;flex-shrink:0;}
+/* ── Drop zone ── */
+.drop-zone{margin:10px 10px 0;border:2px dashed var(--border2);border-radius:6px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;flex-shrink:0;}
 .drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:rgba(232,160,32,.05);}
-.drop-zone.loaded{border-color:var(--green);border-style:solid;background:rgba(76,175,125,.05);}
-.drop-icon{font-size:22px;margin-bottom:5px;opacity:.45;}
+.drop-zone.loaded{border-color:var(--green);border-style:solid;background:rgba(76,175,125,.04);}
+.drop-icon{font-size:20px;margin-bottom:4px;opacity:.4;}
 .drop-label{font-size:11px;color:var(--text2);line-height:1.5;}
 .drop-fname{font-family:var(--mono);font-size:10px;color:var(--green);font-weight:700;margin-top:3px;word-break:break-all;}
 
-/* Params */
-.params-section{flex:1;overflow-y:auto;padding:0 12px 12px;}
-.sec{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:10px 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
-.sec-action{margin-left:auto;font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--border2);border-radius:10px;background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.06em;}
+/* ── Params ── */
+.params-section{flex:1;overflow-y:auto;padding:0 10px 10px;}
+.sec{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:9px 0 5px;border-bottom:1px solid var(--border);margin-bottom:7px;display:flex;align-items:center;gap:6px;}
+.sec-action{margin-left:auto;font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--border2);border-radius:10px;background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.05em;}
 .sec-action:hover{border-color:var(--accent);color:var(--accent);}
 
-.pr{display:grid;grid-template-columns:1fr 76px;gap:5px;align-items:start;margin-bottom:8px;position:relative;}
-.pl{font-size:12px;color:var(--text2);padding-top:5px;cursor:help;}
+.pr{display:grid;grid-template-columns:1fr 72px;gap:4px;align-items:start;margin-bottom:7px;}
+.pl{font-size:11.5px;color:var(--text2);padding-top:5px;cursor:help;position:relative;}
 .pl span{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:1px;}
-
 /* Tooltip */
-.pl[data-tip]{position:relative;}
-.pl[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 4px);z-index:99;background:#1a1d21;border:1px solid var(--border2);border-radius:4px;padding:6px 9px;font-size:11px;font-family:var(--sans);color:var(--text2);line-height:1.5;white-space:pre-wrap;width:220px;box-shadow:0 4px 16px rgba(0,0,0,.5);pointer-events:none;}
+.pl[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 4px);z-index:200;background:#151820;border:1px solid var(--border2);border-radius:4px;padding:7px 10px;font-size:11px;font-family:var(--sans);color:var(--text2);line-height:1.55;white-space:pre-wrap;width:230px;box-shadow:0 6px 20px rgba(0,0,0,.6);pointer-events:none;}
 
-input[type=number]{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 7px;text-align:right;outline:none;transition:border-color .1s;}
+input[type=number]{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 6px;text-align:right;outline:none;transition:border-color .1s;}
 input[type=number]:focus{border-color:var(--accent);}
 input[type=number]::-webkit-inner-spin-button{opacity:.4;}
 
 /* Stats */
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;}
-.sb{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:6px 9px;}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px;}
+.sb{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;}
 .sv{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);}
 .sk{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;}
 
-/* Progress */
-.prog{margin:0 12px 8px;height:2px;background:var(--border);border-radius:1px;overflow:hidden;flex-shrink:0;}
+.prog{margin:0 10px 7px;height:2px;background:var(--border);border-radius:1px;overflow:hidden;flex-shrink:0;}
 .prog-fill{height:100%;width:0%;background:var(--accent);transition:width .2s;border-radius:1px;}
 
-/* Compute btn */
-.btn-run{margin:0 12px 8px;width:calc(100% - 24px);padding:9px;background:var(--accent);color:#000;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;border:none;border-radius:var(--r);cursor:pointer;transition:background .15s,transform .1s;flex-shrink:0;}
-.btn-run:hover{background:#f0b030;}
-.btn-run:active{transform:scale(.98);}
+.btn-run{margin:0 10px 7px;width:calc(100% - 20px);padding:9px;background:var(--accent);color:#000;font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;border:none;border-radius:var(--r);cursor:pointer;transition:background .15s,transform .1s;flex-shrink:0;}
+.btn-run:hover{background:#f0b030;}.btn-run:active{transform:scale(.98);}
 .btn-run:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;}
 
-/* Log */
-.logbox{padding:5px 12px;font-family:var(--mono);font-size:10px;color:var(--text3);border-top:1px solid var(--border);max-height:56px;overflow-y:auto;flex-shrink:0;}
+.logbox{padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--text3);border-top:1px solid var(--border);max-height:52px;overflow-y:auto;flex-shrink:0;}
 .logbox .ll{line-height:1.55;}
-.ll.ok{color:var(--green);} .ll.err{color:var(--red);} .ll.info{color:var(--accent);}
+.ll.ok{color:var(--green);}.ll.err{color:var(--red);}.ll.info{color:var(--accent);}
 
-/* Preview panel */
-.preview-panel{border-bottom:1px solid var(--border);background:var(--bg);padding:14px 18px;}
-.ph{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+/* ── Preview panel ── */
+.preview-panel{border-bottom:1px solid var(--border);background:var(--bg);padding:12px 16px;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.ph{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-shrink:0;}
 .ph .sec{margin:0;padding:0;border:none;}
-.pcontrols{display:flex;gap:8px;align-items:center;margin-left:auto;}
+.pcontrols{display:flex;gap:6px;align-items:center;margin-left:auto;}
 .pcontrols label{font-size:11px;color:var(--text3);}
 .pcontrols input[type=range]{width:80px;accent-color:var(--accent);}
 .pcontrols input[type=number]{width:50px;text-align:center;}
 
-#preview-canvas{display:block;width:100%;height:130px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);}
+/* Canvas grows with font size */
+.canvas-wrap{position:relative;flex-shrink:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);}
+#preview-canvas{display:block;width:100%;}
 
-.ptextrow{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;}
+.ptextrow{display:flex;gap:6px;margin-top:7px;align-items:center;flex-wrap:wrap;flex-shrink:0;}
 .ptextrow label{font-size:11px;color:var(--text3);white-space:nowrap;}
-#preview-text{flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 9px;outline:none;transition:border-color .1s;}
+#preview-text{flex:1;min-width:100px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:13px;padding:4px 8px;outline:none;transition:border-color .1s;}
 #preview-text:focus{border-color:var(--accent);}
-#preset-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text2);font-family:var(--mono);font-size:11px;padding:4px 7px;outline:none;cursor:pointer;}
-#preset-select:focus{border-color:var(--accent);}
+#preset-select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text2);font-family:var(--mono);font-size:11px;padding:4px 6px;outline:none;cursor:pointer;}
 
-.trow{display:flex;gap:10px;margin-top:7px;flex-wrap:wrap;}
-.tbtn{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;}
-.tbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(232, 159, 32, 0.45);}
+.trow{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;flex-shrink:0;}
+.tbtn{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;}
+.tbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(232,160,32,.1);}
 .tbtn.on-green{border-color:var(--green);color:var(--green);background:rgba(76,175,125,.1);}
 
-/* Results panel */
+/* ── Results panel ── */
 .results-panel{overflow:hidden;display:flex;flex-direction:column;background:var(--bg);}
-.rh{display:flex;align-items:center;gap:8px;padding:8px 18px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.rh{display:flex;align-items:center;gap:7px;padding:7px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
 .rh .sec{margin:0;padding:0;border:none;}
 .filter-group{display:flex;gap:5px;align-items:center;margin-left:auto;}
-.search-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 9px;width:150px;outline:none;transition:border-color .1s;}
+.search-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 8px;width:160px;outline:none;transition:border-color .1s;}
 .search-box:focus{border-color:var(--accent);}
-.regex-toggle{font-family:var(--mono);font-size:10px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.04em;}
-.regex-toggle.on{border-color:var(--purple);color:var(--purple);background:rgba(169,124,248,.1);}
-.regex-err{font-family:var(--mono);font-size:9px;color:var(--red);padding:0 6px;}
-.btn-exp{font-family:var(--mono);font-size:11px;padding:4px 11px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer;transition:all .15s;}
+.filter-mode{font-family:var(--mono);font-size:9px;padding:3px 7px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text3);cursor:pointer;transition:all .15s;}
+.filter-mode.on{border-color:var(--purple);color:var(--purple);background:rgba(169,124,248,.1);}
+.rx-err{font-family:var(--mono);font-size:9px;color:var(--red);padding:0 4px;}
+.btn-exp{font-family:var(--mono);font-size:11px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text2);cursor:pointer;transition:all .15s;}
 .btn-exp:hover{border-color:var(--accent);color:var(--accent);}
 
 .tbl-wrap{flex:1;overflow:auto;}
 table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
 thead tr{position:sticky;top:0;background:var(--bg2);z-index:1;}
-th{padding:6px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
-th:hover{color:var(--text2);}
-th.sorted{color:var(--accent);}
-td{padding:4px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+th{padding:6px 10px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+th:hover{color:var(--text2);}th.sorted{color:var(--accent);}
+td{padding:4px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
 tr:hover td{background:var(--bg3);}
-.vneg{color:var(--red);} .vpos{color:var(--green);} .vzero{color:var(--text3);}
+.vneg{color:var(--red);}.vpos{color:var(--green);}.vzero{color:var(--text3);}
 .cc{font-size:13px;color:var(--text);}
-.tuc{color:var(--blue);font-size:10px;} .tlc{color:var(--text3);font-size:10px;} .tmix{color:var(--accent);font-size:10px;} .tcap{color:var(--red);font-size:10px;margin-left:3px;}
+.tuc{color:var(--blue);font-size:10px;}.tlc{color:var(--text3);font-size:10px;}.tmix{color:var(--accent);font-size:10px;}.tcap{color:var(--red);font-size:10px;margin-left:3px;}
 
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--text3);font-family:var(--mono);font-size:12px;gap:7px;}
-.empty .eico{font-size:28px;opacity:.25;}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:180px;color:var(--text3);font-family:var(--mono);font-size:12px;gap:6px;}
+.empty .eico{font-size:26px;opacity:.22;}
 
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
@@ -143,6 +138,21 @@ tr:hover td{background:var(--bg3);}
 
 @keyframes spin{to{transform:rotate(360deg);}}
 .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+
+/* ── Help overlay ── */
+.help-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;}
+.help-overlay.show{display:flex;}
+.help-box{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:28px 32px;max-width:600px;width:90%;max-height:85vh;overflow-y:auto;position:relative;}
+.help-box h2{font-size:16px;font-weight:700;color:var(--accent);margin-bottom:16px;font-family:var(--mono);}
+.help-box h3{font-size:12px;font-weight:700;color:var(--text2);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);}
+.help-box p,.help-box li{font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:6px;}
+.help-box ul{padding-left:18px;}
+.help-box li{margin-bottom:4px;}
+.help-close{position:absolute;top:14px;right:16px;background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;}
+.help-close:hover{color:var(--text);}
+.help-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:6px 0;}
+.help-kv dt{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap;padding-top:1px;}
+.help-kv dd{font-size:12px;color:var(--text2);line-height:1.5;}
 </style>
 </head>
 <body>
@@ -154,8 +164,61 @@ tr:hover td{background:var(--bg3);}
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
-  <div id="global-status">—</div>
+  <div class="header-actions">
+    <div id="global-status">—</div>
+    <button class="btn-hdr testpage" onclick="openTestPage()" title="Open A4 landscape test print">Testpage</button>
+    <button class="btn-hdr" onclick="document.querySelector('.help-overlay').classList.add('show')" title="Help">? Help</button>
+  </div>
 </header>
+
+<!-- ── Help overlay ── -->
+<div class="help-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="help-box">
+    <button class="help-close" onclick="document.querySelector('.help-overlay').classList.remove('show')">×</button>
+    <h2>Coupler — How It Works</h2>
+    <p>Coupler analyzes TrueType and OpenType fonts and computes optical kerning corrections based on the actual glyph contour geometry. No manual pair-by-pair editing — all values are derived mathematically from the outline shapes.</p>
+
+    <h3>Workflow</h3>
+    <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:1.7">
+      <li>Drop a TTF or OTF file onto the drop zone (or click to browse).</li>
+      <li>Adjust parameters if needed, then click <strong>Compute Kerning</strong>.</li>
+      <li>Inspect results in the Preview and the Coupling Table.</li>
+      <li>Export as CSV for use in font editors or layout systems.</li>
+    </ol>
+
+    <h3>How Kerning Is Computed</h3>
+    <p>Each glyph's bounding silhouette is measured at N horizontal zones using Bézier intersection. A baseline reference distance is derived from the pair <strong>n+n</strong> (lowercase) or <strong>O+O</strong> (uppercase). The correction for every pair is: <code style="font-family:var(--mono);color:var(--accent)">correction = base − pairMean</code>, where pairMean is the average gap across all valid zones of the pair.</p>
+    <p>Negative correction = move closer. Positive = move apart.</p>
+
+    <h3>Parameters</h3>
+    <dl class="help-kv">
+      <dt>Zones (subtlety)</dt><dd>Number of horizontal slices across the em height. More zones = finer contour detail captured, but slower computation.</dd>
+      <dt>Smooth (diagonals and counter)</dt><dd>Limits how fast margin values can change between adjacent zones. Anchors at the zone of maximum glyph extent. Helps smooth diagonal strokes and open counters.</dd>
+      <dt>Min gap (no touch)</dt><dd>Prevents any correction from bringing glyphs closer than this percentage of the UPM. Acts as a collision guard.</dd>
+      <dt>Blur (less details)</dt><dd>Each zone is sampled at N sub-zones internally and the results averaged. Reduces edge quantization artifacts where curves cross zone boundaries obliquely.</dd>
+      <dt>Round module (cadence)</dt><dd>Snaps correction values to multiples of N. Useful for systems that prefer a regular grid of kerning values (e.g. multiples of 46 units).</dd>
+      <dt>Threshold</dt><dd>Corrections with absolute value below this threshold are discarded (set to 0). Reduces noise in the kerning table.</dd>
+    </dl>
+
+    <h3>Preview Toggles</h3>
+    <dl class="help-kv">
+      <dt>⟷ Kerning ON/OFF</dt><dd>Switch between Coupler kerning and no kerning to compare spacing visually.</dd>
+      <dt>Margins</dt><dd>Overlay the computed left (amber) and right (green) margin zones on each glyph.</dd>
+      <dt>Baseline</dt><dd>Show the typographic baseline as a dashed amber line.</dd>
+      <dt>x-Height</dt><dd>Show the x-height line in blue (if the font provides this metric).</dd>
+    </dl>
+
+    <h3>Table Filter</h3>
+    <dl class="help-kv">
+      <dt>Exact</dt><dd>Case-sensitive exact glyph name match. "n" finds only the pair where left or right is exactly "n".</dd>
+      <dt>A B (two terms)</dt><dd>Shows only the pair where left=A and right=B exactly.</dd>
+      <dt>.* Regex</dt><dd>Full JavaScript regular expression against glyph names.</dd>
+    </dl>
+
+    <h3>Testpage</h3>
+    <p>Opens a new browser window with an A4 landscape print page. Six text blocks in different point sizes (9–16 pt) use European-language Lorem Ipsum texts. Print or save as PDF using your browser's print dialog (Ctrl+P / Cmd+P).</p>
+  </div>
+</div>
 
 <div class="layout">
 
@@ -170,75 +233,50 @@ tr:hover td{background:var(--bg3);}
   </div>
 
   <div class="params-section">
-
-    <div class="sec">
-      Parameters
-      <button class="sec-action" onclick="resetParams()" title="Restore all defaults">&#x21BA; Defaults</button>
-    </div>
+    <div class="sec">Parameters <button class="sec-action" onclick="resetParams()">↺ Defaults</button></div>
 
     <div class="pr">
-      <div class="pl" data-tip="Number of equal-height zones spanning the full em height (ascender to descender).
-
-More zones = finer vertical resolution but slower.
-Fewer zones = faster but coarser.
-
-Recommended: 9-16.
-Default: 9">
-        Zones<span>--zones &middot; height divisions</span>
+      <div class="pl" data-tip="Zones (subtlety)&#10;&#10;Number of equal-height slices spanning the full em height (ascender to descender).&#10;&#10;More zones = finer vertical detail captured from the glyph contours, but computation time grows quadratically.&#10;Fewer zones = faster but coarser — subtle diagonal shapes may be averaged away.&#10;&#10;Recommended: 9–16 for most text fonts.&#10;Default: 9">
+        Zones <span style="color:var(--text3);font-style:italic;font-size:9px">(subtlety)</span><span>--zones · height divisions</span>
       </div>
       <input type="number" id="p-zones" value="9" min="1" max="64">
     </div>
 
     <div class="pr">
-      <div class="pl" data-tip="Each zone is subdivided into N sub-zones internally. Margins are averaged across sub-zones before being assigned to the zone.
-
-Prevents staircase artifacts where curves cross zone boundaries at oblique angles - acts as a vertical blur before zone sampling.
-
-Higher = smoother, slower. Lower = faster.
-Default: 10">
-        Blur<span>--blur &middot; sub-zones per zone</span>
-      </div>
-      <input type="number" id="p-blur" value="10" min="1" max="50">
-    </div>
-
-    <div class="pr">
-      <div class="pl" data-tip="Maximum allowed step between adjacent zone margins, as a percentage of zone height.
-
-Anchors at the zone with the smallest margin (= maximum glyph extent) and propagates outward. The anchor zone is never modified.
-
-Set to 0 to disable smoothing entirely.
-Default: 40">
-        Smooth %<span>--smooth &middot; neighbor delta cap</span>
+      <div class="pl" data-tip="Smooth % (diagonals and counter)&#10;&#10;Limits the step size between adjacent zone margins as a % of zone height.&#10;&#10;Anchors at the zone with the smallest margin value (= maximum glyph extent) and propagates outward — so diagonal strokes and open counters are smoothed toward the widest extent, never beyond it.&#10;&#10;Set to 0 to disable smoothing entirely.&#10;Default: 40">
+        Smooth % <span style="color:var(--text3);font-style:italic;font-size:9px">(diagonals and counter)</span><span>--smooth · neighbor delta cap</span>
       </div>
       <input type="number" id="p-smooth" value="40" min="0" max="300">
     </div>
 
     <div class="pr">
-      <div class="pl" data-tip="Minimum gap floor as a percentage of the full em size (UPM).
-
-After computing a correction, ensures the tightest zone gap never falls below (mingap% x UPM). If the correction would violate this, it is clamped to the maximum safe value.
-
-Example: 8% of UPM 1000 = floor of 80 fu.
-Set to 0 to disable floor capping.
-Smaller = more aggressive kerning allowed.
-Default: 8">
-        Min gap %<span>--mingap &middot; % of UPM floor</span>
+      <div class="pl" data-tip="Min gap % (no touch)&#10;&#10;Minimum allowed gap floor as a % of the full em size (UPM).&#10;&#10;Prevents any kerning correction from bringing two glyphs so close that their tightest zone gap falls below this floor. Acts as a collision guard — set to 0 to disable.&#10;&#10;Example: 8% of UPM 1000 = 80 font units minimum spacing.&#10;Smaller = more aggressive kerning permitted.&#10;Default: 8">
+        Min gap % <span style="color:var(--text3);font-style:italic;font-size:9px">(no touch)</span><span>--mingap · % of UPM floor</span>
       </div>
       <input type="number" id="p-mingap" value="8" min="0" max="100" step="0.5">
     </div>
 
     <div class="pr">
-      <div class="pl" data-tip="Rounding module for kerning corrections. The final value is snapped to the nearest multiple of N.
+      <div class="pl" data-tip="Blur (less details)&#10;&#10;Each zone is internally sub-divided into N sub-zones. Margins are computed per sub-zone and averaged back into the zone.&#10;&#10;This acts as a vertical blur pass before zone assignment, preventing staircase artifacts where curves cross zone boundaries at oblique angles.&#10;&#10;Higher = smoother edges but slower. Lower = faster but sharper step transitions.&#10;Default: 10">
+        Blur <span style="color:var(--text3);font-style:italic;font-size:9px">(less details)</span><span>--blur · sub-zones per zone</span>
+      </div>
+      <input type="number" id="p-blur" value="10" min="1" max="50">
+    </div>
 
-Example: 46 produces values like -92, -46, 0, 46, 92.
-Use 1 for plain integer rounding with no module snap.
-Default: 1">
-        Round module<span>--round &middot; kern snap value</span>
+    <div class="pr">
+      <div class="pl" data-tip="Round module (cadence)&#10;&#10;Snaps kerning correction values to the nearest multiple of N.&#10;&#10;Useful for font production systems that prefer a regular cadence of kerning values. Example: 46 produces values like −92, −46, 0, 46, 92.&#10;&#10;Use 1 for plain integer rounding with no module snap.&#10;Default: 1">
+        Round module <span style="color:var(--text3);font-style:italic;font-size:9px">(cadence)</span><span>--round · kern snap value</span>
       </div>
       <input type="number" id="p-round" value="1" min="1">
     </div>
 
-    
+    <div class="pr">
+      <div class="pl" data-tip="Threshold&#10;&#10;Kerning corrections with an absolute value below this threshold are discarded and set to zero.&#10;&#10;This filters out noise: tiny corrections that are imperceptible in practice and would only bloat the kerning table.&#10;&#10;Example: threshold=5 removes all corrections in the range (−5 … +5).&#10;Set to 0 to keep all corrections including very small ones.&#10;Default: 0">
+        Threshold <span style="color:var(--text3);font-style:italic;font-size:9px">(suppress noise)</span><span>--threshold · min abs correction</span>
+      </div>
+      <input type="number" id="p-threshold" value="0" min="0">
+    </div>
+
     <div class="sec" style="margin-top:4px">Results</div>
     <div class="stats">
       <div class="sb"><div class="sv" id="s-glyphs">—</div><div class="sk">Glyphs</div></div>
@@ -246,44 +284,44 @@ Default: 1">
       <div class="sb"><div class="sv" id="s-baseLc">—</div><div class="sk">Base LC</div></div>
       <div class="sb"><div class="sv" id="s-baseUc">—</div><div class="sk">Base UC</div></div>
     </div>
-
   </div>
 
   <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
   <button class="btn-run" id="btn-run" disabled onclick="runAnalysis()">▶ Compute Kerning</button>
   <div class="logbox" id="logbox"></div>
-
 </div>
 
-<!-- ══ RIGHT TOP: PREVIEW ══ -->
-<div class="preview-panel">
+<!-- ══ PREVIEW ══ -->
+<div class="preview-panel" id="preview-panel">
   <div class="ph">
     <div class="sec">Preview</div>
     <div class="pcontrols">
       <label>Size</label>
-      <input type="range" id="psize" min="20" max="220" value="72" oninput="syncSize(this.value);renderPreview()">
-      <input type="number" id="psize-n" value="72" min="10" max="500" style="width:50px" oninput="syncSize(this.value);renderPreview()">
+      <input type="range" id="psize" min="20" max="300" value="72" oninput="syncSize(this.value);renderPreview()">
+      <input type="number" id="psize-n" value="72" min="10" max="600" style="width:50px" oninput="syncSize(this.value);renderPreview()">
       <label>px</label>
     </div>
   </div>
 
-  <canvas id="preview-canvas"></canvas>
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="preview-canvas"></canvas>
+  </div>
 
   <div class="ptextrow">
     <label>Text</label>
     <input type="text" id="preview-text" value="AVATAWAVE Coupling" oninput="renderPreview()">
-    <select id="preset-select" onchange="applyPreset(this.value)" title="Load a text preset">
+    <select id="preset-select" onchange="applyPreset(this.value)">
       <option value="">— presets —</option>
       <option value="AVATAWAVE Coupling">Caps pairs · AVATAWAVE</option>
-      <option value="Kerning AV AT AW AY LT LV LY">Classic UC pairs</option>
-      <option value="fffi ffl Th Ty To">Ligature &amp; mixed</option>
+      <option value="AV AT AW AY LT LV LY VA TA WA YA">Classic UC pairs</option>
+      <option value="fffi ffl Th Ty To">Ligatures &amp; mixed</option>
       <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">Full uppercase</option>
       <option value="abcdefghijklmnopqrstuvwxyz">Full lowercase</option>
       <option value="0123456789">Digits</option>
       <option value="Hamburgefonstiv">Pangram sample</option>
       <option value="A man, a plan, a canal: Panama">Sentence test</option>
       <option value="WAV AV VA AT TA AW WA AY YA FA TF">Diagonal stress</option>
-      <option value="Tight Spacing Test: fluff, cliff, staff">Lowercase diagonals</option>
+      <option value="Tight Spacing: fluff cliff staff">Lowercase diagonals</option>
     </select>
   </div>
 
@@ -295,21 +333,21 @@ Default: 1">
   </div>
 </div>
 
-<!-- ══ RIGHT BOTTOM: TABLE ══ -->
+<!-- ══ TABLE ══ -->
 <div class="results-panel">
   <div class="rh">
     <div class="sec">Coupling Table</div>
     <div class="filter-group">
-      <span class="regex-err" id="rx-err"></span>
-      <input type="text" class="search-box" id="search-box" placeholder="Filter pairs…" oninput="filterTable()">
-      <button class="regex-toggle" id="rx-btn" onclick="toggleRegex()" title="Toggle regex mode">.*</button>
+      <span class="rx-err" id="rx-err"></span>
+      <input type="text" class="search-box" id="search-box" placeholder="Filter… (exact, A B = pair, .* regex)" oninput="filterTable()">
+      <button class="filter-mode" id="rx-btn" onclick="toggleRegex()" title="Toggle regex mode">.*</button>
       <button class="btn-exp" onclick="exportCSV()">↓ CSV</button>
     </div>
   </div>
   <div class="tbl-wrap">
     <div class="empty" id="empty-state">
       <div class="eico">⊘</div>
-      <div>Drop a font file to get started</div>
+      <div>Drop a font to get started</div>
     </div>
     <table id="results-table" style="display:none">
       <thead><tr>
@@ -319,7 +357,7 @@ Default: 1">
         <th onclick="sortBy('mean')">Pair Mean</th>
         <th onclick="sortBy('base')">Base</th>
         <th>Class</th>
-        <th>Zones</th>
+        <th title="Zone values — hover row for details">Zones</th>
       </tr></thead>
       <tbody id="results-tbody"></tbody>
     </table>
@@ -329,41 +367,37 @@ Default: 1">
 </div><!-- /layout -->
 
 <script>
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════
-let fontObj=null, fontBuffer=null, fontName='';
-let glyphCache={}, kerningData=[], filteredData=[];
-let sortCol='correction', sortAsc=false;
-let showKerning=true, showMetrics=false, showBaseline=false, showXheight=false;
+// ══════════════════════════════════════════════════════
+let fontObj=null,fontBuffer=null,fontName='',fontDataUrl='';
+let glyphCache={},kerningData=[],filteredData=[];
+let sortCol='correction',sortAsc=false;
+let showKerning=true,showMetrics=false,showBaseline=false,showXheight=false;
 let useRegex=false;
-let baseValueLC=0, baseValueUC=0;
-let currentUPM=1000;
+let baseValueLC=0,baseValueUC=0;
+let currentUPM=1000,yBotGlobal=0,yTopGlobal=0;
 
-const DEFAULTS={zones:9,smooth:40,round:1,blur:10,mingap:8};
+const DEFAULTS={zones:9,smooth:40,round:1,blur:10,mingap:8,threshold:0};
 
 function P(){
-  const mingapPct=parseFloat(document.getElementById('p-mingap').value);
+  const mg=parseFloat(document.getElementById('p-mingap').value);
   return{
-    zones:  parseInt(document.getElementById('p-zones').value)   ||DEFAULTS.zones,
-    smooth: parseFloat(document.getElementById('p-smooth').value)/100,
-    round:  parseInt(document.getElementById('p-round').value)   ||DEFAULTS.round,
-    blur:   parseInt(document.getElementById('p-blur').value)    ||DEFAULTS.blur,
-    mingap: (isNaN(mingapPct)?DEFAULTS.mingap:mingapPct)/100, // fraction of UPM
+    zones:     parseInt(document.getElementById('p-zones').value)     ||DEFAULTS.zones,
+    smooth:    parseFloat(document.getElementById('p-smooth').value)  /100,
+    round:     parseInt(document.getElementById('p-round').value)     ||DEFAULTS.round,
+    blur:      parseInt(document.getElementById('p-blur').value)      ||DEFAULTS.blur,
+    mingap:    (isNaN(mg)?DEFAULTS.mingap:mg)/100,
+    threshold: parseFloat(document.getElementById('p-threshold').value)||0,
   };
 }
-
 function resetParams(){
-  document.getElementById('p-zones').value =DEFAULTS.zones;
-  document.getElementById('p-smooth').value=DEFAULTS.smooth;
-  document.getElementById('p-round').value =DEFAULTS.round;
-  document.getElementById('p-blur').value  =DEFAULTS.blur;
-  document.getElementById('p-mingap').value=DEFAULTS.mingap;
+  ['zones','smooth','round','blur','mingap','threshold'].forEach(k=>{
+    document.getElementById('p-'+k).value=DEFAULTS[k];
+  });
 }
 
-// ═══════════════════════════════════════════
-// LOG / STATUS
-// ═══════════════════════════════════════════
+// ── LOG / STATUS ──────────────────────────────────────
 function log(msg,cls=''){
   const el=document.getElementById('logbox');
   const d=document.createElement('div');
@@ -372,15 +406,10 @@ function log(msg,cls=''){
   el.appendChild(d);
   el.scrollTop=el.scrollHeight;
 }
-function setStatus(msg,cls=''){
-  const el=document.getElementById('global-status');
-  el.textContent=msg; el.className=cls;
-}
+function setStatus(msg,cls=''){const el=document.getElementById('global-status');el.textContent=msg;el.className=cls;}
 function setProgress(p){document.getElementById('prog-fill').style.width=p+'%';}
 
-// ═══════════════════════════════════════════
-// DROP / LOAD
-// ═══════════════════════════════════════════
+// ── FONT LOAD ─────────────────────────────────────────
 const dz=document.getElementById('drop-zone');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
 dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
@@ -392,13 +421,17 @@ function loadFont(file){
   reader.onload=async ev=>{
     try{
       fontBuffer=ev.target.result;
+      // store as data URL for testpage embedding
+      const b64=btoa(String.fromCharCode(...new Uint8Array(fontBuffer)));
+      const ext=file.name.split('.').pop().toLowerCase();
+      fontDataUrl=`data:font/${ext};base64,${b64}`;
       fontObj=opentype.parse(fontBuffer);
       fontName=file.name;
       currentUPM=fontObj.unitsPerEm;
       dz.classList.add('loaded');
       document.getElementById('drop-fname').textContent=file.name;
       const fn=fontObj.names.fullName?.en||file.name;
-      document.getElementById('header-font-info').innerHTML=`<strong>${fn}</strong> &nbsp; UPM:${currentUPM}`;
+      document.getElementById('header-font-info').innerHTML=`<strong>${fn}</strong>&nbsp; UPM:${currentUPM}`;
       document.getElementById('btn-run').disabled=false;
       setStatus('Loaded','active');
       log(`Loaded: ${fn} — ${Object.keys(fontObj.glyphs.glyphs).length} glyphs`,'ok');
@@ -408,9 +441,7 @@ function loadFont(file){
   reader.readAsArrayBuffer(file);
 }
 
-// ═══════════════════════════════════════════
-// BEZIER / GEOMETRY
-// ═══════════════════════════════════════════
+// ── BEZIER / GEOMETRY ─────────────────────────────────
 function cubicXY(p0,p1,p2,p3,t){
   const mt=1-t,mt2=mt*mt,t2=t*t;
   return{x:mt2*mt*p0.x+3*mt2*t*p1.x+3*mt*t2*p2.x+t2*t*p3.x,
@@ -444,11 +475,7 @@ function pathXZones(path,zones,yBot,yTop){
     const zS=Math.max(0,Math.floor((syMn-yBot)/zH));
     const zE=Math.min(zones-1,Math.ceil((syMx-yBot)/zH));
     const fn=t=>{const p=xyFn(t);return{x:p.x,y:-p.y};};
-    for(let z=zS;z<=zE;z++){
-      const lo=yBot+z*zH,hi=lo+zH;
-      const r=segXRng(fn,lo,hi);
-      if(r){if(r.xMin<mn[z])mn[z]=r.xMin;if(r.xMax>mx[z])mx[z]=r.xMax;}
-    }
+    for(let z=zS;z<=zE;z++){const lo=yBot+z*zH,hi=lo+zH;const r=segXRng(fn,lo,hi);if(r){if(r.xMin<mn[z])mn[z]=r.xMin;if(r.xMax>mx[z])mx[z]=r.xMax;}}
   }
   for(const cmd of path.commands){
     switch(cmd.type){
@@ -462,9 +489,7 @@ function pathXZones(path,zones,yBot,yTop){
   return Array.from({length:zones},(_,z)=>isFinite(mn[z])?{xMin:mn[z],xMax:mx[z]}:null);
 }
 
-// ═══════════════════════════════════════════
-// SMOOTHING
-// ═══════════════════════════════════════════
+// ── SMOOTHING ─────────────────────────────────────────
 function r1(v){return Math.round(v*10)/10;}
 function smoothMargins(arr,zH,pct){
   if(pct<=0)return arr.slice();
@@ -479,9 +504,7 @@ function smoothMargins(arr,zH,pct){
   return out;
 }
 
-// ═══════════════════════════════════════════
-// GLYPH MARGINS
-// ═══════════════════════════════════════════
+// ── GLYPH MARGINS ─────────────────────────────────────
 function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   const aw=glyph.advanceWidth??0;
   const zH=(yTop-yBot)/p.zones;
@@ -490,11 +513,9 @@ function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   const subR=pathXZones(rawPath,subs,yBot,yTop);
   const lR=[],rR=[];
   for(let z=0;z<p.zones;z++){
-    const s0=z*p.blur;
-    let sL=0,sR=0,cnt=0;
+    const s0=z*p.blur;let sL=0,sR=0,cnt=0;
     for(let s=0;s<p.blur;s++){const sub=subR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
-    if(cnt===0){lR.push(-1);rR.push(-1);}
-    else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+    if(cnt===0){lR.push(-1);rR.push(-1);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
   }
   const left=smoothMargins(lR,zH,p.smooth);
   const right=smoothMargins(rR,zH,p.smooth);
@@ -503,9 +524,7 @@ function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   return{left,right,leftRaw:lR,rightRaw:rR,advanceWidth:aw,unicode};
 }
 
-// ═══════════════════════════════════════════
-// CLASSIFICATION
-// ═══════════════════════════════════════════
+// ── CLASSIFICATION ────────────────────────────────────
 function classifyGlyph(unicode,name){
   if(unicode===null)return /^[A-Z]/.test(name)?'UC':'LC';
   if(unicode>=48&&unicode<=57)return'UC';
@@ -517,9 +536,7 @@ function classifyGlyph(unicode,name){
   return'LC';
 }
 
-// ═══════════════════════════════════════════
-// PAIR MEAN
-// ═══════════════════════════════════════════
+// ── PAIR MEAN ─────────────────────────────────────────
 function pairMean(rA,lB){
   const zv=[];let sum=0;
   for(let z=0;z<rA.length;z++){const a=rA[z],b=lB[z];if(a===-1||b===-1)continue;const s=a+b;sum+=s;zv.push({z,rA:a,lB:b,sum:r1(s)});}
@@ -528,39 +545,38 @@ function pairMean(rA,lB){
 }
 function rtm(v,mod){if(mod<=1)return Math.round(v);return Math.round(v/mod)*mod;}
 
-// ═══════════════════════════════════════════
-// CHAR LABEL
-// ═══════════════════════════════════════════
+// ── CHAR LABEL ────────────────────────────────────────
 const PN={"0021":"exclam","0022":"quotedbl","0023":"numbersign","0024":"dollar","0025":"percent","0026":"ampersand","0027":"quotesingle","0028":"parenleft","0029":"parenright","002A":"asterisk","002B":"plus","002C":"comma","002D":"hyphen","002E":"period","002F":"slash","0030":"zero","0031":"one","0032":"two","0033":"three","0034":"four","0035":"five","0036":"six","0037":"seven","0038":"eight","0039":"nine","003A":"colon","003B":"semicolon","003C":"less","003D":"equal","003E":"greater","003F":"question","0040":"at","005B":"bracketleft","005C":"backslash","005D":"bracketright","005E":"asciicircum","005F":"underscore","0060":"grave","007B":"braceleft","007C":"verticalbar","007D":"braceright","007E":"asciitilde","00A1":"exclamdown","00A2":"cent","00A3":"sterling","00A5":"yen","00AB":"guillemotleft","00BB":"guillemotright","00BF":"questiondown","2013":"endash","2014":"emdash","2018":"quoteleft","2019":"quoteright","201C":"quotedblleft","201D":"quotedblright","20AC":"euro","FB00":"ff","FB01":"fi","FB02":"fl","FB03":"ffi","FB04":"ffl","F730":"zerooldstyle","F731":"oneoldstyle","F732":"twooldstyle","F733":"threeoldstyle","F734":"fouroldstyle","F735":"fiveoldstyle","F736":"sixoldstyle","F737":"sevenoldstyle","F738":"eightoldstyle","F739":"nineoldstyle"};
 function cLbl(unicode,gn,gk){
   if(unicode!==null){const h=unicode.toString(16).toUpperCase().padStart(4,'0');if(PN[h])return PN[h];if(gn&&!/^glyph\d+$/i.test(gn))return gn;try{return String.fromCodePoint(unicode);}catch(_){}}
   return gk;
 }
 
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 // MAIN ANALYSIS
-// ═══════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 async function runAnalysis(){
   if(!fontObj){setStatus('No font','error');return;}
   const p=P();
   const btn=document.getElementById('btn-run');
-  btn.disabled=true; btn.innerHTML='<span class="spin"></span>Computing…';
-  setStatus('Computing…','busy'); setProgress(0);
-  kerningData=[]; glyphCache={};
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>Computing…';
+  setStatus('Computing…','busy');setProgress(0);
+  kerningData=[];glyphCache=[];
   await new Promise(r=>setTimeout(r,10));
 
   try{
-    const upm=fontObj.unitsPerEm;
-    currentUPM=upm;
+    const upm=fontObj.unitsPerEm; currentUPM=upm;
     let yBot=-(upm*.2),yTop=upm*.8;
     if(fontObj.tables?.os2){const o=fontObj.tables.os2;if(o.sTypoDescender!==undefined)yBot=o.sTypoDescender;if(o.sTypoAscender!==undefined)yTop=o.sTypoAscender;}
     else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;if(fontObj.tables.hhea.ascender!==undefined)yTop=fontObj.tables.hhea.ascender;}
+    yBotGlobal=yBot; yTopGlobal=yTop;
 
-    log(`Params: zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}%UPM`,'info');
+    log(`Params: zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold}`,'info');
 
     // Step 1: margins
     const allKeys=Object.keys(fontObj.glyphs.glyphs);
     let done=0;
+    glyphCache={};
     for(const key of allKeys){
       const g=fontObj.glyphs.glyphs[key];
       if(!g.path||g.path.commands.length===0){done++;continue;}
@@ -575,7 +591,7 @@ async function runAnalysis(){
     setProgress(40);
     log(`Margins: ${Object.keys(glyphCache).length} glyphs`,'ok');
 
-    // Step 2: baselines
+    // Step 2: baselines — LC = n+n, UC = O+O (both use same-char pair)
     const nD=glyphCache['n'],oD=glyphCache['O'];
     const lcC=nD?pairMean(nD.right,nD.left):null;
     baseValueLC=lcC?lcC.mean:0;
@@ -586,11 +602,11 @@ async function runAnalysis(){
     document.getElementById('s-baseUc').textContent=r1(baseValueUC);
     setProgress(45);
 
-    // Step 3: pairs
+    // Step 3: pairs with capping and threshold
     const gks=Object.keys(glyphCache);
     const gc=gks.length;
-    const minGapFU=upm*p.mingap; // floor in font units = UPM * mingap%
-    log(`Min gap floor: ${r1(minGapFU)} fu (${Math.round(p.mingap*100)}% x UPM ${upm})`);
+    const minGapFU=upm*p.mingap;
+    log(`Min gap floor: ${r1(minGapFU)} fu (${Math.round(p.mingap*100)}% × UPM ${upm})`);
     done=0;
     for(const kA of gks){
       const{right:rA,charLabel:cA,unicode:uA,glyphName:nA,cls:clA}=glyphCache[kA];
@@ -603,14 +619,16 @@ async function runAnalysis(){
         const tag=bothUC?'UC':(clA==='UC'||clB==='UC')?'mixed':'LC';
         let corr=rtm(base-calc.mean,p.round);
         let capped=false;
+        // Min gap capping
         if(minGapFU>0&&corr<0){
           const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
-          // room = how far we can tighten before hitting the floor
           const room=minZG-minGapFU;
-          const maxNegCorr=room>0?-rtm(room,p.round):0;
-          if(corr<maxNegCorr){corr=maxNegCorr;capped=true;}
+          const maxNeg=room>0?-rtm(room,p.round):0;
+          if(corr<maxNeg){corr=maxNeg;capped=true;}
         }
-        kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(',')});
+        // Threshold: suppress near-zero corrections
+        if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
+        kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
       }
       done+=gc;
       if(done%(gc*Math.max(1,Math.floor(gc/20)))===0){setProgress(45+done/(gc*gc)*50);await new Promise(r=>setTimeout(r,0));}
@@ -632,12 +650,10 @@ async function runAnalysis(){
     setStatus('Error','error');
     console.error(err);
   }
-  btn.disabled=false; btn.innerHTML='▶ Recompute';
+  btn.disabled=false;btn.innerHTML='▶ Recompute';
 }
 
-// ═══════════════════════════════════════════
-// TABLE
-// ═══════════════════════════════════════════
+// ── TABLE ─────────────────────────────────────────────
 function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=col!=='correction';}sortAndRender();}
 function sortAndRender(){
   filteredData.sort((a,b)=>{let va=a[sortCol],vb=b[sortCol];if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}return sortAsc?(va>vb?1:-1):(va<vb?1:-1);});
@@ -648,34 +664,32 @@ function filterTable(){
   const q=document.getElementById('search-box').value;
   document.getElementById('rx-err').textContent='';
   if(!q){filteredData=kerningData.slice();sortAndRender();return;}
+
   if(useRegex){
     let rx;
-    try{rx=new RegExp(q,'i');}
-    catch(e){document.getElementById('rx-err').textContent='⚠ '+e.message.slice(0,30);filteredData=[];renderTable();return;}
+    try{rx=new RegExp(q);}  // no 'i' flag — case sensitive
+    catch(e){document.getElementById('rx-err').textContent='⚠ '+e.message.slice(0,28);filteredData=[];renderTable();return;}
     filteredData=kerningData.filter(d=>rx.test(d.left)||rx.test(d.right));
   } else {
-    // exact word match on glyph names (not substring)
-    const qL=q.toLowerCase();
-    const parts=qL.split(/\s+/).filter(Boolean);
-    filteredData=kerningData.filter(d=>{
-      const lft=d.left.toLowerCase(), rgt=d.right.toLowerCase();
-      // if single term: exact match OR correction number match
-      if(parts.length===1){
-        const t=parts[0];
-        return lft===t||rgt===t||String(d.correction)===t;
-      }
-      // two terms: left=parts[0] AND right=parts[1]
-      if(parts.length>=2)return lft===parts[0]&&rgt===parts[1];
-      return false;
-    });
+    // Plain mode: exact, case-sensitive glyph name match
+    // One term  → left===q OR right===q
+    // Two terms → left===parts[0] AND right===parts[1]
+    const parts=q.split(/\s+/).filter(Boolean);
+    if(parts.length===1){
+      const t=parts[0];
+      filteredData=kerningData.filter(d=>d.left===t||d.right===t||String(d.correction)===t);
+    } else if(parts.length>=2){
+      filteredData=kerningData.filter(d=>d.left===parts[0]&&d.right===parts[1]);
+    } else {
+      filteredData=kerningData.slice();
+    }
   }
   sortAndRender();
 }
 
 function toggleRegex(){
   useRegex=!useRegex;
-  const b=document.getElementById('rx-btn');
-  b.className='regex-toggle'+(useRegex?' on':'');
+  document.getElementById('rx-btn').className='filter-mode'+(useRegex?' on':'');
   filterTable();
 }
 
@@ -685,7 +699,7 @@ function renderTable(){
   if(rows.length===0){
     document.getElementById('results-table').style.display='none';
     document.getElementById('empty-state').style.display='flex';
-    document.querySelector('#empty-state div:last-child').textContent=kerningData.length?'No pairs match the filter':'Drop a font file to get started';
+    document.querySelector('#empty-state div:last-child').textContent=kerningData.length?'No pairs match the filter':'Drop a font to get started';
     return;
   }
   document.getElementById('results-table').style.display='table';
@@ -696,38 +710,34 @@ function renderTable(){
     const cc=d.correction<0?'vneg':d.correction>0?'vpos':'vzero';
     const tc=d.tag==='UC'?'tuc':d.tag==='mixed'?'tmix':'tlc';
     const cap=d.capped?'<span class="tcap">⚑</span>':'';
-    tr.innerHTML=`<td class="cc">${esc(d.left)}</td><td class="cc">${esc(d.right)}</td><td class="${cc}" style="font-weight:700">${d.correction}${cap}</td><td>${d.mean}</td><td>${d.base}</td><td class="${tc}">${d.tag}</td><td style="color:var(--text3);font-size:11px">${d.zones}</td>`;
+    // Build full zone tooltip
+    const tip=d.zonesArr?d.zonesArr.map(v=>`z${v.z}: rA=${v.rA}  lB=${v.lB}  gap=${v.sum}`).join('\n'):'';
+    tr.innerHTML=`<td class="cc">${esc(d.left)}</td><td class="cc">${esc(d.right)}</td><td class="${cc}" style="font-weight:700">${d.correction}${cap}</td><td>${d.mean}</td><td>${d.base}</td><td class="${tc}">${d.tag}</td><td style="color:var(--text3);font-size:10px;cursor:help" title="${tip}">${d.zones}</td>`;
     tbody.appendChild(tr);
   }
   if(filteredData.length>MAX){
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td colspan="7" style="color:var(--text3);text-align:center;padding:9px">… ${(filteredData.length-MAX).toLocaleString()} more rows — refine filter to narrow</td>`;
+    tr.innerHTML=`<td colspan="7" style="color:var(--text3);text-align:center;padding:9px">… ${(filteredData.length-MAX).toLocaleString()} more rows — refine filter</td>`;
     tbody.appendChild(tr);
   }
 }
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// ═══════════════════════════════════════════
-// EXPORT
-// ═══════════════════════════════════════════
+// ── EXPORT ────────────────────────────────────────────
 function exportCSV(){
   if(!kerningData.length){alert('No data to export.');return;}
   const p=P();
   const lines=[
-    `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% round=${p.round} blur=${p.blur} mingap=${Math.round(p.mingap*100)}%`,
+    `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% threshold=${p.threshold}`,
     `# Format: Left;Right;Correction (Class zones)`,
     ...kerningData.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
   ];
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=fontName.replace(/\.[^.]+$/,'')+'.csv';
-  a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=fontName.replace(/\.[^.]+$/,'')+'.csv';a.click();
 }
 
-// ═══════════════════════════════════════════
-// PREVIEW TOGGLES
-// ═══════════════════════════════════════════
+// ── PREVIEW ───────────────────────────────────────────
 function toggleKern(){
   showKerning=!showKerning;
   const b=document.getElementById('tbtn-kern');
@@ -738,41 +748,25 @@ function toggleKern(){
 function toggleMetrics(){showMetrics=!showMetrics;document.getElementById('tbtn-metrics').className='tbtn'+(showMetrics?' on':'');renderPreview();}
 function toggleBaseline(){showBaseline=!showBaseline;document.getElementById('tbtn-baseline').className='tbtn'+(showBaseline?' on':'');renderPreview();}
 function toggleXheight(){showXheight=!showXheight;document.getElementById('tbtn-xheight').className='tbtn'+(showXheight?' on':'');renderPreview();}
+function syncSize(v){document.getElementById('psize').value=v;document.getElementById('psize-n').value=v;}
+function applyPreset(val){if(!val)return;document.getElementById('preview-text').value=val;document.getElementById('preset-select').value='';renderPreview();}
 
-function syncSize(v){
-  document.getElementById('psize').value=v;
-  document.getElementById('psize-n').value=v;
-}
-
-function applyPreset(val){
-  if(!val)return;
-  document.getElementById('preview-text').value=val;
-  document.getElementById('preset-select').value='';
-  renderPreview();
-}
-
-// ═══════════════════════════════════════════
-// KERN MAP
-// ═══════════════════════════════════════════
 let kernMap={};
 function buildKernMap(){kernMap={};for(const d of kerningData)kernMap[d.left+':'+d.right]=d.correction;}
 function getKern(a,b){return kernMap[a+':'+b]??0;}
 
-// ═══════════════════════════════════════════
-// RENDER PREVIEW
-// ═══════════════════════════════════════════
 function renderPreview(){
   const canvas=document.getElementById('preview-canvas');
+  const wrap=document.getElementById('canvas-wrap');
   const dpr=window.devicePixelRatio||1;
-  const W=canvas.offsetWidth,H=canvas.offsetHeight;
-  canvas.width=W*dpr; canvas.height=H*dpr;
-  const ctx=canvas.getContext('2d');
-  ctx.scale(dpr,dpr);
-
-  ctx.fillStyle='#141618';
-  ctx.fillRect(0,0,W,H);
+  const W=wrap.offsetWidth;
 
   if(!fontObj){
+    const H=120;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    canvas.style.height=H+'px';
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    ctx.fillStyle='#141618';ctx.fillRect(0,0,W,H);
     ctx.fillStyle='#3d4450';ctx.font='12px monospace';
     ctx.fillText('Drop a font file to preview',18,H/2);
     return;
@@ -782,25 +776,43 @@ function renderPreview(){
   const text=document.getElementById('preview-text').value||'';
   const upm=fontObj.unitsPerEm;
   const sc=fontSize/upm;
-  const baseY=H*0.76;
 
-  // x-height line
+  // Compute needed canvas height from font metrics
+  const ascender=yTopGlobal||upm*.8;
+  const descender=yBotGlobal||-(upm*.2);
+  const topPad=16, botPad=16;
+  const H=Math.max(80, Math.ceil(ascender*sc)+topPad+botPad);
+  const baseY=topPad+Math.ceil(ascender*sc);
+
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  // bg
+  ctx.fillStyle='#141618';ctx.fillRect(0,0,W,H);
+
+  // x-height
   if(showXheight&&fontObj.tables?.os2){
     const xh=fontObj.tables.os2.sxHeight;
     if(xh){
-      ctx.strokeStyle='rgba(91,156,246,0.2)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
       const yxh=baseY-xh*sc;
-      ctx.beginPath();ctx.moveTo(0,yxh);ctx.lineTo(W,yxh);ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle='rgba(91,156,246,0.35)';ctx.font='9px monospace';
-      ctx.fillText('x-height',4,yxh-3);
+      ctx.strokeStyle='#1e3a6e';ctx.lineWidth=1;ctx.setLineDash([]);
+      ctx.fillStyle='#1e3a6e';ctx.fillRect(0,yxh,W,1);
+      // label background
+      ctx.fillStyle='rgba(30,58,110,.8)';ctx.fillRect(0,yxh-13,48,13);
+      ctx.fillStyle='#5b9cf6';ctx.font='bold 9px monospace';
+      ctx.fillText('x-height',3,yxh-3);
     }
   }
 
   // baseline
   if(showBaseline){
-    ctx.strokeStyle='rgba(232,160,32,.22)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-    ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(W,baseY);ctx.stroke();
+    ctx.strokeStyle='#6b3a00';ctx.lineWidth=1;ctx.setLineDash([]);
+    ctx.fillStyle='#6b3a00';ctx.fillRect(0,baseY,W,1);
+    ctx.fillStyle='rgba(107,58,0,.8)';ctx.fillRect(0,baseY+1,50,12);
+    ctx.fillStyle='#e8a020';ctx.font='bold 9px monospace';
+    ctx.fillText('baseline',3,baseY+10);
     ctx.setLineDash([]);
   }
 
@@ -813,69 +825,161 @@ function renderPreview(){
     if(cp===32){x+=fontSize*0.28;continue;}
     const glyph=fontObj.charToGlyph(ch);
     if(!glyph||!glyph.name)continue;
-
     const gk=glyph.name??'';
     const lbl=cLbl(cp,glyph.name,gk);
     const aw=(glyph.advanceWidth??0)*sc;
 
-    // advance width box
+    // advance box
     if(showMetrics){
-      ctx.fillStyle='rgba(91,156,246,.06)';
-      ctx.fillRect(x,baseY-fontSize*.88,aw,fontSize*1.08);
-      ctx.strokeStyle='rgba(91,156,246,.2)';ctx.lineWidth=.5;
-      ctx.strokeRect(x+.25,baseY-fontSize*.88+.25,aw-.5,fontSize*1.08-.5);
+      ctx.fillStyle='rgba(91,156,246,.09)';
+      ctx.fillRect(x,baseY-ascender*sc,aw,(ascender-descender)*sc);
+      ctx.strokeStyle='rgba(91,156,246,.28)';ctx.lineWidth=.5;
+      ctx.strokeRect(x+.25,baseY-ascender*sc+.25,aw-.5,(ascender-descender)*sc-.5);
     }
 
-    // draw glyph
+    // glyph fill
     const path=glyph.getPath(x,baseY,fontSize);
-    ctx.fillStyle=showKerning?'#d4d8de':'#7080a0';
+    ctx.fillStyle=showKerning?'#e8edf3':'#6070a0';
     ctx.fill(new Path2D(path.toPathData(2)));
 
-    // margin overlays when metrics ON
+    // margin overlays
     if(showMetrics&&kerningData.length>0){
       const gc=glyphCache[gk];
       if(gc){
-        const zH_fu=(fontObj.tables?.os2?fontObj.tables.os2.sTypoAscender-fontObj.tables.os2.sTypoDescender:upm)/P().zones;
-        const yBot_fu=fontObj.tables?.os2?fontObj.tables.os2.sTypoDescender:-(upm*.2);
         const zones=P().zones;
+        const zH_fu=(yTopGlobal-yBotGlobal)/zones;
         for(let z=0;z<zones;z++){
           const lv=gc.left[z],rv=gc.right[z];
-          const zLo=baseY-(yBot_fu+z*zH_fu)*sc;
-          const zHi=baseY-(yBot_fu+(z+1)*zH_fu)*sc;
+          const zLo=baseY-(yBotGlobal+z*zH_fu)*sc;
+          const zHi=baseY-(yBotGlobal+(z+1)*zH_fu)*sc;
           const top=Math.min(zLo,zHi),bot=Math.max(zLo,zHi);
-          if(lv!==-1){
-            ctx.fillStyle='rgba(232,160,32,.15)';
+          // left margin — amber, solid stripe + border
+          if(lv!==-1&&lv>0){
+            ctx.fillStyle='rgba(232,140,0,.25)';
             ctx.fillRect(x,top,lv*sc,bot-top);
+            ctx.strokeStyle='rgba(232,140,0,.7)';ctx.lineWidth=.8;
+            ctx.strokeRect(x+.4,top+.4,lv*sc-.8,bot-top-.8);
           }
-          if(rv!==-1){
-            ctx.fillStyle='rgba(76,175,125,.15)';
+          // right margin — green, solid stripe + border
+          if(rv!==-1&&rv>0){
+            ctx.fillStyle='rgba(50,180,100,.22)';
             ctx.fillRect(x+aw-rv*sc,top,rv*sc,bot-top);
+            ctx.strokeStyle='rgba(50,180,100,.65)';ctx.lineWidth=.8;
+            ctx.strokeRect(x+aw-rv*sc+.4,top+.4,rv*sc-.8,bot-top-.8);
           }
+          // zone divider
+          ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=.5;ctx.setLineDash([]);
+          ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x+aw,top);ctx.stroke();
         }
       }
     }
 
-    // kerning offset for next char
+    // kerning
     let kern=0;
     if(showKerning&&kerningData.length>0&&i+1<chars.length){
       const nch=chars[i+1];
-      if(nch.codePointAt(0)!==32){
-        const ng=fontObj.charToGlyph(nch);
-        if(ng){const nlbl=cLbl(nch.codePointAt(0),ng.name??'',ng.name??'');kern=getKern(lbl,nlbl)*sc;}
-      }
+      if(nch.codePointAt(0)!==32){const ng=fontObj.charToGlyph(nch);if(ng){const nlbl=cLbl(nch.codePointAt(0),ng.name??'',ng.name??'');kern=getKern(lbl,nlbl)*sc;}}
     }
     x+=aw+kern;
   }
 
-  // status label
-  ctx.fillStyle='#3a4050';ctx.font='10px monospace';
-  const stxt=`${fontSize}px · ${showKerning?(kerningData.length?'Coupler kerning':'no kerning data'):'kern OFF'}`;
-  ctx.fillText(stxt,W-ctx.measureText(stxt).width-8,H-7);
+  // status
+  ctx.fillStyle='#2a3040';ctx.font='9px monospace';
+  const st=`${fontSize}px · ${showKerning?(kerningData.length?'Coupler kerning':'no data'):'kern OFF'}`;
+  ctx.fillText(st,W-ctx.measureText(st).width-6,H-5);
 }
 
 const ro=new ResizeObserver(()=>renderPreview());
-ro.observe(document.getElementById('preview-canvas'));
+ro.observe(document.getElementById('canvas-wrap'));
 renderPreview();
+
+// ══════════════════════════════════════════════════════
+// TESTPAGE
+// ══════════════════════════════════════════════════════
+const LOREM={
+  en:`Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam eaque ipsa quae ab illo inventore veritatis.`,
+  de:`Zwei Hunde kommen durch den Wald. Der erste Hund sagt: »Ich glaube, wir sind allein hier.« Der zweite Hund antwortet: »Seltsam, ich dachte, ich hätte jemanden kommen hören.« — Obwohl die Wege sich oft kreuzen, vergisst man leicht, dass jeder seinen eigenen Horizont trägt. Die Zeiten ändern sich, und mit ihnen die Überzeugungen der Menschen. Was gestern noch als unverrückbar galt, wird heute von neuen Erkenntnissen herausgefordert. Über allem steht die Frage: Wohin führt uns dieser Weg?`,
+  nl:`In een ver land waar de wind door de velden speelt en de rivieren traag naar zee stromen, leefde een oude boer met zijn zoon. Elke ochtend stonden zij vroeg op om het werk te beginnen. De wereld was groot, maar hun wereld klein en vertrouwd. Zij spraken weinig, maar verstonden elkaar goed. De ooievaars keerden elk voorjaar terug en brachten nieuws uit verre streken mee. Het leven was eenvoudig, maar rijk aan stille vreugde.`,
+  fr:`La vie est une succession de moments qui s'écoulent comme l'eau d'une rivière. On ne peut pas retenir le temps, mais on peut choisir comment on l'habite. Les philosophes ont longtemps cherché à définir le bonheur, sans jamais en donner une réponse définitive. Peut-être est-ce là la beauté de la question — elle invite chacun à trouver sa propre réponse. Les saisons passent, les générations se succèdent, et pourtant quelque chose demeure, impalpable et précieux.`,
+  it:`Nel mezzo del cammin di nostra vita ci ritrovammo per una selva oscura, ché la diritta via era smarrita. Ahi quanto a dir qual era è cosa dura questa selva selvaggia e aspra e forte che nel pensier rinova la paura. Tant'è amara che poco è più morte. Ma per trattar del ben ch'i' vi trovai, dirò de l'altre cose ch'i' v'ho scorte. Io non so ben ridir com'i' v'intrai, tant'era pien di sonno a quel punto che la verace via abbandonai.`,
+  da:`Det var en stille aften i september, da solen langsomt sank bag de fjerne bakker og det gyldne lys lagde sig over markerne. Fuglene var holdt op med at synge, og en enkelt ko stod og stirrede eftertænksomt ud over hegnet. I landsbyen nedenfor begyndte man at tænde lamperne, og røgen fra skorstenene steg op i den stille luft. Børnene legede endnu i gaderne, men mødrene kaldte dem snart ind til aftensmaden.`
+};
+
+function openTestPage(){
+  if(!fontObj){alert('Please load a font first.');return;}
+  const p=P();
+  const fn=fontObj.names.fullName?.en||fontName;
+  // Build kern pairs as CSS letter-spacing overrides via canvas-rendered SVG is too complex;
+  // instead embed font as base64 and use opentype.js rendering in the print page
+  // We use a simple approach: embed the font + render with @font-face and CSS font-feature settings
+
+  // Build kerning as a lookup string for a small inline script
+  const nonZero=kerningData.filter(d=>d.correction!==0);
+  const kernJson=JSON.stringify(nonZero.map(d=>({l:d.left,r:d.right,v:d.correction})));
+
+  // Blocks: assign pt sizes and languages
+  // Languages with more diacritics get smaller sizes
+  const blocks=[
+    {lang:'de',pt:9, label:'Deutsch'},
+    {lang:'nl',pt:10,label:'Nederlands'},
+    {lang:'fr',pt:11,label:'Français'},
+    {lang:'it',pt:12,label:'Italiano'},
+    {lang:'en',pt:14,label:'English'},
+    {lang:'da',pt:16,label:'Dansk'},
+  ];
+
+  const html=`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Coupler Testpage — ${esc(fn)}</title>
+<style>
+@font-face{font-family:'TestFont';src:url('${fontDataUrl}');}
+*{box-sizing:border-box;margin:0;padding:0;}
+@page{size:A4 landscape;margin:14mm 16mm 14mm 16mm;}
+body{font-family:'TestFont',serif;background:#fff;color:#000;width:277mm;}
+.params{font-family:monospace;font-size:7.5pt;color:#555;border-bottom:0.5pt solid #aaa;padding-bottom:5pt;margin-bottom:10pt;line-height:1.7;}
+.params strong{color:#000;}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;}
+.block{overflow:hidden;}
+.block-label{font-family:monospace;font-size:6.5pt;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2pt;border-bottom:.3pt solid #ddd;padding-bottom:1.5pt;}
+.block-text{line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;color:#000;}
+@media print{
+  body{margin:0;}
+  .params{color:#444;}
+  .block-label{color:#888;}
+}
+</style>
+</head>
+<body>
+<div class="params">
+  <strong>Coupler Testpage</strong> &nbsp;|&nbsp; Font: <strong>${esc(fn)}</strong> &nbsp;|&nbsp;
+  zones=${p.zones} &nbsp; smooth=${Math.round(p.smooth*100)}% &nbsp; blur=${p.blur} &nbsp;
+  round=${p.round} &nbsp; mingap=${Math.round(p.mingap*100)}% &nbsp;
+  threshold=${p.threshold} &nbsp;|&nbsp;
+  Base LC: ${r1(baseValueLC)} &nbsp; Base UC: ${r1(baseValueUC)} &nbsp;|&nbsp;
+  Non-zero pairs: ${nonZero.length.toLocaleString()}
+</div>
+<div class="grid">
+${blocks.map(b=>`<div class="block">
+  <div class="block-label">${b.label} · ${b.pt}pt</div>
+  <div class="block-text" style="font-size:${b.pt}pt;-webkit-line-clamp:${Math.floor(42/b.pt)+4}">${LOREM[b.lang]}</div>
+</div>`).join('\n')}
+</div>
+<script>
+// Note: CSS font-feature kerning is applied automatically if the font has kern/GPOS tables.
+// The Coupler-derived values shown in the params are for reference.
+// To apply Coupler kerning precisely, use the exported CSV with a font editor.
+<\/script>
+</body>
+</html>`;
+
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  // Trigger print dialog after fonts load
+  w.onload=()=>setTimeout(()=>w.print(),800);
+}
 </script>
 </body>
 </html>

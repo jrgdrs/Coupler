@@ -25,9 +25,11 @@ Gerundet auf 1/10, als JSON in ./margins speichern
 
 So startest du es:
 
+### not necessary if you use the browser version
+
 bash
 # Einmalig installieren
-npm install opentype.js
+```npm install opentype.js```
 
 # Ausführen (z.B. mit 9 Zonen)
 node font-margins.js 9
@@ -41,8 +43,9 @@ Sampling: Jede Bézierkurve (kubisch + quadratisch) wird in 64 Punkte zerlegt. D
 
 Ausgabe pro Zeichen:
 
-'''
+
 json
+```
 "A": {
   "name": "A",
   "unicode": 65,
@@ -52,7 +55,7 @@ json
   "left":  [12.5, 8.0, 4.2, -1, -1, 6.1, 10.3, 18.0, 22.5],
   "right": [14.0, 9.5, 5.0, -1, -1, 7.2, 11.0, 19.1, 24.0]
 }
-'''
+```
 
 ---
 
@@ -62,21 +65,25 @@ Klare Sache. Ich ergänze die Pair-Berechnung direkt im Script. Die Logik: für 
 
 Die Pair-Berechnung ist integriert. Das Wichtigste zur Logik:
 
+```
 gap[z] = right_A[z] + left_B[z]
+```
 
 Das ist der tatsächliche Konturabstand in Zone z, wenn B direkt rechts von A gesetzt wird – also der Leerraum zwischen der rechtesten Kontur von A und der linkesten Kontur von B.
 
 Sonderfälle bei -1:
 
+```
 right_A[z]	left_B[z]	gap[z]
 -1	-1	-1 (beide leer)
 -1	12.5	12.5 (A hat keinen Inhalt → trägt 0 bei)
 8.0	-1	8.0 (B hat keinen Inhalt → trägt 0 bei)
+```
 
 Ausgabestruktur in ./pairs/<fontname>.json:
 
-´´´
 json
+```
 {
   "meta": { "glyphCount": 234, "pairCount": 54756, ... },
   "pairs": {
@@ -88,7 +95,8 @@ json
     ...
   }
 }
-´´´
+```
+
 Hinweis zur Dateigröße: Bei einem Font mit z.B. 500 Zeichen entstehen 250.000 Paare × N Zonen. Das kann je nach Font mehrere MB groß werden – das ist normal und gewollt.
 
 
@@ -125,7 +133,7 @@ Basiswert "n"+"n": 142.3 (6 gültige Zonen)
 Paare ohne einzige gemeinsam gültige Zone (z.B. zwei Sonderzeichen, die sich in keiner Höhenzone überschneiden) werden weggelassen – kein sinnvoller Vergleich möglich.
 
 CSV-Ausgabe ./kerning/<fontname>.csv:
-´´´
+```
 # Kerning-Korrekturwerte | Font: MyFont | Basiswert (n+n): 142.3 | Zonen: 9
 # Format: LinkerBuchstabe;RechterBuchstabe;Korrekturwert
 # Negativ = enger setzen, Positiv = weiter setzen
@@ -133,8 +141,9 @@ A;V;-38
 L;Q;-22
 n;n;0
 ...
-´´´
+```
 
+### The content of the csv file can be opend in a text editor and copy pasted directly into the glyphsapp kerning window
 
 DA STIMMT ETWAS NOCH NICHT MIT DER BERECHNUNG. Bitte sorge dafür, dass 
 
@@ -158,9 +167,12 @@ jetzt:  rA === -1 || lB === -1 → -1   (eine Seite -1 reicht → Zone ungültig
 
 3. Kontrollausgabe in der CSV:
 
+```
 A;V;-38 (z3:68.0,z4:71.5,z5:74.2)
 L;Q;-22 (z2:110.0,z3:108.5,z4:112.0,z5:109.8)
 n;n;0   (z1:142.0,z2:143.5,z3:141.0,z4:144.5)
+```
+
 In Klammern stehen nur die tatsächlich berücksichtigten Zonen mit ihrem jeweiligen Summenwert right_A[z] + left_B[z].
 
 Zunächst einmal nimm den kerningwert immer mal minus eins, da die reduktion des abstands negativ ausgedrückt wird und die erweiterung positiv
@@ -176,9 +188,11 @@ Kurze Kontrollfrage zur Sicherheit: Wenn n+n der Sollabstand ist und ein Paar z.
 
 Ich gehe von dieser Interpretation aus, die typografisch üblich ist:
 
+```
 pairMean > baseValue → Paar steht zu weit auseinander → negativ (enger rücken)
 pairMean < baseValue → Paar steht zu eng → positiv (weiter rücken)
 Also: correction = round(baseValue - pairMean) — das ist einfach die Vorzeichenumkehr.
+```
 
 2. Mindestabstand-Capping: minGap = baseValue / 4 Für jede Zone z: wenn right_A[z] + left_B[z] + correction < minGap, dann wird correction auf minGap - min(right_A[z]+left_B[z]) gedeckelt — also so, dass die engste gültige Zone noch genau minGap ergibt.
 
@@ -275,15 +289,19 @@ baseValueLC = Mittelwert gültiger Zonen von n+n
 baseValueUC = Mittelwert aus beiden Richtungen: (N+O + O+N) / 2 — dadurch werden die unterschiedlichen Seitenprofile von N und O symmetrisch berücksichtigt
 Klassifizierung des linken Zeichens entscheidet welcher Basiswert gilt:
 
+```
 UC → A–Z, 0–9 (Lining), Großbuchstaben mit Diakritika, Griechisch/Kyrillisch Groß
 LC → a–z, OSF-Ziffern, Sonderzeichen, alles andere
 Gemischte Paare (z.B. A+a oder n+A) folgen dem linken Zeichen — das ist typografisch korrekt, da der linke Buchstabe die Oberlinie des Zwischenraums bestimmt.
+```
 
 CSV-Ausgabe zeigt jetzt den verwendeten Basiswert pro Zeile:
 
+```
 A;V;-38 (UC z3:142.0,z4:138.5,z5:144.0)
 n;v;-12 (LC z2:98.0,z3:95.5)
 A;n;-21 (UC z2:140.0,z3:137.0)   ← linkes A → UC-Basis
+```
 
 Achtung, der Basiswert für größeren Abstand soll jetzt nicht aus NO sondern aus OO gebildet werden. Und er soll nur eingesetzt werden, wenn beide zeichen aus großbuchstaben oder lining figures bestehen, bei gemischter schreibweise, wenn also nur ein buchstabe ein großbuchstabe ist, soll der kleinere uc wert verwendet werden
 
@@ -300,18 +318,24 @@ Basiswert UC jetzt O+O — symmetrisch, kein Richtungsunterschied mehr, eine ein
 
 Basiswert-Auswahl nach Paar-Klasse:
 
+```
 Linkes Zeichen	Rechtes Zeichen	Basiswert	Tag in CSV
 UC (A–Z, 0–9…)	UC	O+O	UC
 UC	LC (a–z, OSF…)	n+n	mixed→LC
 LC	UC	n+n	mixed→LC
 LC	LC	n+n	LC
+```
 Der mixed→LC-Tag in der CSV macht gemischte Paare direkt sichtbar, z.B.:
 
+```
 A;n;-18 (mixed→LC z2:98.0,z3:95.5)
 T;a;-31 (mixed→LC z1:102.0,z2:99.0,z3:97.5)
 A;V;-44 (UC z3:168.0,z4:165.5,z5:171.0)
+```
 
+```
 let glyphname = prodnames[ ("000"+ unicode.charCodeAt(0).toString(16).toUpperCase() ).slice(-4)] || "<unknown>"; const prodnames = {"2002":"enspace","2010":"hyphentwo","2012":"figuredash","2013":"endash","2014":"emdash","2015":"horizontalbar","2016":"dblverticalbar","2017":"underscoredbl"
+```
 
 pasted
 
@@ -334,6 +358,7 @@ Und das char-Feld im margins-JSON ebenfalls sauber setzen:
 
 Integriert. Die resolveCharLabel-Funktion arbeitet mit klarer Prioritätskette:
 
+```
 Unicode U+002E → PRODNAMES["002E"] = "period"       ✓
 Unicode U+002C → PRODNAMES["002C"] = "comma"        ✓
 Unicode U+0041 → PRODNAMES["0041"] = "A"            ✓
@@ -343,12 +368,16 @@ Unicode U+1E9E → kein prodnames-Eintrag
              → opentype-Name z.B. "Germandbls"      ✓ (Fallback 1)
              → sonst Rohzeichen "ẞ"                 (Fallback 2)
 generischer Name "glyph042" → Glyph-Key             (Fallback 3)
+```
+
 In der CSV sieht das dann so aus:
 
+```
 period;comma;-8 (LC z2:95.0,z3:92.5)
 A;V;-44 (UC z3:168.0,z4:165.5)
 fi;period;-12 (LC z1:88.0,z2:91.5)
 oneoldstyle;period;-6 (LC z2:94.0)
+```
 
 ---
 um große sprünge zwischen den zonenwerten zu bereinigen soll dafür gesorgt werden, dass die nachbarzonen maximal über einen 
@@ -389,12 +418,17 @@ Alle Änderungen sind drin. Hier die Übersicht:
 Neue Aufruf-Syntax:
 
 bash
+```
 node font-margins.js [zonen] [glättung%] [rundungsmodul]
+```
 
 # Beispiele:
+```
 node font-margins.js 9 70 46    # 9 Zonen, 70% Glättung, Modul 46
 node font-margins.js 16 60 1    # 16 Zonen, 60% Glättung, keine Modulrundung
 node font-margins.js 9          # Defaults: 70%, Modul 1
+```
+
 Glättungslogik (smoothMargins):
 
 maxDelta = 70% × zoneHeight (konfigurierbar)
@@ -404,16 +438,20 @@ Ungültige Zonen (-1) werden übersprungen und nicht überschrieben
 margins.json pro Zeichen jetzt mit 4 Arrays:
 
 json
+```
 "n": {
   "left":             [12.0, 11.0, 10.5, 10.0, 10.5, 11.0],  ← geglättet
   "right":            [14.0, 13.5, 13.0, 13.0, 13.5, 14.0],
   "leftUnweighted":   [12.0,  8.0, 10.5, 23.0, 10.5, 11.0],  ← Rohwerte
   "rightUnweighted":  [14.0, 13.5, 13.0,  4.0, 13.5, 14.0]
 }
+```
 Kaufmännische Rundung auf Modul 46: round(wert / 46) * 46
 
+```
 -137 → round(-137/46)*46 = round(-2.978)*46 = -3×46 = -138
   +23 → round(23/46)*46  = round(0.5)*46    = 1×46  = +46
+```
 
 ---
 da läuft bei der glättung noch etwas falsch. basis für die glättung soll die maximale ausdehnung des zeichens in die jeweilige richtung sein, das heißt also der geringste margin und nicht der größte. es scheint mir, das auf der linken seite des zeichens fälschlicherweise der maximale margin als grundlage genutzt wurde
@@ -630,4 +668,47 @@ Parameter order: Zones → Blur → Smooth % → Min gap % → Round module.
 
 
 ---
+
+
+* Mache die darstellung dre margins, x-height und baseline kontrastreicher, damit man es besser erkennen kann
+* lasse das previewfenster oben mitwachsen und im sichtbaren bereich bleiben, auch wenn der schriftgrad größer wird als die bisher fixe höhe des fensters
+* biete für die suche in der table auch die exakte schreibweise an, dass also nur ein "n" gefunden wird, wenn ein "n" eingetragen wird und kein "hyphen" gefunden wird, ebenso soll dies casesensitiv sein
+* wenn zwei zeichen oder worte durch leerzeichen getrennt dort eingegeben werden, zeige nur genau das paar an
+* biete bei der zeile einen mouseover, der die kompletten inhalte der zonen zeigt
+* ergänze in der top-leiste eine help-function, die die funktionsweise der maske erläutert
+* ergänze in den parametern hinter "Zones" noch "(sublety)", hinter "Blur (less details)", "Smooth (diagonals and counter)", "Min gap (no touch)", "Round module (cadence)" und nimm dies auch in die Beschreibung auf
+* sortiere die Parameter nach Zones, Smooth, Gap, Blur, Round
+* und nimm noch einen weiteren parameter auf: "Threshold" und ergänze hierfür die funktion, das errechnete kernings bis zu diesem angegebenen wert weder positiv noch negativ in die kerning werte aufgenommen werden
+* ändrere die berechnung der basiswerte für uc von nn auf oo
+* Ergänze noch einen Button "Testpage" und die Funktion, dass dann ein neuews Browserfenster sich öffnet und dort mit den eingestellten Kerningwerten und der Schrift eine a4 seite quer zum ausdruck schwarz auf weiss angeboten wird, die 6 umfangreiche textblöcke mit verborgenem textüberlauf in unterschiedlichen schriftgrößen in 9,10,11,12,14,16 pt. Nutze hierfür bekannte und lange Blindtexte in europäischen Sprachen engl, deutsch, niederl, französisch, italienisch, dänisch; nimm für die sprachen mit mehr umlauten die kleineren pt größen, und drucke alle eingestellten paramter mit an
+
+Good, I have the full picture now. This is a substantial rewrite. Let me build the complete updated file:Hat einen Befehl ausgeführt, datei erstellt, datei lesenHat einen Befehl ausgeführt, datei erstellt, datei lesenAll changes applied. Here's the complete summary:
+Preview improvements
+
+Canvas height now dynamically computed from ascender × fontSize/UPM + padding — it grows automatically as you increase the size slider, no fixed 130px anymore
+Baseline: solid amber fill stripe + label badge (much more visible)
+x-Height: solid blue fill stripe + label badge (much more visible)
+Margin overlays: amber left / green right with filled area + visible border stroke per zone, plus faint zone dividers
+
+Table filter — exact case-sensitive matching by default:
+
+n → only pairs where left or right is exactly n (case-sensitive, not ntilde)
+A V → only the exact pair A→V
+.* button → regex mode (case-sensitive, full JS regex)
+Zone column: hover shows full detail z0: rA=45.2  lB=38.1  gap=83.3
+
+Parameters — new order: Zones → Smooth → Min gap → Blur → Round → Threshold. Each has the subtitle in italic. Threshold parameter added: corrections below this absolute value are zeroed out.
+UC baseline — confirmed as O+O (was already correct from previous session, now clearly documented in code comment).
+Help button in header opens an overlay explaining all functionality, parameters, filter syntax, and testpage.
+Testpage button — opens A4 landscape print page with 6 text blocks in a 3×2 grid:
+
+Sizes: 9pt (Deutsch), 10pt (Nederlands), 11pt (Français), 12pt (Italiano), 14pt (English), 16pt (Dansk)
+Languages with more umlauts/diacritics get the smaller sizes
+Font embedded as base64 @font-face
+All Coupler parameters printed in the header
+Print dialog opens automatically after fonts load
+CouplerCode · HTML In Safari öffnenSie haben bis 21:00 keine kostenlosen Nachrichten mehr
+
+---
+
 
