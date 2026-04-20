@@ -233,16 +233,7 @@ tr:hover td{background:var(--bg3);}
   </div>
 
   <div class="params-section">
-    <div class="sec">Parameters
-      <select id="preset-params" class="sec-action" onchange="applyParamPreset(this.value)" style="cursor:pointer;padding:2px 5px;font-size:9px;">
-        <option value="">↺ Presets</option>
-        <option value="default">Default</option>
-        <option value="serif-reg">Serif Regular</option>
-        <option value="serif-it">Serif Italic</option>
-        <option value="serif-bold">Serif Bold</option>
-        <option value="serif-boldit">Serif Bold Italic</option>
-      </select>
-    </div>
+    <div class="sec">Parameters <button class="sec-action" onclick="resetParams()">↺ Defaults</button></div>
 
     <div class="pr">
       <div class="pl" data-tip="Zones (subtlety)&#10;&#10;Number of equal-height slices spanning the full em height (ascender to descender).&#10;&#10;More zones = finer vertical detail captured from the glyph contours, but computation time grows quadratically.&#10;Fewer zones = faster but coarser — subtle diagonal shapes may be averaged away.&#10;&#10;Recommended: 9–16 for most text fonts.&#10;Default: 9">
@@ -331,17 +322,6 @@ tr:hover td{background:var(--bg3);}
       <option value="A man, a plan, a canal: Panama">Sentence test</option>
       <option value="WAV AV VA AT TA AW WA AY YA FA TF">Diagonal stress</option>
       <option value="Tight Spacing: fluff cliff staff">Lowercase diagonals</option>
-      <optgroup label="Small Caps">
-        <option value="sc:ABCDEFGHIJKLMNOPQRSTUVWXYZ">SC · Full uppercase</option>
-        <option value="sc:abcdefghijklmnopqrstuvwxyz">SC · Full lowercase</option>
-        <option value="sc:Hamburgefonstiv">SC · Pangram</option>
-        <option value="sc:The Quick Brown Fox">SC · Mixed test</option>
-      </optgroup>
-      <optgroup label="Oldstyle Figures">
-        <option value="osf:0123456789">OSF · All digits</option>
-        <option value="osf:1234 5678 90">OSF · Number groups</option>
-        <option value="osf:Price: 1.234,56 — Year: 2024">OSF · In context</option>
-      </optgroup>
     </select>
   </div>
 
@@ -350,8 +330,6 @@ tr:hover td{background:var(--bg3);}
     <button class="tbtn" id="tbtn-metrics" onclick="toggleMetrics()">Margins</button>
     <button class="tbtn" id="tbtn-baseline" onclick="toggleBaseline()">Baseline</button>
     <button class="tbtn" id="tbtn-xheight" onclick="toggleXheight()">x-Height</button>
-    <button class="tbtn" id="tbtn-sc" onclick="toggleSmallCaps()" title="Show Small Capitals glyphs">Small Caps</button>
-    <button class="tbtn" id="tbtn-osf" onclick="toggleOSF()" title="Show Oldstyle Figures">OSF</button>
   </div>
 </div>
 
@@ -396,7 +374,6 @@ let fontObj=null,fontBuffer=null,fontName='',fontDataUrl='';
 let glyphCache={},kerningData=[],filteredData=[];
 let sortCol='correction',sortAsc=false;
 let showKerning=true,showMetrics=false,showBaseline=false,showXheight=false;
-let showSmallCaps=false,showOSF=false;
 let useRegex=false;
 let baseValueLC=0,baseValueUC=0;
 let currentUPM=1000,yBotGlobal=0,yTopGlobal=0;
@@ -418,27 +395,6 @@ function resetParams(){
   ['zones','smooth','round','blur','mingap','threshold'].forEach(k=>{
     document.getElementById('p-'+k).value=DEFAULTS[k];
   });
-}
-
-// Parameter presets for common font styles
-const PARAM_PRESETS={
-  'default':     {zones:9,  smooth:60, mingap:8,  blur:10, round:1, threshold:0},
-  'serif-reg':   {zones:81, smooth:14, mingap:12, blur:3,  round:1, threshold:0},
-  'serif-it':    {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
-  'serif-bold':  {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
-  'serif-boldit':{zones:81, smooth:14, mingap:12, blur:3,  round:1, threshold:0},
-};
-function applyParamPreset(key){
-  if(!key)return;
-  const pr=PARAM_PRESETS[key];
-  if(!pr)return;
-  document.getElementById('p-zones').value    =pr.zones;
-  document.getElementById('p-smooth').value   =pr.smooth;
-  document.getElementById('p-mingap').value   =pr.mingap;
-  document.getElementById('p-blur').value     =pr.blur;
-  document.getElementById('p-round').value    =pr.round;
-  document.getElementById('p-threshold').value=pr.threshold;
-  document.getElementById('preset-params').value='';
 }
 
 // ── LOG / STATUS ──────────────────────────────────────
@@ -694,7 +650,6 @@ async function runAnalysis(){
     filteredData=kerningData.slice();
     sortAndRender();
     buildKernMap();
-    applyTextMode();
     renderPreview();
     const nzCount=kerningData.filter(d=>d.correction!==0).length;
     setStatus(`${gc} gl · ${kerningData.length.toLocaleString()} pairs · ${nzCount.toLocaleString()} kern`,'active');
@@ -801,83 +756,8 @@ function toggleKern(){
 function toggleMetrics(){showMetrics=!showMetrics;document.getElementById('tbtn-metrics').className='tbtn'+(showMetrics?' on':'');renderPreview();}
 function toggleBaseline(){showBaseline=!showBaseline;document.getElementById('tbtn-baseline').className='tbtn'+(showBaseline?' on':'');renderPreview();}
 function toggleXheight(){showXheight=!showXheight;document.getElementById('tbtn-xheight').className='tbtn'+(showXheight?' on':'');renderPreview();}
-function toggleSmallCaps(){showSmallCaps=!showSmallCaps;document.getElementById('tbtn-sc').className='tbtn'+(showSmallCaps?' on':'');applyTextMode();renderPreview();}
-function toggleOSF(){showOSF=!showOSF;document.getElementById('tbtn-osf').className='tbtn'+(showOSF?' on':'');applyTextMode();renderPreview();}
-
-// Collect glyph names for a given OpenType feature variant
-// Small caps: glyph names ending in .sc or .smcp; OSF: ending in .osf or in oldstyle set (F730–F739)
-function getSmallCapsGlyphs(){
-  if(!fontObj)return{};
-  const map={};
-  for(const key of Object.keys(fontObj.glyphs.glyphs)){
-    const g=fontObj.glyphs.glyphs[key];
-    if(!g.name)continue;
-    // small cap variants typically named "a.sc","A.sc","a.smcp" etc.
-    const m=g.name.match(/^([a-zA-Z])\.(sc|smcp)$/i);
-    if(m){
-      // map the uppercase version of the base letter to this sc glyph
-      map[m[1].toLowerCase()]=g;
-      map[m[1].toUpperCase()]=g;
-    }
-  }
-  return map;
-}
-
-function getOSFGlyphs(){
-  if(!fontObj)return{};
-  const map={};
-  // OSF glyph names: zero.osf, one.osf ... or oldstyle PUA F730-F739
-  for(const key of Object.keys(fontObj.glyphs.glyphs)){
-    const g=fontObj.glyphs.glyphs[key];
-    if(!g.name)continue;
-    const m=g.name.match(/^(zero|one|two|three|four|five|six|seven|eight|nine)\.(osf|oldstyle)$/i);
-    if(m){
-      const digits={'zero':'0','one':'1','two':'2','three':'3','four':'4','five':'5','six':'6','seven':'7','eight':'8','nine':'9'};
-      const ch=digits[m[1].toLowerCase()];
-      if(ch)map[ch]=g;
-    }
-    // PUA oldstyle figures F730–F739
-    if(g.unicodes){
-      for(const u of g.unicodes){
-        if(u>=0xF730&&u<=0xF739)map[String(u-0xF730)]=g;
-      }
-    }
-  }
-  return map;
-}
-
-let _scGlyphs={},_osfGlyphs={};
-function applyTextMode(){
-  _scGlyphs=showSmallCaps?getSmallCapsGlyphs():{};
-  _osfGlyphs=showOSF?getOSFGlyphs():{};
-}
-
-function resolveGlyph(ch){
-  if(!fontObj)return null;
-  const cp=ch.codePointAt(0);
-  // OSF substitution for digits
-  if(showOSF&&_osfGlyphs[ch])return _osfGlyphs[ch];
-  // Small caps substitution for letters
-  if(showSmallCaps&&_scGlyphs[ch])return _scGlyphs[ch];
-  return fontObj.charToGlyph(ch);
-}
 function syncSize(v){document.getElementById('psize').value=v;document.getElementById('psize-n').value=v;}
-function applyPreset(val){
-  if(!val)return;
-  document.getElementById('preset-select').value='';
-  if(val.startsWith('sc:')){
-    // Activate small caps mode and set text
-    if(!showSmallCaps)toggleSmallCaps();
-    document.getElementById('preview-text').value=val.slice(3);
-  } else if(val.startsWith('osf:')){
-    // Activate OSF mode and set text
-    if(!showOSF)toggleOSF();
-    document.getElementById('preview-text').value=val.slice(4);
-  } else {
-    document.getElementById('preview-text').value=val;
-  }
-  renderPreview();
-}
+function applyPreset(val){if(!val)return;document.getElementById('preview-text').value=val;document.getElementById('preset-select').value='';renderPreview();}
 
 let kernMap={};
 function buildKernMap(){kernMap={};for(const d of kerningData)kernMap[d.left+':'+d.right]=d.correction;}
@@ -953,7 +833,7 @@ function renderPreview(){
     const ch=chars[i];
     const cp=ch.codePointAt(0);
     if(cp===32){x+=fontSize*0.28;continue;}
-    const glyph=resolveGlyph(ch);
+    const glyph=fontObj.charToGlyph(ch);
     if(!glyph||!glyph.name)continue;
     const gk=glyph.name??'';
     const lbl=cLbl(cp,glyph.name,gk);
@@ -1008,7 +888,7 @@ function renderPreview(){
     let kern=0;
     if(showKerning&&kerningData.length>0&&i+1<chars.length){
       const nch=chars[i+1];
-      if(nch.codePointAt(0)!==32){const ng=resolveGlyph(nch);if(ng){const nlbl=cLbl(nch.codePointAt(0),ng.name??'',ng.name??'');kern=getKern(lbl,nlbl)*sc;}}
+      if(nch.codePointAt(0)!==32){const ng=fontObj.charToGlyph(nch);if(ng){const nlbl=cLbl(nch.codePointAt(0),ng.name??'',ng.name??'');kern=getKern(lbl,nlbl)*sc;}}
     }
     x+=aw+kern;
   }
@@ -1070,10 +950,10 @@ function openTestPage(){
 body{font-family:'TestFont',serif;background:#fff;color:#000;width:277mm;}
 .params{font-family:monospace;font-size:7.5pt;color:#555;border-bottom:0.5pt solid #aaa;padding-bottom:5pt;margin-bottom:10pt;line-height:1.7;}
 .params strong{color:#000;}
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5mm;}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;}
 .block{overflow:hidden;}
-.block-label{font-family:monospace;font-size:6pt;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2pt;border-bottom:.3pt solid #ddd;padding-bottom:1pt;}
-.block-text{overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;color:#000;}
+.block-label{font-family:monospace;font-size:6.5pt;color:#999;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2pt;border-bottom:.3pt solid #ddd;padding-bottom:1.5pt;}
+.block-text{line-height:1.45;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;color:#000;}
 @media print{
   body{margin:0;}
   .params{color:#444;}
@@ -1093,7 +973,7 @@ body{font-family:'TestFont',serif;background:#fff;color:#000;width:277mm;}
 <div class="grid">
 ${blocks.map(b=>`<div class="block">
   <div class="block-label">${b.label} · ${b.pt}pt</div>
-  <div class="block-text" style="font-size:${b.pt}pt;line-height:${(b.pt*1.05).toFixed(1)}pt;-webkit-line-clamp:${Math.round(130/b.pt)+2};max-height:${(b.pt*1.05*(Math.round(130/b.pt)+2)).toFixed(0)}pt">${LOREM[b.lang]}</div>
+  <div class="block-text" style="font-size:${b.pt}pt;-webkit-line-clamp:${Math.floor(42/b.pt)+4}">${LOREM[b.lang]}</div>
 </div>`).join('\n')}
 </div>
 <script>

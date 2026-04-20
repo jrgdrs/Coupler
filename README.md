@@ -722,3 +722,13 @@ _ hebe den csv-button ebenfalls orangegelb hervor genau wie oben der "help"-knop
 _ der basis wert für LC wurde bislang aus der kombination "nn" errechnet und soll jetzt auf "oo" umgestellt werden, genau wie bei UC. passe auch die doku und hilfe hierfür an
 
 
+--
+
+Die Textblöcke auf der Testpage sind etwas klein geraten, bitte erhöhe die blöcke, dass die seite besser gefüllt ist und stelle den zeilenabstand auf das 1.05 fache des schriftgrads ein damit die zeilen mehr zusammenstehen
+Ferner ergänze den default-button um weitere einträge:
+
+"Serif Regular " mit den werten 81 zones, 14 smooth, 12 mingap, 3 blur, 1 round, 0 thres
+"Serif Italic" 81, 14, 4, 3, 1, 0
+"Serif Bold" 81, 14, 4, 3, 1, 0
+"Serif Boild Italic" 81, 14, 12, 3, 1, 0 Und schaffe eine Möglichkeit, dass auch Small Caps sowie auch die Old Style Figures im Preview dargestellt werden können und ergänze hieru die presets
+
