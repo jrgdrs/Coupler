@@ -721,6 +721,24 @@ _ stelle oben in der zeile links neben dem testpage-knopf nicht nur die glyph- u
 _ hebe den csv-button ebenfalls orangegelb hervor genau wie oben der "help"-knopf und benenne ihn in "Export" um
 _ der basis wert für LC wurde bislang aus der kombination "nn" errechnet und soll jetzt auf "oo" umgestellt werden, genau wie bei UC. passe auch die doku und hilfe hierfür an
 
+Let me read the current file carefully before making changes.Now I have full understanding. Let me apply all changes surgically via Python:All 8 changes applied and verified. Here's what changed:
+
+**Min gap — per zone, in % of UPM** — the logic was already architecturally correct (uses `min(zoneGap)` which is the tightest zone), but now clearly documented in code. The floor `minGapFU = upm × mingap%` is checked against every individual zone gap: the tightest zone determines how far you can tighten. If any zone is already at or below the floor, no negative correction is allowed at all.
+
+**Smooth — reciprocal scale** `0=off` stays off. `99` = tightest step (1% of zone height between neighbors = maximum smoothing). `60` = moderate (40% step, previously entered as "40"). Formula: `maxDelta = (1 - S/100) × zoneHeight`. Default changed to 60 (same behavior as old 40).
+
+**Help button** — now amber/orange with bold text and filled background, clearly distinct in the header.
+
+**Logo** — enlarged to 22px, subtitle "Font Kerning Analyzer" removed.
+
+**Preview descenders** — canvas height now: `ascPx + desPx + topPad + botPad`, where `desPx = abs(descender) × scale`. Descenders are always fully visible at any font size.
+
+**Header status** — now shows `234 gl · 54756 pairs · 1203 kern` (glyphs, all pairs, non-zero kerning entries).
+
+**Export button** — renamed "Export", styled with amber border/text/background matching the Help button.
+
+**LC baseline** — changed from `n+n` to `o+o`, updated in computation code, log messages, help text, and all documentation.
+
 
 --
 
@@ -732,3 +750,75 @@ Ferner ergänze den default-button um weitere einträge:
 "Serif Bold" 81, 14, 4, 3, 1, 0
 "Serif Boild Italic" 81, 14, 12, 3, 1, 0 Und schaffe eine Möglichkeit, dass auch Small Caps sowie auch die Old Style Figures im Preview dargestellt werden können und ergänze hieru die presets
 
+
+Good, I have everything I need. Now I'll apply all changes:Alle Änderungen drin. Hier die Übersicht:
+
+**Testpage** — größere Textblöcke: `line-clamp` berechnet jetzt `round(130/pt) + 2` Zeilen (statt `floor(42/pt) + 4`), also bei 9pt ≈ 16 Zeilen, bei 16pt ≈ 10 Zeilen. Zeilenabstand: `line-height = pt × 1.05` als direkte pt-Angabe, font-spezifisch per Block.
+
+**Parameter-Presets** — der "↺ Defaults"-Button wurde durch ein Dropdown ersetzt mit 5 Einträgen:
+
+| Preset | Zones | Smooth | Mingap | Blur | Round | Threshold |
+|---|---|---|---|---|---|---|
+| Default | 9 | 60 | 8 | 10 | 1 | 0 |
+| Serif Regular | 81 | 14 | 12 | 3 | 1 | 0 |
+| Serif Italic | 81 | 14 | 4 | 3 | 1 | 0 |
+| Serif Bold | 81 | 14 | 4 | 3 | 1 | 0 |
+| Serif Bold Italic | 81 | 14 | 12 | 3 | 1 | 0 |
+
+**Small Caps & OSF** — zwei neue Toggle-Buttons in der Preview-Zeile:
+- **Small Caps**: sucht Glyphen mit Namen wie `a.sc`, `A.sc`, `a.smcp` und ersetzt Buchstaben damit im Preview
+- **OSF**: sucht `zero.osf`, `one.osf` … sowie PUA-Unicode U+F730–F739 und ersetzt Ziffern
+
+Die SC/OSF-Auflösung läuft über `resolveGlyph()`, das vor `charToGlyph` eingeschaltet ist — Kerning-Lookup bleibt über die Glyph-Labels korrekt.
+
+**Presets** ergänzt um zwei Gruppen:
+- *Small Caps*: Full uppercase/lowercase, Pangram, Mixed test — aktiviert automatisch SC-Modus
+- *Oldstyle Figures*: Alle Ziffern, Nummerngruppen, Zahlen im Kontext — aktiviert OSF-Modus
+
+---
+ersetze beim printout den Text durch den folgenden
+
+--
+
+Aynn Awnn Avnn A'nn AYHH AWNN AVNN ATNN F.nn F,nn FANN Lynn L'nn LYNN LWNN LVNN LTNN P.nn P,nn PANN Rynn RYNN RWNN RVNN RTNN Tynn Twnn Tunn T;nn Tsnn Trnn T.nn Tonn Tinn T-nn Tenn T,nn T:nn Tcnn Tann TANN Vynn Vunn V;nn Vrnn V. Vonn Vinn V-nn Venn V, V: Vann VANN Wynn Wunn W; Wrnn W.nn Wonn Winn W-nn Wenn W,nn W:nn Wann WANN Yvnn Yunn Y;nn Yqnn Y.nn YpnnYonn Yinn Y-nn Yenn Y,nn Y:nn Yann YANN rznn rynn rxnn rwnn rvnn runn rtnn rrnn r'nn rqnn r.nn ronn rnnn rmnn r-nn rhnn rgnn rfnn renn rdnn r,nn rcnn v.nn v,nn w.nn w,nn y.nn y,nn n.nn r.nn v.nn w.nn y.nn n-n o-o
+aufkauf aufhalt aufbleib auflassen auffassen aufißt raufjagen führen fördern fähre 
+wegjagen Bargfeld kyrie afro arte axe luvwärts Gevatter wann ever gewettet severe davon gewonnen down wichtig recken
+Farbe Fest Firn Fjord Font Frau Fuß Fähre Förde Füße
+Rest Rohr Röhre Rymer
+Test Tod Tauf Tim Tja Turm Traum Tsara Twist Tyrol Tüte Töten Täter TéTêTè
+Veste Vogel VéVêVèVater Vijf Vlut Vulkan Vleigje Vytautas Vroni Väter Vögel Vs Ws Vz Wz
+Weste Wolf Wüste Wörpe Wärter Waage Wiege Wlasta Wurst Wyhl Wrasen
+Yeats Yoni auf Yqem Yak Ybbs Yggdrasil Yps Ysop Ytong Yuma
+ATK AVI AWL AYN LTK LVI LWL LYN RTK TVI RWL RYN TABULA VATER WASSER YAKUZA FABEL PAPST
+
+--
+
+und mache den printaout a4 hochformat mit dem text als ein block die wortgruppen durch leerzeichen getrennt und in 16 pt auf dem bogen mit dem bestehenden kopf für die parameter angaben
+
+
+
+_bei klick auf ein kerninpaar in der tabelle stelle das paar oben im preview-Fenster dar und zwar einmal zwischen den buchstaben oo nn OO HH, also beim paar TZ bitte : "oTZo nTZn OTZO HTZH"
+
+_ wurde ein solches paar ausgewählt und dargestellt, dann kann mit der tastatur "pfeil nach unten" wird das nächste paar aus der tabelle ausgewählt und dargestellt, "pfleil nach oben" für die vorherige
+
+_ wurde aus den presets eine zeile ausgewählt kann ebenso mit "Pfeil nach rechts " auf der Tastatur auf die nächste Kombination ngewechselt werden. "Pfeil nach links" für die vorherige  
+
+_ unter den results werden zum schluss noch weitere eigenschaften der zeichen "oo" und "OO" vermessen:  genau wie die summe der margins wird die summe des innenraums der Buchstaben "o" ermittelt, also die fläche, die vom Buchstaben umschlossen wurde, (bezeichnet als "Counter LC" und "Counter UC") sowie die gefärbte fläche des Buchstabens, also "Print LC" und "Print UC". Bei einer Berechnung ohne Smoothing wäre also die summe von Base, Counter und Print genau die Höhe des Buchstabens in Zones mal der Breite in Advanced width.
+
+
+Das sind viele präzise Anforderungen. Ich lese zunächst die relevanten Teile des aktuellen Codes genau durch.Good, I have full context. Now I'll apply all changes in one comprehensive Python script:Alle Änderungen sind drin. Hier die vollständige Übersicht:
+
+**Testpage** — A4 Hochformat, ein einziger Textblock in 16pt, `line-height: 1.05`, mit dem vollständigen Kerning-Testtext (Aynn Awnn … YAKUZA FABEL PAPST). Wortgruppen durch Leerzeichen getrennt, kein mehrspaltig. Kopfzeile mit allen Parametern bleibt erhalten.
+
+**Klick auf Paar in der Tabelle** → Preview zeigt `oTZo  nTZn  OTZo  HTZH` in der eingestellten Schriftgröße. Die gewählte Zeile wird orangegelb markiert.
+
+**Tastaturnavigation:**
+- `↓` / `↑` — nächstes/vorheriges Paar in der Tabelle (nur wenn Pair-Preview aktiv)
+- `→` / `←` — nächstes/vorheriges Text-Preset durchblättern
+- `Esc` — zurück zum normalen Preview-Text
+
+**Counter & Print Messung** — vier neue Stat-Boxen unter Results:
+- **Counter LC/UC** — Innenfläche des Buchstabens "o"/"O" (die Gegenform, die vom Buchstaben umschlossen wird), summiert über alle Zonen
+- **Print LC/UC** — Tintenfläche (gefärbte Fläche) des Buchstabens
+
+Die Messung erfolgt über ein Off-Screen-Canvas: Der Buchstabe wird in Zonenhöhe gerendert, dann werden für jede Zeile die Ink-Pixel gezählt (Print) und die leeren Pixel zwischen linkstem und rechtstem Ink-Pixel (Counter). Bei Smooth=0 gilt: `Base × Zonen + Counter + Print + DeadSpace ≈ advanceWidth × Zonenhöhe × Zonenanzahl`.
