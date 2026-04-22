@@ -133,6 +133,12 @@ tr.selected:hover td{background:var(--bg4);}
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:180px;color:var(--text3);font-family:var(--mono);font-size:12px;gap:6px;}
 .empty .eico{font-size:26px;opacity:.22;}
+.tab-btns{display:flex;gap:2px;align-items:center;}
+.tab-btn{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:5px 12px;border:none;border-radius:var(--r) var(--r) 0 0;background:var(--bg3);color:var(--text3);cursor:pointer;transition:all .15s;border-bottom:2px solid transparent;}
+.tab-btn.active{background:var(--bg2);color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover{color:var(--text2);}
+#pair-preview-btn{font-size:10px;padding:3px 9px;}
+#pair-preview-btn.on{border-color:var(--green);color:var(--green);background:rgba(76,175,125,.1);}
 
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:var(--bg);}
@@ -243,6 +249,12 @@ tr.selected:hover td{background:var(--bg4);}
         <option value="serif-it">Serif Italic</option>
         <option value="serif-bold">Serif Bold</option>
         <option value="serif-boldit">Serif Bold Italic</option>
+        <option value="sans-light">Sans Light</option>
+        <option value="sans-regular">Sans Regular</option>
+        <option value="sans-bold">Sans Bold</option>
+        <option value="slab-light">Slab Light</option>
+        <option value="slab-regular">Slab Regular</option>
+        <option value="slab-bold">Slab Bold</option>
       </select>
     </div>
 
@@ -258,6 +270,13 @@ tr.selected:hover td{background:var(--bg4);}
         Smooth <span style="color:var(--text3);font-style:italic;font-size:9px">(diagonals and counter)</span><span>--smooth · 0=off, 99=max smooth</span>
       </div>
       <input type="number" id="p-smooth" value="60" min="0" max="99">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Bowl (curve shape)&#10;&#10;Applies a quadratic curve to the margin profile after smoothing, bending the straight-line gradient into a convex or concave arc.&#10;&#10;+positive = margins bow outward (convex, glyphs appear further apart toward stroke extremes — useful for letters with strong horizontal stress).&#10;-negative = margins bow inward (concave, glyphs appear closer at the extremes — useful for rounded letters).&#10;0 = no curvature, linear profile from smoothing.&#10;&#10;The bowl value is a strength factor; ±100 produces a full quadratic shift of one zone-height.&#10;Default: 0">
+        Bowl <span style="color:var(--text3);font-style:italic;font-size:9px">(curve shape)</span><span>--bowl · profile curvature</span>
+      </div>
+      <input type="number" id="p-bowl" value="0" min="-200" max="200">
     </div>
 
     <div class="pr">
@@ -288,16 +307,48 @@ tr.selected:hover td{background:var(--bg4);}
       <input type="number" id="p-threshold" value="0" min="0">
     </div>
 
+    <div class="pr">
+      <div class="pl" data-tip="Base Glyph LC&#10;&#10;The reference glyph used to compute the LC spacing baseline. The pair glyph+glyph is measured and its average gap becomes the target spacing for all LC pairs.&#10;&#10;Change this for fonts where &#x27;o&#x27; is atypical — e.g. enter &#x27;n&#x27; for a very square-sided sans.&#10;&#10;Default: o">
+        Base Glyph LC <span style="color:var(--text3);font-style:italic;font-size:9px">(reference char)</span><span>--base-lc · char+char pair</span>
+      </div>
+      <input type="text" id="p-baselc" value="o" maxlength="4" style="font-family:var(--mono);font-size:13px;text-align:center;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:4px 6px;outline:none;" oninput="this.style.borderColor='var(--accent)'">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Base Glyph UC&#10;&#10;The reference glyph for the UC spacing baseline. The pair glyph+glyph is measured and its average gap becomes the target for all UC pairs (uppercase + lining figures).&#10;&#10;Change this for fonts where &#x27;O&#x27; is atypical.&#10;&#10;Default: O">
+        Base Glyph UC <span style="color:var(--text3);font-style:italic;font-size:9px">(reference char)</span><span>--base-uc · char+char pair</span>
+      </div>
+      <input type="text" id="p-baseuc" value="O" maxlength="4" style="font-family:var(--mono);font-size:13px;text-align:center;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:4px 6px;outline:none;" oninput="this.style.borderColor='var(--accent)'">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Tracking&#10;&#10;Global spacing offset applied to the effective base values before computing kerning corrections.&#10;&#10;A negative value tightens all spacing: e.g. if Base LC = 180 and Tracking = -10, the effective base used for all LC corrections is 170.&#10;&#10;A positive value loosens all spacing.&#10;Set to 0 for no tracking offset.&#10;Default: 0">
+        Tracking <span style="color:var(--text3);font-style:italic;font-size:9px">(global offset)</span><span>--tracking · offset on base values</span>
+      </div>
+      <input type="number" id="p-tracking" value="0">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Pair limit&#10;&#10;Maximum number of kerning pairs to generate, ranked by frequency of occurrence in real-world text (based on the Andre Fuchs kerning-pairs corpus).&#10;&#10;Only the top N most common pairs are computed and included in the output. This drastically reduces computation time for large fonts.&#10;&#10;Set to 0 to generate all pairs.&#10;Default: 0 (all)">
+        Pair limit <span style="color:var(--text3);font-style:italic;font-size:9px">(top N by frequency)</span><span>--pairs · 0 = all pairs</span>
+      </div>
+      <input type="number" id="p-pairlimit" value="0" min="0">
+    </div>
+
     <div class="sec" style="margin-top:4px">Results</div>
     <div class="stats">
       <div class="sb"><div class="sv" id="s-glyphs">—</div><div class="sk">Glyphs</div></div>
       <div class="sb"><div class="sv" id="s-pairs">—</div><div class="sk">Pairs</div></div>
-      <div class="sb"><div class="sv" id="s-baseLc">—</div><div class="sk">Base LC (o+o)</div></div>
-      <div class="sb"><div class="sv" id="s-baseUc">—</div><div class="sk">Base UC (O+O)</div></div>
-      <div class="sb"><div class="sv" id="s-cntlc">—</div><div class="sk">Counter LC</div></div>
-      <div class="sb"><div class="sv" id="s-cntuc">—</div><div class="sk">Counter UC</div></div>
-      <div class="sb"><div class="sv" id="s-prtlc">—</div><div class="sk">Print LC</div></div>
-      <div class="sb"><div class="sv" id="s-prtuc">—</div><div class="sk">Print UC</div></div>
+      <div class="sb"><div class="sv" id="s-baseLc">—</div><div class="sk" id="sk-baseLc">Base LC</div></div>
+      <div class="sb"><div class="sv" id="s-baseUc">—</div><div class="sk" id="sk-baseUc">Base UC</div></div>
+      <div class="sb"><div class="sv" id="s-totlc">—</div><div class="sk">Total LC (zones)</div></div>
+      <div class="sb"><div class="sv" id="s-totuc">—</div><div class="sk">Total UC (zones)</div></div>
+      <div class="sb" title="Margin LC: % of total zone area"><div class="sv" id="s-pct-marg-lc">—</div><div class="sk">Margin LC %</div></div>
+      <div class="sb" title="Counter LC: % of total zone area"><div class="sv" id="s-pct-cnt-lc">—</div><div class="sk">Counter LC %</div></div>
+      <div class="sb" title="Print LC: % of total zone area"><div class="sv" id="s-pct-prt-lc">—</div><div class="sk">Print LC %</div></div>
+      <div class="sb" title="Margin UC: % of total zone area"><div class="sv" id="s-pct-marg-uc">—</div><div class="sk">Margin UC %</div></div>
+      <div class="sb" title="Counter UC: % of total zone area"><div class="sv" id="s-pct-cnt-uc">—</div><div class="sk">Counter UC %</div></div>
+      <div class="sb" title="Print UC: % of total zone area"><div class="sv" id="s-pct-prt-uc">—</div><div class="sk">Print UC %</div></div>
     </div>
   </div>
 
@@ -361,18 +412,22 @@ tr.selected:hover td{background:var(--bg4);}
   </div>
 </div>
 
-<!-- ══ TABLE ══ -->
+<!-- ══ TABLE + SPACING CORRECTIONS ══ -->
 <div class="results-panel">
   <div class="rh">
-    <div class="sec">Coupling Table</div>
-    <div class="filter-group">
+    <div class="tab-btns">
+      <button class="tab-btn active" id="tab-kern" onclick="switchTab('kern')">Coupling Table</button>
+      <button class="tab-btn" id="tab-spacing" onclick="switchTab('spacing')">Spacing Corrections</button>
+    </div>
+    <div class="filter-group" id="kern-filter-group">
       <span class="rx-err" id="rx-err"></span>
       <input type="text" class="search-box" id="search-box" placeholder="Filter… (exact, A B = pair, .* regex)" oninput="filterTable()">
       <button class="filter-mode" id="rx-btn" onclick="toggleRegex()" title="Toggle regex mode">.*</button>
+      <button id="pair-preview-btn" class="tbtn" onclick="togglePairPreview()" title="Toggle pair preview mode (also: Esc)">⊙ Pair</button>
       <button class="btn-exp" onclick="exportCSV()">↓ Export</button>
     </div>
   </div>
-  <div class="tbl-wrap">
+  <div class="tbl-wrap" id="kern-panel">
     <div class="empty" id="empty-state">
       <div class="eico">⊘</div>
       <div>Drop a font to get started</div>
@@ -388,6 +443,24 @@ tr.selected:hover td{background:var(--bg4);}
         <th title="Zone values — hover row for details">Zones</th>
       </tr></thead>
       <tbody id="results-tbody"></tbody>
+    </table>
+  </div>
+  <div class="tbl-wrap" id="spacing-panel" style="display:none">
+    <div class="empty" id="spacing-empty">
+      <div class="eico">⊙</div>
+      <div>Compute kerning to see spacing corrections</div>
+    </div>
+    <table id="spacing-table" style="display:none">
+      <thead><tr>
+        <th>Glyph</th>
+        <th>Pair (xx)</th>
+        <th title="Kerning value for this glyph paired with itself">Self-kern</th>
+        <th title="Suggested advance width adjustment to bring self-pair to zero">ΔAdvanceWidth</th>
+        <th title="Suggested sidebearing shift (move glyph within bounds)">ΔSidebearing</th>
+        <th>Class</th>
+        <th>Mean</th>
+      </tr></thead>
+      <tbody id="spacing-tbody"></tbody>
     </table>
   </div>
 </div>
@@ -409,7 +482,7 @@ let pairPreviewMode=false;  // true when showing a clicked pair in preview
 let baseValueLC=0,baseValueUC=0;
 let currentUPM=1000,yBotGlobal=0,yTopGlobal=0;
 
-const DEFAULTS={zones:9,smooth:60,round:1,blur:10,mingap:8,threshold:0};
+const DEFAULTS={zones:9,smooth:60,bowl:0,round:1,blur:10,mingap:8,threshold:0,baselc:'o',baseuc:'O',tracking:0,pairlimit:0};
 
 function P(){
   const mg=parseFloat(document.getElementById('p-mingap').value);
@@ -419,22 +492,38 @@ function P(){
     round:     parseInt(document.getElementById('p-round').value)     ||DEFAULTS.round,
     blur:      parseInt(document.getElementById('p-blur').value)      ||DEFAULTS.blur,
     mingap:    (isNaN(mg)?DEFAULTS.mingap:mg)/100,
+    bowl:      parseFloat(document.getElementById('p-bowl').value)||0,
     threshold: parseFloat(document.getElementById('p-threshold').value)||0,
+    baselc:    (document.getElementById('p-baselc').value||DEFAULTS.baselc).trim(),
+    baseuc:    (document.getElementById('p-baseuc').value||DEFAULTS.baseuc).trim(),
+    tracking:  parseFloat(document.getElementById('p-tracking').value)||0,
+    pairlimit: parseInt(document.getElementById('p-pairlimit').value)||0,
   };
 }
 function resetParams(){
-  ['zones','smooth','round','blur','mingap','threshold'].forEach(k=>{
+  ['zones','smooth','bowl','round','blur','mingap','threshold','tracking','pairlimit'].forEach(k=>{
     document.getElementById('p-'+k).value=DEFAULTS[k];
   });
+  document.getElementById('p-baselc').value=DEFAULTS.baselc;
+  document.getElementById('p-baseuc').value=DEFAULTS.baseuc;
 }
 
 // Parameter presets for common font styles
 const PARAM_PRESETS={
-  'default':     {zones:9,  smooth:60, mingap:8,  blur:10, round:1, threshold:0},
-  'serif-reg':   {zones:81, smooth:14, mingap:12, blur:3,  round:1, threshold:0},
-  'serif-it':    {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
-  'serif-bold':  {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
-  'serif-boldit':{zones:81, smooth:14, mingap:12, blur:3,  round:1, threshold:0},
+  'default':        {zones:9,  smooth:60, bowl:0,   mingap:8,  blur:10, round:1, threshold:0},
+  // Serif weights
+  'serif-reg':      {zones:81, smooth:14, bowl:10,  mingap:12, blur:3,  round:1, threshold:0},
+  'serif-it':       {zones:81, smooth:14, bowl:-10, mingap:4,  blur:3,  round:1, threshold:0},
+  'serif-bold':     {zones:81, smooth:14, bowl:5,   mingap:4,  blur:3,  round:1, threshold:0},
+  'serif-boldit':   {zones:81, smooth:14, bowl:-5,  mingap:12, blur:3,  round:1, threshold:0},
+  // Sans-serif weights
+  'sans-light':     {zones:9,  smooth:40, bowl:0,   mingap:6,  blur:8,  round:1, threshold:0},
+  'sans-regular':   {zones:9,  smooth:55, bowl:0,   mingap:8,  blur:8,  round:1, threshold:0},
+  'sans-bold':      {zones:9,  smooth:65, bowl:0,   mingap:10, blur:6,  round:1, threshold:0},
+  // Slab-serif weights
+  'slab-light':     {zones:40, smooth:30, bowl:8,   mingap:7,  blur:5,  round:1, threshold:0},
+  'slab-regular':   {zones:40, smooth:35, bowl:12,  mingap:10, blur:5,  round:1, threshold:0},
+  'slab-bold':      {zones:40, smooth:40, bowl:8,   mingap:12, blur:4,  round:1, threshold:0},
 };
 function applyParamPreset(key){
   if(!key)return;
@@ -442,6 +531,7 @@ function applyParamPreset(key){
   if(!pr)return;
   document.getElementById('p-zones').value    =pr.zones;
   document.getElementById('p-smooth').value   =pr.smooth;
+  document.getElementById('p-bowl').value     =pr.bowl??0;
   document.getElementById('p-mingap').value   =pr.mingap;
   document.getElementById('p-blur').value     =pr.blur;
   document.getElementById('p-round').value    =pr.round;
@@ -556,6 +646,35 @@ function smoothMargins(arr,zH,pct){
   return out;
 }
 
+// ── BOWL ─────────────────────────────────────────────
+/**
+ * Applies a quadratic curvature to a margin array after smoothing.
+ * The anchor zone (minimum value = max glyph extent) stays unchanged.
+ * Other zones are shifted by: delta * (distFromAnchor/maxDist)^2 * bowlStrength
+ * where bowlStrength = bowl/100 * zoneHeight.
+ * Positive bowl → margins grow quadratically away from anchor (bow outward).
+ * Negative bowl → margins shrink quadratically away from anchor (bow inward).
+ */
+function applyBowl(arr, bowl, zones){
+  if(bowl===0||!arr||zones<3)return arr.slice();
+  const out=arr.slice();
+  // find anchor (min valid value)
+  let aZ=-1,aV=Infinity;
+  for(let z=0;z<zones;z++)if(arr[z]!==-1&&arr[z]<aV){aV=arr[z];aZ=z;}
+  if(aZ===-1)return out;
+  const maxDist=Math.max(aZ, zones-1-aZ)||1;
+  const strength=(bowl/100);  // fraction of zone-count range to shift
+  for(let z=0;z<zones;z++){
+    if(out[z]===-1)continue;
+    const dist=Math.abs(z-aZ);
+    const t=dist/maxDist;  // 0 at anchor, 1 at furthest zone
+    const shift=strength*t*t*(zones);  // quadratic, scaled by zone count
+    out[z]=r1(Math.max(aV, out[z]+shift));
+  }
+  console.log (out);
+  return out;
+}
+
 // ── GLYPH MARGINS ─────────────────────────────────────
 function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   const aw=glyph.advanceWidth??0;
@@ -569,8 +688,14 @@ function computeGlyphMargins(glyph,upm,p,yBot,yTop){
     for(let s=0;s<p.blur;s++){const sub=subR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
     if(cnt===0){lR.push(-1);rR.push(-1);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
   }
-  const left=smoothMargins(lR,zH,p.smooth);
-  const right=smoothMargins(rR,zH,p.smooth);
+  const leftSm=smoothMargins(lR,zH,p.smooth);
+  const rightSm=smoothMargins(rR,zH,p.smooth);
+  // Bowl: apply quadratic curvature to the smoothed margin profile
+  // anchor = zone of minimum margin (maximum glyph extent), bowl bends other zones
+  // bowl > 0: bow outward (larger margins farther from anchor)
+  // bowl < 0: bow inward (smaller margins farther from anchor)
+  const left=applyBowl(leftSm,p.bowl,p.zones);
+  const right=applyBowl(rightSm,p.bowl,p.zones);
   let unicode=null;
   if(glyph.unicodes?.length>0)unicode=glyph.unicodes[0];
   return{left,right,leftRaw:lR,rightRaw:rR,advanceWidth:aw,unicode};
@@ -670,6 +795,10 @@ function measureCounterPrint(gc, upm, p, yBot, yTop){
   return{print:totalPrint,counter:totalCounter};
 }
 
+// Top kerning pairs by frequency (source: Andre Fuchs kerning-pairs corpus)
+// Each entry is a pair string like "AV", "To", etc.
+const KERN_PAIRS_FREQ = ['E ','e ','Ë ','ë ','O ','o ','A ',' T',' t',' d',' A','D ','ea','të','T ','t ','R ','r ',' e',' C','ST','st','TA','te','LA','ta','re','AS',' V',' c',' W','SZ','et',' v','sz','nt',', ','. ','RA',' w','ra','ge',' O','OV','ov','L ','Ă ',' o','DA','CO','TT','tt','Í ','í ','AT','at','AA',' Z','KO',' J','co',' f','OW','ow','K ','SA','ko','TO',' G','to','ų ','JA','KA',' z','Ā ',' j','ij','ka','VA','RO','Y ','y ',' g',' Î','W ','AU','ro','CZ','va',' Y','cz','ze','RZ','GY','rz','YA','gy','Ä ',' î','PA','ya','EG','w ',' y','WA','ke','în','wa','ce','V ','CA','of','F ','ve','f ','za','KU','GA','LO','ca','ga','v ','ku','LU','rd','nj','Z ','ZY','z ','zy','TÄ','É ','é ','KS','ks','OJ','tä','TĀ','AŠ',' é','FO','Å ','tā','AV','FÖ','ÃO','av','fo','YC','yc','EJ','fö','af','rë','AY','LT','ny','WY','LJ','VO','lj','vv','vo','AG','we','ay','AC','UA','OA','RT','rt','go','gj','DZ','ÁS','RU',' Q','BA','TÁ','AJ','aj','tá','OT','ĀS',' q','ot','r.','TS','ts','JĀ','EC','ÓW','ów','ez','TĂ','TY','tă','ře','ty','KĀ','Ł ','ł ','EV',' 1','kā','DÁ','À ','ev','L\'','CĂ','LY','RS','rs','ly','că','ŁA','A.','té','ła','WO',' À','Ę ','ę ','ZT','Ě ','ě ','ný','S,','s,','Ą ','ye','wo','ké','RĀ','rā','YM','Ý ','ý ','KT','kt','AŞ','KÖ','e,','ré','ÝC','ýc',' (','Ė ','ė ','kö','SÄ','SÁ','LÄ','BY','zá','by','Á ','RY','ÉG','A,','ŁO','LÁ',' Č','vd','ry','RÁ',' Á','fi','ÁT','ÇÃ','çã','át','ët','AW','ZO','rá','aw','CT','T,','t,','ct','VY','zo',' Ç','kë','ŠA','fe',' Į','S.','DJ','dj','PÅ',' Å','s.','Ó ','ó ','VÁ',' į','O,','o,','LS',' Ä','SĂ','VÝ','RG','rg','vē','ŞT','şt',' ç','vá','KÝ','ký','RĂ','vě','LĀ','GÁ','P ','ía','p ','VÄ','Ť ','ť ','ră','CJ','cj','EY','vä','SV','JĄ','DT','ét','AÇ','ím','AO','ÁV',' č','ey',' Ž','T.','ĄC','KÄ','t.','ÁG','DŽ','OZ','áv','oz','GT','kä','ĀT','āt','sv','Ő ','ő ',' Ö','UX','CY','YS','ys','ēt','SJ','YT','VÕ','cy','KY','CC','sj',' 2','LG','ky','če','cc','JÄ','võ','X ','ŁY','x ','Ī ','ī ','VĀ',' ž','DĀ','ĀJ','āj','B ','b ','YO','TZ','JÁ','ĐA','đa','ŠT','že','ÝM','št','RÅ','Ž ','ž ','rå','St','yo',' ö','WS','r,','że','e.','RÓ','TV','TÓ','tó','ÖZ','öz','FT','ft','YÖ','yö','ŠÍ','tv','vé','ró','ÄT','ät','ws','AČ','ČA','ŞA','CÍ','PĀ','ča','gö','EČ','TÖ','RV','rv',') ','RÄ','zé','rä','DY','FA','KÁ','vā','tö','k,','FØ','ká','RJ','YW','ÉC','fø','EĆ','TŐ','tő','U,',' ë','TW','fa','Le','tw','UJ','uj','AĞ','ět','tě','TJ','PÄ','Da','LŐ','MY','ĂT','ăt','çe','čč','ČČ','LÓ','VS','ef','ÁC','LĂ','YV','O.','o.','BÁ','ew','PĂ','ex','zw','ÉV','U.','vs','rė','VÆ','év','TÀ','tà','væ','RC',' Ż','rc','my','RÆ','ÄS','ò ','Ò ','ræ','OŽ','ož','Au','SŤ','sť','Ve','D,','LÜ','zd','vt','VT','È ','ĀC','ÖT',' ż','SÅ','PT','öt','pt','ÄY','äy','ff','è ','Po','tē','SY','RW','CÂ','rw','će','La','gé','SĀ','CĪ','VJ','OY','ÅG','RÝ','RÜ','ŁU','Re','zv','Az','rý','EĞ','rē','ÁŠ','ÍS','ís','sy','Ja','câ','oy','tė','Ē ','cī','ē ','Ta','ZS','ZC','zc','ĽA','rf','ľa','zs','ÖV','SÃ','kė','Y,','Ż ','ż ','ZÖ','zö','öv','ať','AŤ','mj','KJ','YY','KÕ','YJ','ĆA','ća','ža','kj','We','eż','BĀ','ĒC','ÅT','yd','åt','ež','Co','KÓ','kó','DV','ęt','ÄV','äv','ļa','A\''];
+
 // ══════════════════════════════════════════════════════
 // MAIN ANALYSIS
 // ══════════════════════════════════════════════════════
@@ -689,7 +818,7 @@ async function runAnalysis(){
     else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;if(fontObj.tables.hhea.ascender!==undefined)yTop=fontObj.tables.hhea.ascender;}
     yBotGlobal=yBot; yTopGlobal=yTop;
 
-    log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value}(factor) blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold}`,'info');
+    log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value} blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold} tracking=${p.tracking} baseLc=${p.baselc} baseUc=${p.baseuc} pairlimit=${p.pairlimit||'all'}`,'info');
 
     // Step 1: margins
     const allKeys=Object.keys(fontObj.glyphs.glyphs);
@@ -709,22 +838,43 @@ async function runAnalysis(){
     setProgress(40);
     log(`Margins: ${Object.keys(glyphCache).length} glyphs`,'ok');
 
-    // Step 2: baselines — LC = n+n, UC = O+O (both use same-char pair)
-    const nD=glyphCache['o'],oD=glyphCache['O'];
-    const lcC=nD?pairMean(nD.right,nD.left):null; // o+o reference
-    baseValueLC=lcC?lcC.mean:0;
+    // Step 2: baselines — use user-configured reference glyphs + tracking offset
+    const baseLCglyph=p.baselc; const baseUCglyph=p.baseuc;
+    const nD=glyphCache[baseLCglyph],oD=glyphCache[baseUCglyph];
+    const lcC=nD?pairMean(nD.right,nD.left):null;
+    baseValueLC=(lcC?lcC.mean:0)+p.tracking;  // tracking shifts the effective base
     const ucC=oD?pairMean(oD.right,oD.left):null;
-    baseValueUC=ucC?ucC.mean:baseValueLC;
-    log(`Base LC (o+o): Ø${r1(baseValueLC)}   Base UC (O+O): Ø${r1(baseValueUC)}`,'info');
+    baseValueUC=(ucC?ucC.mean:(baseValueLC-p.tracking))+p.tracking;
+    log(`Base LC (${baseLCglyph}+${baseLCglyph}): Ø${r1(baseValueLC-p.tracking)} + tracking ${p.tracking} = ${r1(baseValueLC)}   Base UC (${baseUCglyph}+${baseUCglyph}): Ø${r1(baseValueUC)}`,'info');
     document.getElementById('s-baseLc').textContent=r1(baseValueLC);
     document.getElementById('s-baseUc').textContent=r1(baseValueUC);
+    document.getElementById('sk-baseLc').textContent=`Base LC (${baseLCglyph}+${baseLCglyph})`;
+    document.getElementById('sk-baseUc').textContent=`Base UC (${baseUCglyph}+${baseUCglyph})`;
     // Counter & Print measurement for reference glyphs o and O
     const ctrLC=measureCounterPrint(glyphCache['o'],upm,p,yBot,yTop);
     const ctrUC=measureCounterPrint(glyphCache['O'],upm,p,yBot,yTop);
-    document.getElementById('s-cntlc').textContent=ctrLC?r1(ctrLC.counter):'—';
-    document.getElementById('s-prtlc').textContent=ctrLC?r1(ctrLC.print):'—';
-    document.getElementById('s-cntuc').textContent=ctrUC?r1(ctrUC.counter):'—';
-    document.getElementById('s-prtuc').textContent=ctrUC?r1(ctrUC.print):'—';
+    // Compute total zone area for LC and UC reference glyphs
+    const lcGC=glyphCache[p.baselc], ucGC=glyphCache[p.baseuc];
+    if(lcGC&&ctrLC){
+      const totArea=lcGC.advanceWidth*(yTop-yBot);  // advanceWidth × em height in FU²
+      const marginArea=baseValueLC*(lcC?lcC.validCount:0);  // base × valid zones (approx)
+      const totalLCZones=(yTop-yBot);  // font units of total em height
+      document.getElementById('s-totlc').textContent=r1(totalLCZones);
+      const tot=marginArea+ctrLC.counter+ctrLC.print||1;
+      // Percentages relative to measured total (margin+counter+print)
+      document.getElementById('s-pct-marg-lc').textContent=r1(marginArea/tot*100)+'%';
+      document.getElementById('s-pct-cnt-lc').textContent=r1(ctrLC.counter/tot*100)+'%';
+      document.getElementById('s-pct-prt-lc').textContent=r1(ctrLC.print/tot*100)+'%';
+    }
+    if(ucGC&&ctrUC){
+      const totalUCZones=(yTop-yBot);
+      const marginAreaUC=baseValueUC*(ucC?ucC.validCount:0);
+      document.getElementById('s-totuc').textContent=r1(totalUCZones);
+      const tot=marginAreaUC+ctrUC.counter+ctrUC.print||1;
+      document.getElementById('s-pct-marg-uc').textContent=r1(marginAreaUC/tot*100)+'%';
+      document.getElementById('s-pct-cnt-uc').textContent=r1(ctrUC.counter/tot*100)+'%';
+      document.getElementById('s-pct-prt-uc').textContent=r1(ctrUC.print/tot*100)+'%';
+    }
     setProgress(45);
 
     // Step 3: pairs with capping and threshold
@@ -732,11 +882,54 @@ async function runAnalysis(){
     const gc=gks.length;
     const minGapFU=upm*p.mingap;
     log(`Min gap floor: ${r1(minGapFU)} fu (${Math.round(p.mingap*100)}% × UPM ${upm})`);
+
+    // Build set of pairs to compute, filtered by frequency ranking if pairlimit>0
+    // charLabel → glyph key map for fast lookup
+    const labelToKey={};
+    for(const k of gks)labelToKey[glyphCache[k].charLabel]=k;
+
+    let pairQueue=[];  // [{kA,kB}]
+    if(p.pairlimit>0&&KERN_PAIRS_FREQ.length>0){
+      // Use frequency-ordered list: each entry is a 2-char string "AV"
+      const seen=new Set();
+      for(const pair of KERN_PAIRS_FREQ){
+        if(pairQueue.length>=p.pairlimit)break;
+        // pair might be multi-byte chars; split into individual unicode chars
+        const chars=[...pair.replace(/&#x27;/g,"'").replace(/&quot;/g,'"')];
+        if(chars.length<2)continue;
+        const cA=chars[0],cB=chars[1];
+        const kA=labelToKey[cA],kB=labelToKey[cB];
+        if(!kA||!kB)continue;
+        const id=kA+'|'+kB;
+        if(seen.has(id))continue;
+        seen.add(id);
+        pairQueue.push({kA,kB});
+      }
+      // If we still need more pairs to fill the limit, fill from all pairs
+      if(pairQueue.length<p.pairlimit){
+        const needed=p.pairlimit-pairQueue.length;
+        const seenSet=new Set(pairQueue.map(({kA,kB})=>kA+'|'+kB));
+        outer: for(const kA of gks){
+          for(const kB of gks){
+            if(pairQueue.length>=p.pairlimit)break outer;
+            const id=kA+'|'+kB;
+            if(!seenSet.has(id)){seenSet.add(id);pairQueue.push({kA,kB});}
+          }
+        }
+      }
+      log(`Pair limit: ${p.pairlimit} (freq-ranked: ${pairQueue.length} pairs queued)`);
+    } else {
+      // All pairs
+      for(const kA of gks)for(const kB of gks)pairQueue.push({kA,kB});
+    }
+
+    const totalPairs=pairQueue.length;
     done=0;
-    for(const kA of gks){
+    for(const {kA,kB} of pairQueue){
       const{right:rA,charLabel:cA,unicode:uA,glyphName:nA,cls:clA}=glyphCache[kA];
-      for(const kB of gks){
-        const{left:lB,charLabel:cB,unicode:uB,glyphName:nB,cls:clB}=glyphCache[kB];
+      const{left:lB,charLabel:cB,unicode:uB,glyphName:nB,cls:clB}=glyphCache[kB];
+        
+        // dummy block to match original structure
         const calc=pairMean(rA,lB);
         if(!calc)continue;
         const bothUC=clA==='UC'&&clB==='UC';
@@ -761,10 +954,9 @@ async function runAnalysis(){
         // Threshold: suppress near-zero corrections
         if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
         kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
-      }
-      done+=gc;
-      if(done%(gc*Math.max(1,Math.floor(gc/20)))===0){setProgress(45+done/(gc*gc)*50);await new Promise(r=>setTimeout(r,0));}
-    }
+      done++;
+      if(done%Math.max(1,Math.floor(totalPairs/20))===0){setProgress(45+done/totalPairs*50);await new Promise(r=>setTimeout(r,0));}
+    }  // end pairQueue loop
 
     setProgress(100);
     document.getElementById('s-glyphs').textContent=gc;
@@ -777,6 +969,7 @@ async function runAnalysis(){
     buildKernMap();
     applyTextMode();
     renderPreview();
+    if(currentTab==='spacing')renderSpacingTable();
     const nzCount=kerningData.filter(d=>d.correction!==0).length;
     setStatus(`${gc} gl · ${kerningData.length.toLocaleString()} pairs · ${nzCount.toLocaleString()} kern`,'active');
   }catch(err){
@@ -861,9 +1054,78 @@ function renderTable(){
 }
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
+// ── TAB SWITCHING ─────────────────────────────────────
+let currentTab='kern';
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById('tab-kern').className='tab-btn'+(tab==='kern'?' active':'');
+  document.getElementById('tab-spacing').className='tab-btn'+(tab==='spacing'?' active':'');
+  document.getElementById('kern-panel').style.display=tab==='kern'?'flex':'none';
+  document.getElementById('spacing-panel').style.display=tab==='spacing'?'flex':'none';
+  document.getElementById('kern-filter-group').style.display=tab==='kern'?'flex':'none';
+  if(tab==='spacing')renderSpacingTable();
+}
+
+// ── PAIR PREVIEW TOGGLE BUTTON ─────────────────────────
+function togglePairPreview(){
+  if(pairPreviewMode){
+    pairPreviewMode=false;selectedPairIdx=-1;
+    document.getElementById('pair-preview-btn').className='tbtn';
+    renderTable();renderPreview();
+  } else {
+    // activate with first pair if available
+    if(filteredData.length>0)selectPairRow(0);
+    document.getElementById('pair-preview-btn').className='tbtn on';
+  }
+}
+
+// ── SPACING CORRECTIONS TABLE ──────────────────────────
+/**
+ * For each glyph, find its self-pair correction (A+A, n+n, etc.)
+ * Then compute suggested spacing adjustments:
+ *   - ΔAdvanceWidth: half the self-kern correction (split symmetrically)
+ *   - ΔSidebearing: quarter of the self-kern (shift glyph inside bounds)
+ *   Net effect: if applied, the self-pair kern approaches zero.
+ */
+function renderSpacingTable(){
+  if(!kerningData.length){
+    document.getElementById('spacing-table').style.display='none';
+    document.getElementById('spacing-empty').style.display='flex';
+    return;
+  }
+  // Build self-pair map
+  const selfKern={};
+  for(const d of kerningData){
+    if(d.left===d.right)selfKern[d.left]=d;
+  }
+  const rows=Object.values(selfKern).sort((a,b)=>Math.abs(b.correction)-Math.abs(a.correction));
+  if(!rows.length){
+    document.getElementById('spacing-table').style.display='none';
+    document.getElementById('spacing-empty').style.display='flex';
+    document.getElementById('spacing-empty').querySelector('div:last-child').textContent='No self-pairs found (try computing all pairs)';
+    return;
+  }
+  document.getElementById('spacing-table').style.display='table';
+  document.getElementById('spacing-empty').style.display='none';
+  const tbody=document.getElementById('spacing-tbody');
+  tbody.innerHTML='';
+  for(const d of rows){
+    const tr=document.createElement('tr');
+    const cc=d.correction<0?'vneg':d.correction>0?'vpos':'vzero';
+    const tc=d.tag==='UC'?'tuc':d.tag==='mixed'?'tmix':'tlc';
+    // ΔAdvanceWidth = half the correction (split between left and right margins)
+    const dAW=Math.round(d.correction/2);
+    // ΔSidebearing = quarter the correction (move glyph within its box)
+    const dSB=Math.round(d.correction/4);
+    tr.innerHTML=`<td class="cc">${esc(d.left)}</td><td style="color:var(--text2)">${esc(d.left)}+${esc(d.right)}</td><td class="${cc}" style="font-weight:700">${d.correction}</td><td class="${dAW<0?'vneg':dAW>0?'vpos':'vzero'}">${dAW>0?'+':''}${dAW}</td><td class="${dSB<0?'vneg':dSB>0?'vpos':'vzero'}">${dSB>0?'+':''}${dSB}</td><td class="${tc}">${d.tag}</td><td>${d.mean}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
 function selectPairRow(idx){
   selectedPairIdx=idx;
   pairPreviewMode=true;
+  document.getElementById('pair-preview-btn').className='tbtn on';
   renderTable();
   renderPreview();
   // Scroll selected row into view
@@ -886,6 +1148,7 @@ document.addEventListener('keydown',e=>{
   } else if(e.key==='Escape'){
     pairPreviewMode=false;
     selectedPairIdx=-1;
+    document.getElementById('pair-preview-btn').className='tbtn';
     renderTable();
     renderPreview();
   } else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
@@ -1197,13 +1460,12 @@ function openTestPage(){
 <meta charset="UTF-8">
 <title>Coupler Testpage — ${esc(fn)}</title>
 <style>
-@font-face{font-family:'TestFont';src:url('${fontDataUrl}');}
 *{box-sizing:border-box;margin:0;padding:0;}
 @page{size:A4 portrait;margin:14mm 16mm 14mm 16mm;}
-body{font-family:'TestFont',serif;background:#fff;color:#000;width:178mm;}
-.params{font-family:monospace;font-size:7pt;color:#555;border-bottom:0.5pt solid #aaa;padding-bottom:4pt;margin-bottom:8pt;line-height:1.6;}
+body{font-family:monospace;background:#fff;color:#000;width:178mm;}
+.params{font-size:7pt;color:#555;border-bottom:0.5pt solid #aaa;padding-bottom:4pt;margin-bottom:8pt;line-height:1.6;}
 .params strong{color:#000;}
-.kern-block{font-size:16pt;line-height:1.05;color:#000;word-spacing:0.2em;}
+canvas{display:block;width:100%;height:auto;}
 @media print{body{margin:0;}.params{color:#444;}}
 </style>
 </head>
@@ -1211,16 +1473,110 @@ body{font-family:'TestFont',serif;background:#fff;color:#000;width:178mm;}
 <div class="params">
   <strong>Coupler Testpage</strong> &nbsp;|&nbsp; Font: <strong>${esc(fn)}</strong> &nbsp;|&nbsp;
   zones=${p.zones} &nbsp; smooth=${document.getElementById('p-smooth').value} &nbsp; blur=${p.blur} &nbsp;
-  round=${p.round} &nbsp; mingap=${Math.round(p.mingap*100)}% &nbsp; threshold=${p.threshold} &nbsp;|&nbsp;
+  round=${p.round} &nbsp; mingap=${Math.round(p.mingap*100)}% &nbsp; threshold=${p.threshold} &nbsp;
+  tracking=${p.tracking} &nbsp; baseLc=${p.baselc} &nbsp; baseUc=${p.baseuc} &nbsp;|&nbsp;
   Base LC: ${r1(baseValueLC)} &nbsp; Base UC: ${r1(baseValueUC)} &nbsp;|&nbsp;
   Non-zero pairs: ${nonZero.length.toLocaleString()}
 </div>
-<div class="kern-block">Aynn Awnn Avnn A'nn AYHH AWNN AVNN ATNN F.nn F,nn FANN Lynn L'nn LYNN LWNN LVNN LTNN P.nn P,nn PANN Rynn RYNN RWNN RVNN RTNN Tynn Twnn Tunn T;nn Tsnn Trnn T.nn Tonn Tinn T-nn Tenn T,nn T:nn Tcnn Tann TANN Vynn Vunn V;nn Vrnn V. Vonn Vinn V-nn Venn V, V: Vann VANN Wynn Wunn W; Wrnn W.nn Wonn Winn W-nn Wenn W,nn W:nn Wann WANN Yvnn Yunn Y;nn Yqnn Y.nn YpnnYonn Yinn Y-nn Yenn Y,nn Y:nn Yann YANN rznn rynn rxnn rwnn rvnn runn rtnn rrnn r'nn rqnn r.nn ronn rnnn rmnn r-nn rhnn rgnn rfnn renn rdnn r,nn rcnn v.nn v,nn w.nn w,nn y.nn y,nn n.nn r.nn v.nn w.nn y.nn n-n o-o aufkauf aufhalt aufbleib auflassen auffassen aufißt raufjagen führen fördern fähre wegjagen Bargfeld kyrie afro arte axe luvwärts Gevatter wann ever gewettet severe davon gewonnen down wichtig recken Farbe Fest Firn Fjord Font Frau Fuß Fähre Förde Füße Rest Rohr Röhre Rymer Test Tod Tauf Tim Tja Turm Traum Tsara Twist Tyrol Tüte Töten Täter TéTêTèVeste Vogel VéVêVèVater Vijf Vlut Vulkan Vleigje Vytautas Vroni Väter Vögel Vs Ws Vz Wz Weste Wolf Wüste Wörpe Wärter Waage Wiege Wlasta Wurst Wyhl Wrasen Yeats Yoni auf Yqem Yak Ybbs Yggdrasil Yps Ysop Ytong Yuma ATK AVI AWL AYN LTK LVI LWL LYN RTK TVI RWL RYN TABULA VATER WASSER YAKUZA FABEL PAPST</div>
+<canvas id="testCanvas"></canvas>
 <script>
-// Note: CSS font-feature kerning is applied automatically if the font has kern/GPOS tables.
-// The Coupler-derived values shown in the params are for reference.
-// To apply Coupler kerning precisely, use the exported CSV with a font editor.
+(function(){
+  const fontDataUrl='${fontDataUrl}';
+  const kernMap={};
+  ${JSON.stringify(nonZero)}.forEach(d=>kernMap[d.left+':'+d.right]=d.correction);
+  const TEXT=\`Aynn Awnn Avnn A’nn AYHH AWNN AVNN ATNN F.nn F,nn FANN Lynn L’nn LYNN LWNN LVNN LTNN P.nn P,nn PANN Rynn RYNN RWNN RVNN RTNN Tynn Twnn Tunn T;nn Tsnn Trnn T.nn Tonn Tinn T-nn Tenn T,nn T:nn Tcnn Tann TANN Vynn Vunn V;nn Vrnn V. Vonn Vinn V-nn Venn V, V: Vann VANN Wynn Wunn W; Wrnn W.nn Wonn Winn W-nn Wenn W,nn W:nn Wann WANN Yvnn Yunn Y;nn Yqnn Y.nn YpnnYonn Yinn Y-nn Yenn Y,nn Y:nn Yann YANN rznn rynn rxnn rwnn rvnn runn rtnn rrnn r’nn rqnn r.nn ronn rnnn rmnn r-nn rhnn rgnn rfnn renn rdnn r,nn rcnn v.nn v,nn w.nn w,nn y.nn y,nn n.nn r.nn v.nn w.nn y.nn n-n o-o aufkauf aufhalt aufbleib auflassen auffassen aufißt raufjagen führen fördern fähre wegjagen Bargfeld kyrie afro arte axe luv wärts Gevatter wann ever gewettet severe davon gewonnen down wichtig recken Farbe Fest Firn Fjord Font Frau Fuß Fähre Förde Füße Rest Rohr Röhre Rymer Test Tod Tauf Tim Tja Turm Traum Tsara Twist Tyrol Tüte Töten Täter TéTêTèVeste Vogel VéVêVèVater Vijf Vlut Vulkan Vleigje Vytautas Vroni Väter Vögel Vs Ws Vz Wz Weste Wolf Wüste Wörpe Wärter Waage Wiege Wlasta Wurst Wyhl Wrasen Yeats Yoni auf Yqem Yak Ybbs Yggdrasil Yps Ysop Ytong Yuma ATK AVI AWL AYN LTK LVI LWL LYN RTK TVI RWL RYN TABULA VATER WASSER YAKUZA FABEL PAPST\`;
+  const PT=${Math.round(16*1.4)};  // 16pt × 1.4 = ~22pt
+
+  function cLbl(unicode,gn,gk){
+    if(unicode!==null){
+      const h=unicode.toString(16).toUpperCase().padStart(4,'0');
+      const PN={"002E":"period","002C":"comma","0027":"quotesingle","002D":"hyphen","003B":"semicolon","003A":"colon"};
+      if(PN[h])return PN[h];
+      if(gn&&!/^glyph\d+$/i.test(gn))return gn;
+      try{return String.fromCodePoint(unicode);}catch(_){}
+    }
+    return gk;
+  }
+
+  fetch(fontDataUrl).then(r=>r.arrayBuffer()).catch(()=>{
+    // data URL — convert directly
+    const b64=fontDataUrl.split(',')[1];
+    const bin=atob(b64);
+    const buf=new ArrayBuffer(bin.length);
+    const view=new Uint8Array(buf);
+    for(let i=0;i<bin.length;i++)view[i]=bin.charCodeAt(i);
+    return buf;
+  }).then(buf=>{
+    const font=opentype.parse(buf);
+    const upm=font.unitsPerEm;
+    const pxPerPt=96/72;
+    const fontSize=PT*pxPerPt;
+    const sc=fontSize/upm;
+    const lineH=fontSize*1.05;
+
+    // page width in px (178mm at 96dpi ≈ 670px)
+    const PW=670;
+    const canvas=document.getElementById('testCanvas');
+
+    // measure text to get height needed (word-wrap)
+    const lines=[];
+    let line=[];
+    let lineW=0;
+    const words=TEXT.split(' ');
+    const spaceW=(font.charToGlyph(' ')?.advanceWidth??upm/4)*sc;
+
+    for(const word of words){
+      let wW=0;
+      const wChars=[...word];
+      for(let i=0;i<wChars.length;i++){
+        const g=font.charToGlyph(wChars[i]);
+        if(!g)continue;
+        const aw=(g.advanceWidth??0)*sc;
+        const lbl=cLbl(g.unicodes?.[0]??null,g.name,g.name??'');
+        let kern=0;
+        if(i+1<wChars.length){const ng=font.charToGlyph(wChars[i+1]);if(ng){const nl=cLbl(ng.unicodes?.[0]??null,ng.name,ng.name??'');kern=(kernMap[lbl+':'+nl]??0)*sc;}}
+        wW+=aw+kern;
+      }
+      if(lineW>0&&lineW+spaceW+wW>PW){lines.push(line);line=[];lineW=0;}
+      line.push(word);
+      lineW+=(lineW>0?spaceW:0)+wW;
+    }
+    if(line.length)lines.push(line);
+
+    const H=Math.ceil(lines.length*lineH+32);
+    canvas.width=PW; canvas.height=H;
+    canvas.style.height=H+'px';
+
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,PW,H);
+    ctx.fillStyle='#000';
+
+    let y=fontSize*0.85+16;
+    for(const lineWords of lines){
+      let x=0;
+      for(let wi=0;wi<lineWords.length;wi++){
+        if(wi>0)x+=spaceW;
+        const wChars=[...lineWords[wi]];
+        for(let i=0;i<wChars.length;i++){
+          const ch=wChars[i];
+          const g=font.charToGlyph(ch);
+          if(!g)continue;
+          const aw=(g.advanceWidth??0)*sc;
+          const lbl=cLbl(g.unicodes?.[0]??null,g.name,g.name??'');
+          const path=g.getPath(x,y,fontSize);
+          ctx.fill(new Path2D(path.toPathData(2)));
+          let kern=0;
+          if(i+1<wChars.length){const ng=font.charToGlyph(wChars[i+1]);if(ng){const nl=cLbl(ng.unicodes?.[0]??null,ng.name,ng.name??'');kern=(kernMap[lbl+':'+nl]??0)*sc;}}
+          x+=aw+kern;
+        }
+      }
+      y+=lineH;
+    }
+  });
+})();
 <\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"><\/script>
+
 </body>
 </html>`;
 

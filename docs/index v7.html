@@ -288,40 +288,12 @@ tr.selected:hover td{background:var(--bg4);}
       <input type="number" id="p-threshold" value="0" min="0">
     </div>
 
-    <div class="pr">
-      <div class="pl" data-tip="Base Glyph LC&#10;&#10;The reference glyph used to compute the LC spacing baseline. The pair glyph+glyph is measured and its average gap becomes the target spacing for all LC pairs.&#10;&#10;Change this for fonts where &#x27;o&#x27; is atypical — e.g. enter &#x27;n&#x27; for a very square-sided sans.&#10;&#10;Default: o">
-        Base Glyph LC <span style="color:var(--text3);font-style:italic;font-size:9px">(reference char)</span><span>--base-lc · char+char pair</span>
-      </div>
-      <input type="text" id="p-baselc" value="o" maxlength="4" style="font-family:var(--mono);font-size:13px;text-align:center;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:4px 6px;outline:none;" oninput="this.style.borderColor='var(--accent)'">
-    </div>
-
-    <div class="pr">
-      <div class="pl" data-tip="Base Glyph UC&#10;&#10;The reference glyph for the UC spacing baseline. The pair glyph+glyph is measured and its average gap becomes the target for all UC pairs (uppercase + lining figures).&#10;&#10;Change this for fonts where &#x27;O&#x27; is atypical.&#10;&#10;Default: O">
-        Base Glyph UC <span style="color:var(--text3);font-style:italic;font-size:9px">(reference char)</span><span>--base-uc · char+char pair</span>
-      </div>
-      <input type="text" id="p-baseuc" value="O" maxlength="4" style="font-family:var(--mono);font-size:13px;text-align:center;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:4px 6px;outline:none;" oninput="this.style.borderColor='var(--accent)'">
-    </div>
-
-    <div class="pr">
-      <div class="pl" data-tip="Tracking&#10;&#10;Global spacing offset applied to the effective base values before computing kerning corrections.&#10;&#10;A negative value tightens all spacing: e.g. if Base LC = 180 and Tracking = -10, the effective base used for all LC corrections is 170.&#10;&#10;A positive value loosens all spacing.&#10;Set to 0 for no tracking offset.&#10;Default: 0">
-        Tracking <span style="color:var(--text3);font-style:italic;font-size:9px">(global offset)</span><span>--tracking · offset on base values</span>
-      </div>
-      <input type="number" id="p-tracking" value="0">
-    </div>
-
-    <div class="pr">
-      <div class="pl" data-tip="Pair limit&#10;&#10;Maximum number of kerning pairs to generate, ranked by frequency of occurrence in real-world text (based on the Andre Fuchs kerning-pairs corpus).&#10;&#10;Only the top N most common pairs are computed and included in the output. This drastically reduces computation time for large fonts.&#10;&#10;Set to 0 to generate all pairs.&#10;Default: 0 (all)">
-        Pair limit <span style="color:var(--text3);font-style:italic;font-size:9px">(top N by frequency)</span><span>--pairs · 0 = all pairs</span>
-      </div>
-      <input type="number" id="p-pairlimit" value="0" min="0">
-    </div>
-
     <div class="sec" style="margin-top:4px">Results</div>
     <div class="stats">
       <div class="sb"><div class="sv" id="s-glyphs">—</div><div class="sk">Glyphs</div></div>
       <div class="sb"><div class="sv" id="s-pairs">—</div><div class="sk">Pairs</div></div>
-      <div class="sb"><div class="sv" id="s-baseLc">—</div><div class="sk" id="sk-baseLc">Base LC</div></div>
-      <div class="sb"><div class="sv" id="s-baseUc">—</div><div class="sk" id="sk-baseUc">Base UC</div></div>
+      <div class="sb"><div class="sv" id="s-baseLc">—</div><div class="sk">Base LC (o+o)</div></div>
+      <div class="sb"><div class="sv" id="s-baseUc">—</div><div class="sk">Base UC (O+O)</div></div>
       <div class="sb"><div class="sv" id="s-cntlc">—</div><div class="sk">Counter LC</div></div>
       <div class="sb"><div class="sv" id="s-cntuc">—</div><div class="sk">Counter UC</div></div>
       <div class="sb"><div class="sv" id="s-prtlc">—</div><div class="sk">Print LC</div></div>
@@ -437,7 +409,7 @@ let pairPreviewMode=false;  // true when showing a clicked pair in preview
 let baseValueLC=0,baseValueUC=0;
 let currentUPM=1000,yBotGlobal=0,yTopGlobal=0;
 
-const DEFAULTS={zones:9,smooth:60,round:1,blur:10,mingap:8,threshold:0,baselc:'o',baseuc:'O',tracking:0,pairlimit:0};
+const DEFAULTS={zones:9,smooth:60,round:1,blur:10,mingap:8,threshold:0};
 
 function P(){
   const mg=parseFloat(document.getElementById('p-mingap').value);
@@ -448,18 +420,12 @@ function P(){
     blur:      parseInt(document.getElementById('p-blur').value)      ||DEFAULTS.blur,
     mingap:    (isNaN(mg)?DEFAULTS.mingap:mg)/100,
     threshold: parseFloat(document.getElementById('p-threshold').value)||0,
-    baselc:    (document.getElementById('p-baselc').value||DEFAULTS.baselc).trim(),
-    baseuc:    (document.getElementById('p-baseuc').value||DEFAULTS.baseuc).trim(),
-    tracking:  parseFloat(document.getElementById('p-tracking').value)||0,
-    pairlimit: parseInt(document.getElementById('p-pairlimit').value)||0,
   };
 }
 function resetParams(){
-  ['zones','smooth','round','blur','mingap','threshold','tracking','pairlimit'].forEach(k=>{
+  ['zones','smooth','round','blur','mingap','threshold'].forEach(k=>{
     document.getElementById('p-'+k).value=DEFAULTS[k];
   });
-  document.getElementById('p-baselc').value=DEFAULTS.baselc;
-  document.getElementById('p-baseuc').value=DEFAULTS.baseuc;
 }
 
 // Parameter presets for common font styles
@@ -704,10 +670,6 @@ function measureCounterPrint(gc, upm, p, yBot, yTop){
   return{print:totalPrint,counter:totalCounter};
 }
 
-// Top kerning pairs by frequency (source: Andre Fuchs kerning-pairs corpus)
-// Each entry is a pair string like "AV", "To", etc.
-const KERN_PAIRS_FREQ = ['E ','e ','Ë ','ë ','O ','o ','A ',' T',' t',' d',' A','D ','ea','të','T ','t ','R ','r ',' e',' C','ST','st','TA','te','LA','ta','re','AS',' V',' c',' W','SZ','et',' v','sz','nt',', ','. ','RA',' w','ra','ge',' O','OV','ov','L ','Ă ',' o','DA','CO','TT','tt','Í ','í ','AT','at','AA',' Z','KO',' J','co',' f','OW','ow','K ','SA','ko','TO',' G','to','ų ','JA','KA',' z','Ā ',' j','ij','ka','VA','RO','Y ','y ',' g',' Î','W ','AU','ro','CZ','va',' Y','cz','ze','RZ','GY','rz','YA','gy','Ä ',' î','PA','ya','EG','w ',' y','WA','ke','în','wa','ce','V ','CA','of','F ','ve','f ','za','KU','GA','LO','ca','ga','v ','ku','LU','rd','nj','Z ','ZY','z ','zy','TÄ','É ','é ','KS','ks','OJ','tä','TĀ','AŠ',' é','FO','Å ','tā','AV','FÖ','ÃO','av','fo','YC','yc','EJ','fö','af','rë','AY','LT','ny','WY','LJ','VO','lj','vv','vo','AG','we','ay','AC','UA','OA','RT','rt','go','gj','DZ','ÁS','RU',' Q','BA','TÁ','AJ','aj','tá','OT','ĀS',' q','ot','r.','TS','ts','JĀ','EC','ÓW','ów','ez','TĂ','TY','tă','ře','ty','KĀ','Ł ','ł ','EV',' 1','kā','DÁ','À ','ev','L\'','CĂ','LY','RS','rs','ly','că','ŁA','A.','té','ła','WO',' À','Ę ','ę ','ZT','Ě ','ě ','ný','S,','s,','Ą ','ye','wo','ké','RĀ','rā','YM','Ý ','ý ','KT','kt','AŞ','KÖ','e,','ré','ÝC','ýc',' (','Ė ','ė ','kö','SÄ','SÁ','LÄ','BY','zá','by','Á ','RY','ÉG','A,','ŁO','LÁ',' Č','vd','ry','RÁ',' Á','fi','ÁT','ÇÃ','çã','át','ët','AW','ZO','rá','aw','CT','T,','t,','ct','VY','zo',' Ç','kë','ŠA','fe',' Į','S.','DJ','dj','PÅ',' Å','s.','Ó ','ó ','VÁ',' į','O,','o,','LS',' Ä','SĂ','VÝ','RG','rg','vē','ŞT','şt',' ç','vá','KÝ','ký','RĂ','vě','LĀ','GÁ','P ','ía','p ','VÄ','Ť ','ť ','ră','CJ','cj','EY','vä','SV','JĄ','DT','ét','AÇ','ím','AO','ÁV',' č','ey',' Ž','T.','ĄC','KÄ','t.','ÁG','DŽ','OZ','áv','oz','GT','kä','ĀT','āt','sv','Ő ','ő ',' Ö','UX','CY','YS','ys','ēt','SJ','YT','VÕ','cy','KY','CC','sj',' 2','LG','ky','če','cc','JÄ','võ','X ','ŁY','x ','Ī ','ī ','VĀ',' ž','DĀ','ĀJ','āj','B ','b ','YO','TZ','JÁ','ĐA','đa','ŠT','že','ÝM','št','RÅ','Ž ','ž ','rå','St','yo',' ö','WS','r,','że','e.','RÓ','TV','TÓ','tó','ÖZ','öz','FT','ft','YÖ','yö','ŠÍ','tv','vé','ró','ÄT','ät','ws','AČ','ČA','ŞA','CÍ','PĀ','ča','gö','EČ','TÖ','RV','rv',') ','RÄ','zé','rä','DY','FA','KÁ','vā','tö','k,','FØ','ká','RJ','YW','ÉC','fø','EĆ','TŐ','tő','U,',' ë','TW','fa','Le','tw','UJ','uj','AĞ','ět','tě','TJ','PÄ','Da','LŐ','MY','ĂT','ăt','çe','čč','ČČ','LÓ','VS','ef','ÁC','LĂ','YV','O.','o.','BÁ','ew','PĂ','ex','zw','ÉV','U.','vs','rė','VÆ','év','TÀ','tà','væ','RC',' Ż','rc','my','RÆ','ÄS','ò ','Ò ','ræ','OŽ','ož','Au','SŤ','sť','Ve','D,','LÜ','zd','vt','VT','È ','ĀC','ÖT',' ż','SÅ','PT','öt','pt','ÄY','äy','ff','è ','Po','tē','SY','RW','CÂ','rw','će','La','gé','SĀ','CĪ','VJ','OY','ÅG','RÝ','RÜ','ŁU','Re','zv','Az','rý','EĞ','rē','ÁŠ','ÍS','ís','sy','Ja','câ','oy','tė','Ē ','cī','ē ','Ta','ZS','ZC','zc','ĽA','rf','ľa','zs','ÖV','SÃ','kė','Y,','Ż ','ż ','ZÖ','zö','öv','ať','AŤ','mj','KJ','YY','KÕ','YJ','ĆA','ća','ža','kj','We','eż','BĀ','ĒC','ÅT','yd','åt','ež','Co','KÓ','kó','DV','ęt','ÄV','äv','ļa','A\''];
-
 // ══════════════════════════════════════════════════════
 // MAIN ANALYSIS
 // ══════════════════════════════════════════════════════
@@ -727,7 +689,7 @@ async function runAnalysis(){
     else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;if(fontObj.tables.hhea.ascender!==undefined)yTop=fontObj.tables.hhea.ascender;}
     yBotGlobal=yBot; yTopGlobal=yTop;
 
-    log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value} blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold} tracking=${p.tracking} baseLc=${p.baselc} baseUc=${p.baseuc} pairlimit=${p.pairlimit||'all'}`,'info');
+    log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value}(factor) blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold}`,'info');
 
     // Step 1: margins
     const allKeys=Object.keys(fontObj.glyphs.glyphs);
@@ -747,18 +709,15 @@ async function runAnalysis(){
     setProgress(40);
     log(`Margins: ${Object.keys(glyphCache).length} glyphs`,'ok');
 
-    // Step 2: baselines — use user-configured reference glyphs + tracking offset
-    const baseLCglyph=p.baselc; const baseUCglyph=p.baseuc;
-    const nD=glyphCache[baseLCglyph],oD=glyphCache[baseUCglyph];
-    const lcC=nD?pairMean(nD.right,nD.left):null;
-    baseValueLC=(lcC?lcC.mean:0)+p.tracking;  // tracking shifts the effective base
+    // Step 2: baselines — LC = n+n, UC = O+O (both use same-char pair)
+    const nD=glyphCache['o'],oD=glyphCache['O'];
+    const lcC=nD?pairMean(nD.right,nD.left):null; // o+o reference
+    baseValueLC=lcC?lcC.mean:0;
     const ucC=oD?pairMean(oD.right,oD.left):null;
-    baseValueUC=(ucC?ucC.mean:(baseValueLC-p.tracking))+p.tracking;
-    log(`Base LC (${baseLCglyph}+${baseLCglyph}): Ø${r1(baseValueLC-p.tracking)} + tracking ${p.tracking} = ${r1(baseValueLC)}   Base UC (${baseUCglyph}+${baseUCglyph}): Ø${r1(baseValueUC)}`,'info');
+    baseValueUC=ucC?ucC.mean:baseValueLC;
+    log(`Base LC (o+o): Ø${r1(baseValueLC)}   Base UC (O+O): Ø${r1(baseValueUC)}`,'info');
     document.getElementById('s-baseLc').textContent=r1(baseValueLC);
     document.getElementById('s-baseUc').textContent=r1(baseValueUC);
-    document.getElementById('sk-baseLc').textContent=`Base LC (${baseLCglyph}+${baseLCglyph})`;
-    document.getElementById('sk-baseUc').textContent=`Base UC (${baseUCglyph}+${baseUCglyph})`;
     // Counter & Print measurement for reference glyphs o and O
     const ctrLC=measureCounterPrint(glyphCache['o'],upm,p,yBot,yTop);
     const ctrUC=measureCounterPrint(glyphCache['O'],upm,p,yBot,yTop);
@@ -773,56 +732,11 @@ async function runAnalysis(){
     const gc=gks.length;
     const minGapFU=upm*p.mingap;
     log(`Min gap floor: ${r1(minGapFU)} fu (${Math.round(p.mingap*100)}% × UPM ${upm})`);
-
-    // Build set of pairs to compute, filtered by frequency ranking if pairlimit>0
-    // charLabel → glyph key map for fast lookup
-    const labelToKey={};
-    for(const k of gks)labelToKey[glyphCache[k].charLabel]=k;
-
-    let pairQueue=[];  // [{kA,kB}]
-    if(p.pairlimit>0&&KERN_PAIRS_FREQ.length>0){
-      // Use frequency-ordered list: each entry is a 2-char string "AV"
-      const seen=new Set();
-      for(const pair of KERN_PAIRS_FREQ){
-        if(pairQueue.length>=p.pairlimit)break;
-        // pair might be multi-byte chars; split into individual unicode chars
-        const chars=[...pair.replace(/&#x27;/g,"'").replace(/&quot;/g,'"')];
-        if(chars.length<2)continue;
-        const cA=chars[0],cB=chars[1];
-        const kA=labelToKey[cA],kB=labelToKey[cB];
-        if(!kA||!kB)continue;
-        const id=kA+'|'+kB;
-        if(seen.has(id))continue;
-        seen.add(id);
-        pairQueue.push({kA,kB});
-      }
-      // If we still need more pairs to fill the limit, fill from all pairs
-      if(pairQueue.length<p.pairlimit){
-        const needed=p.pairlimit-pairQueue.length;
-        const seenSet=new Set(pairQueue.map(({kA,kB})=>kA+'|'+kB));
-        outer: for(const kA of gks){
-          for(const kB of gks){
-            if(pairQueue.length>=p.pairlimit)break outer;
-            const id=kA+'|'+kB;
-            if(!seenSet.has(id)){seenSet.add(id);pairQueue.push({kA,kB});}
-          }
-        }
-      }
-      log(`Pair limit: ${p.pairlimit} (freq-ranked: ${pairQueue.length} pairs queued)`);
-    } else {
-      // All pairs
-      for(const kA of gks)for(const kB of gks)pairQueue.push({kA,kB});
-    }
-
-    const totalPairs=pairQueue.length;
     done=0;
-
-
-
-    for(const {kA,kB} of pairQueue){
+    for(const kA of gks){
       const{right:rA,charLabel:cA,unicode:uA,glyphName:nA,cls:clA}=glyphCache[kA];
-      const{left:lB,charLabel:cB,unicode:uB,glyphName:nB,cls:clB}=glyphCache[kB];
-      {  // dummy block to match original structure
+      for(const kB of gks){
+        const{left:lB,charLabel:cB,unicode:uB,glyphName:nB,cls:clB}=glyphCache[kB];
         const calc=pairMean(rA,lB);
         if(!calc)continue;
         const bothUC=clA==='UC'&&clB==='UC';
@@ -847,13 +761,10 @@ async function runAnalysis(){
         // Threshold: suppress near-zero corrections
         if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
         kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
-            //   }
-      done++;
-      if(done%Math.max(1,Math.floor(totalPairs/20))===0){setProgress(45+done/totalPairs*50);await new Promise(r=>setTimeout(r,0));}
-      }  // end dummy block
-    }  // end pairQueue loop
-
-
+      }
+      done+=gc;
+      if(done%(gc*Math.max(1,Math.floor(gc/20)))===0){setProgress(45+done/(gc*gc)*50);await new Promise(r=>setTimeout(r,0));}
+    }
 
     setProgress(100);
     document.getElementById('s-glyphs').textContent=gc;
@@ -1286,12 +1197,13 @@ function openTestPage(){
 <meta charset="UTF-8">
 <title>Coupler Testpage — ${esc(fn)}</title>
 <style>
+@font-face{font-family:'TestFont';src:url('${fontDataUrl}');}
 *{box-sizing:border-box;margin:0;padding:0;}
 @page{size:A4 portrait;margin:14mm 16mm 14mm 16mm;}
-body{font-family:monospace;background:#fff;color:#000;width:178mm;}
-.params{font-size:7pt;color:#555;border-bottom:0.5pt solid #aaa;padding-bottom:4pt;margin-bottom:8pt;line-height:1.6;}
+body{font-family:'TestFont',serif;background:#fff;color:#000;width:178mm;}
+.params{font-family:monospace;font-size:7pt;color:#555;border-bottom:0.5pt solid #aaa;padding-bottom:4pt;margin-bottom:8pt;line-height:1.6;}
 .params strong{color:#000;}
-canvas{display:block;width:100%;height:auto;}
+.kern-block{font-size:16pt;line-height:1.05;color:#000;word-spacing:0.2em;}
 @media print{body{margin:0;}.params{color:#444;}}
 </style>
 </head>
@@ -1299,110 +1211,16 @@ canvas{display:block;width:100%;height:auto;}
 <div class="params">
   <strong>Coupler Testpage</strong> &nbsp;|&nbsp; Font: <strong>${esc(fn)}</strong> &nbsp;|&nbsp;
   zones=${p.zones} &nbsp; smooth=${document.getElementById('p-smooth').value} &nbsp; blur=${p.blur} &nbsp;
-  round=${p.round} &nbsp; mingap=${Math.round(p.mingap*100)}% &nbsp; threshold=${p.threshold} &nbsp;
-  tracking=${p.tracking} &nbsp; baseLc=${p.baselc} &nbsp; baseUc=${p.baseuc} &nbsp;|&nbsp;
+  round=${p.round} &nbsp; mingap=${Math.round(p.mingap*100)}% &nbsp; threshold=${p.threshold} &nbsp;|&nbsp;
   Base LC: ${r1(baseValueLC)} &nbsp; Base UC: ${r1(baseValueUC)} &nbsp;|&nbsp;
   Non-zero pairs: ${nonZero.length.toLocaleString()}
 </div>
-<canvas id="testCanvas"></canvas>
+<div class="kern-block">Aynn Awnn Avnn A'nn AYHH AWNN AVNN ATNN F.nn F,nn FANN Lynn L'nn LYNN LWNN LVNN LTNN P.nn P,nn PANN Rynn RYNN RWNN RVNN RTNN Tynn Twnn Tunn T;nn Tsnn Trnn T.nn Tonn Tinn T-nn Tenn T,nn T:nn Tcnn Tann TANN Vynn Vunn V;nn Vrnn V. Vonn Vinn V-nn Venn V, V: Vann VANN Wynn Wunn W; Wrnn W.nn Wonn Winn W-nn Wenn W,nn W:nn Wann WANN Yvnn Yunn Y;nn Yqnn Y.nn YpnnYonn Yinn Y-nn Yenn Y,nn Y:nn Yann YANN rznn rynn rxnn rwnn rvnn runn rtnn rrnn r'nn rqnn r.nn ronn rnnn rmnn r-nn rhnn rgnn rfnn renn rdnn r,nn rcnn v.nn v,nn w.nn w,nn y.nn y,nn n.nn r.nn v.nn w.nn y.nn n-n o-o aufkauf aufhalt aufbleib auflassen auffassen aufißt raufjagen führen fördern fähre wegjagen Bargfeld kyrie afro arte axe luvwärts Gevatter wann ever gewettet severe davon gewonnen down wichtig recken Farbe Fest Firn Fjord Font Frau Fuß Fähre Förde Füße Rest Rohr Röhre Rymer Test Tod Tauf Tim Tja Turm Traum Tsara Twist Tyrol Tüte Töten Täter TéTêTèVeste Vogel VéVêVèVater Vijf Vlut Vulkan Vleigje Vytautas Vroni Väter Vögel Vs Ws Vz Wz Weste Wolf Wüste Wörpe Wärter Waage Wiege Wlasta Wurst Wyhl Wrasen Yeats Yoni auf Yqem Yak Ybbs Yggdrasil Yps Ysop Ytong Yuma ATK AVI AWL AYN LTK LVI LWL LYN RTK TVI RWL RYN TABULA VATER WASSER YAKUZA FABEL PAPST</div>
 <script>
-(function(){
-  const fontDataUrl='${fontDataUrl}';
-  const kernMap={};
-  ${JSON.stringify(nonZero)}.forEach(d=>kernMap[d.left+':'+d.right]=d.correction);
-  const TEXT=\`Aynn Awnn Avnn A’nn AYHH AWNN AVNN ATNN F.nn F,nn FANN Lynn L’nn LYNN LWNN LVNN LTNN P.nn P,nn PANN Rynn RYNN RWNN RVNN RTNN Tynn Twnn Tunn T;nn Tsnn Trnn T.nn Tonn Tinn T-nn Tenn T,nn T:nn Tcnn Tann TANN Vynn Vunn V;nn Vrnn V. Vonn Vinn V-nn Venn V, V: Vann VANN Wynn Wunn W; Wrnn W.nn Wonn Winn W-nn Wenn W,nn W:nn Wann WANN Yvnn Yunn Y;nn Yqnn Y.nn YpnnYonn Yinn Y-nn Yenn Y,nn Y:nn Yann YANN rznn rynn rxnn rwnn rvnn runn rtnn rrnn r’nn rqnn r.nn ronn rnnn rmnn r-nn rhnn rgnn rfnn renn rdnn r,nn rcnn v.nn v,nn w.nn w,nn y.nn y,nn n.nn r.nn v.nn w.nn y.nn n-n o-o aufkauf aufhalt aufbleib auflassen auffassen aufißt raufjagen führen fördern fähre wegjagen Bargfeld kyrie afro arte axe luv wärts Gevatter wann ever gewettet severe davon gewonnen down wichtig recken Farbe Fest Firn Fjord Font Frau Fuß Fähre Förde Füße Rest Rohr Röhre Rymer Test Tod Tauf Tim Tja Turm Traum Tsara Twist Tyrol Tüte Töten Täter TéTêTèVeste Vogel VéVêVèVater Vijf Vlut Vulkan Vleigje Vytautas Vroni Väter Vögel Vs Ws Vz Wz Weste Wolf Wüste Wörpe Wärter Waage Wiege Wlasta Wurst Wyhl Wrasen Yeats Yoni auf Yqem Yak Ybbs Yggdrasil Yps Ysop Ytong Yuma ATK AVI AWL AYN LTK LVI LWL LYN RTK TVI RWL RYN TABULA VATER WASSER YAKUZA FABEL PAPST\`;
-  const PT=${Math.round(16*1.4)};  // 16pt × 1.4 = ~22pt
-
-  function cLbl(unicode,gn,gk){
-    if(unicode!==null){
-      const h=unicode.toString(16).toUpperCase().padStart(4,'0');
-      const PN={"002E":"period","002C":"comma","0027":"quotesingle","002D":"hyphen","003B":"semicolon","003A":"colon"};
-      if(PN[h])return PN[h];
-      if(gn&&!/^glyph\d+$/i.test(gn))return gn;
-      try{return String.fromCodePoint(unicode);}catch(_){}
-    }
-    return gk;
-  }
-
-  fetch(fontDataUrl).then(r=>r.arrayBuffer()).catch(()=>{
-    // data URL — convert directly
-    const b64=fontDataUrl.split(',')[1];
-    const bin=atob(b64);
-    const buf=new ArrayBuffer(bin.length);
-    const view=new Uint8Array(buf);
-    for(let i=0;i<bin.length;i++)view[i]=bin.charCodeAt(i);
-    return buf;
-  }).then(buf=>{
-    const font=opentype.parse(buf);
-    const upm=font.unitsPerEm;
-    const pxPerPt=96/72;
-    const fontSize=PT*pxPerPt;
-    const sc=fontSize/upm;
-    const lineH=fontSize*1.05;
-
-    // page width in px (178mm at 96dpi ≈ 670px)
-    const PW=670;
-    const canvas=document.getElementById('testCanvas');
-
-    // measure text to get height needed (word-wrap)
-    const lines=[];
-    let line=[];
-    let lineW=0;
-    const words=TEXT.split(' ');
-    const spaceW=(font.charToGlyph(' ')?.advanceWidth??upm/4)*sc;
-
-    for(const word of words){
-      let wW=0;
-      const wChars=[...word];
-      for(let i=0;i<wChars.length;i++){
-        const g=font.charToGlyph(wChars[i]);
-        if(!g)continue;
-        const aw=(g.advanceWidth??0)*sc;
-        const lbl=cLbl(g.unicodes?.[0]??null,g.name,g.name??'');
-        let kern=0;
-        if(i+1<wChars.length){const ng=font.charToGlyph(wChars[i+1]);if(ng){const nl=cLbl(ng.unicodes?.[0]??null,ng.name,ng.name??'');kern=(kernMap[lbl+':'+nl]??0)*sc;}}
-        wW+=aw+kern;
-      }
-      if(lineW>0&&lineW+spaceW+wW>PW){lines.push(line);line=[];lineW=0;}
-      line.push(word);
-      lineW+=(lineW>0?spaceW:0)+wW;
-    }
-    if(line.length)lines.push(line);
-
-    const H=Math.ceil(lines.length*lineH+32);
-    canvas.width=PW; canvas.height=H;
-    canvas.style.height=H+'px';
-
-    const ctx=canvas.getContext('2d');
-    ctx.fillStyle='#fff';ctx.fillRect(0,0,PW,H);
-    ctx.fillStyle='#000';
-
-    let y=fontSize*0.85+16;
-    for(const lineWords of lines){
-      let x=0;
-      for(let wi=0;wi<lineWords.length;wi++){
-        if(wi>0)x+=spaceW;
-        const wChars=[...lineWords[wi]];
-        for(let i=0;i<wChars.length;i++){
-          const ch=wChars[i];
-          const g=font.charToGlyph(ch);
-          if(!g)continue;
-          const aw=(g.advanceWidth??0)*sc;
-          const lbl=cLbl(g.unicodes?.[0]??null,g.name,g.name??'');
-          const path=g.getPath(x,y,fontSize);
-          ctx.fill(new Path2D(path.toPathData(2)));
-          let kern=0;
-          if(i+1<wChars.length){const ng=font.charToGlyph(wChars[i+1]);if(ng){const nl=cLbl(ng.unicodes?.[0]??null,ng.name,ng.name??'');kern=(kernMap[lbl+':'+nl]??0)*sc;}}
-          x+=aw+kern;
-        }
-      }
-      y+=lineH;
-    }
-  });
-})();
+// Note: CSS font-feature kerning is applied automatically if the font has kern/GPOS tables.
+// The Coupler-derived values shown in the params are for reference.
+// To apply Coupler kerning precisely, use the exported CSV with a font editor.
 <\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"><\/script>
-
 </body>
 </html>`;
 

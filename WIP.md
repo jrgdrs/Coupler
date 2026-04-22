@@ -822,3 +822,19 @@ Das sind viele präzise Anforderungen. Ich lese zunächst die relevanten Teile d
 - **Print LC/UC** — Tintenfläche (gefärbte Fläche) des Buchstabens
 
 Die Messung erfolgt über ein Off-Screen-Canvas: Der Buchstabe wird in Zonenhöhe gerendert, dann werden für jede Zeile die Ink-Pixel gezählt (Print) und die leeren Pixel zwischen linkstem und rechtstem Ink-Pixel (Counter). Bei Smooth=0 gilt: `Base × Zonen + Counter + Print + DeadSpace ≈ advanceWidth × Zonenhöhe × Zonenanzahl`.
+
+
+###
+
+Let me read the current state and fetch the kerning pairs data.Now let me fetch the kerning pairs data:Good — I have the kerning pairs list. Now I'll apply all changes in one comprehensive script:All changes applied. Full summary:
+
+**Base Glyph LC / Base Glyph UC** — two new text input fields (default `o` / `O`). The pair `glyph+glyph` is measured and its average gap becomes the reference spacing. The stat box labels update dynamically to show which pair is being used. Logged as e.g. `Base LC (n+n): Ø 142.3 + tracking 0 = 142.3`.
+
+**Tracking** — numeric offset added to both base values after measurement. If Base LC = 180 and Tracking = -10, the effective base becomes 170 and all LC corrections are computed relative to that.
+
+**Pair limit** — numeric field (default 0 = all). When > 0, pairs are taken from the `KERN_PAIRS_FREQ` list (sourced from the Andre Fuchs corpus, ~800 pairs sorted by frequency across real text). The most common pairs are computed first. If the limit exceeds the list length, remaining pairs are filled from all combinations. This makes large fonts tractable — e.g. a limit of 200 gives you only the typographically most relevant pairs in seconds.
+
+**Testpage with kerning applied** — the page now renders text to a `<canvas>` using opentype.js directly embedded in the page. Each character is positioned with the exact Coupler correction values applied, so the printed output reflects the computed kerning. Font size increased to 16 × 1.4 ≈ 22pt. Line height 1.05×. Word wrap to A4 width.
+
+**Help text** updated to document all four new parameters.
+

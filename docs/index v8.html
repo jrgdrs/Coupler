@@ -816,9 +816,6 @@ async function runAnalysis(){
 
     const totalPairs=pairQueue.length;
     done=0;
-
-
-
     for(const {kA,kB} of pairQueue){
       const{right:rA,charLabel:cA,unicode:uA,glyphName:nA,cls:clA}=glyphCache[kA];
       const{left:lB,charLabel:cB,unicode:uB,glyphName:nB,cls:clB}=glyphCache[kB];
@@ -847,13 +844,11 @@ async function runAnalysis(){
         // Threshold: suppress near-zero corrections
         if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
         kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
-            //   }
+      //}
       done++;
       if(done%Math.max(1,Math.floor(totalPairs/20))===0){setProgress(45+done/totalPairs*50);await new Promise(r=>setTimeout(r,0));}
       }  // end dummy block
     }  // end pairQueue loop
-
-
 
     setProgress(100);
     document.getElementById('s-glyphs').textContent=gc;
