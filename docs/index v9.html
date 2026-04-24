@@ -225,60 +225,6 @@ tr.selected:hover td{background:var(--bg4);}
 
     <h3>Testpage</h3>
     <p>Opens a new browser window with an A4 landscape print page. Six text blocks in different point sizes (9–16 pt) use European-language Lorem Ipsum texts. Print or save as PDF using your browser's print dialog (Ctrl+P / Cmd+P).</p>
-
-    <h2 style="margin-top:24px">Function Reference</h2>
-
-    <h3>Loading a Font</h3>
-    <p>Drop a TTF or OTF file onto the drop zone, or click to browse. The file is read as an ArrayBuffer, parsed by opentype.js, and a Base64 data URL is stored for later use in the test page. The kerning analysis runs automatically after a successful load.</p>
-
-    <h3>Computing Kerning — Four-Step Pipeline</h3>
-    <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:1.8">
-      <li><strong>Measure margins</strong> — Every glyph is sliced into <em>Zones</em> equal horizontal bands. For each band, Bézier intersection geometry (cubic and quadratic) determines the leftmost and rightmost ink extent. Each zone margin is the average of <em>Blur</em> sub-zones, which smooths staircase artifacts where curves cross band boundaries at oblique angles.</li>
-      <li><strong>Smooth &amp; shape</strong> — A reciprocal step-limit pass (<em>Smooth</em>) prevents sudden jumps between adjacent zone margins, anchoring from the zone of maximum glyph extent outward. An optional quadratic <em>Bowl</em> then bends the entire profile: positive values bow margins outward (convex); negative values bow them inward (concave).</li>
-      <li><strong>Establish baselines</strong> — The self-pair of the reference glyph (default <code style="font-family:var(--mono);color:var(--accent)">o+o</code> for LC, <code style="font-family:var(--mono);color:var(--accent)">O+O</code> for UC) is measured and its mean gap becomes the target spacing. A global <em>Tracking</em> offset shifts the effective baseline before corrections are computed.</li>
-      <li><strong>Compute pair corrections</strong> — For every pair, the mean zone gap (pair mean) is computed. Correction = baseline − pair mean. Corrections that would violate the <em>Min gap</em> floor are capped (⚑). Corrections below the <em>Threshold</em> are zeroed out. The final value is rounded to the nearest multiple of the <em>Round module</em>.</li>
-    </ol>
-
-    <h3>Preview Canvas</h3>
-    <p>The preview renders the entered text directly onto an HTML Canvas using opentype.js glyph paths. Kerning corrections are applied as advance-width offsets per character pair. Optional overlays show the computed left (amber) and right (green) margin bands per zone, the typographic baseline, and the x-height line. In <em>Pair mode</em> (⊙ Pair), the selected table row is shown in a context string — navigate rows with the arrow keys, exit with Escape.</p>
-
-    <h3>Spacing Corrections Tab</h3>
-    <p>For each glyph, the self-pair correction (A+A, n+n, …) is extracted from the kerning table. Two adjustment suggestions are derived: <strong>ΔAdvanceWidth</strong> (half the self-kern, split symmetrically between both sides) and <strong>ΔSidebearing</strong> (a quarter of the self-kern, shifting the glyph within its bounding box). If applied to the font, the self-pair correction approaches zero.</p>
-
-    <h3>Export</h3>
-    <p>Downloads all kerning pairs as a semicolon-delimited CSV with a parameter header. Each line contains left glyph, right glyph, correction value, class (LC / UC / mixed), and zone breakdown. Capped pairs are flagged with <code style="font-family:var(--mono);color:var(--accent)">[cap]</code>.</p>
-
-    <h2 style="margin-top:24px">Glossary</h2>
-    <dl class="help-kv">
-      <dt>UPM</dt><dd><em>Units Per Em</em> — the internal coordinate unit of a font. All distances (margins, corrections, gap floors) are expressed in UPM units.</dd>
-      <dt>Glyph</dt><dd>A single character as a vector path. Each glyph carries an advance width and optionally one or more Unicode code points.</dd>
-      <dt>Advance Width</dt><dd>The horizontal distance the cursor moves after placing a glyph, including any side-bearings.</dd>
-      <dt>Kerning</dt><dd>A pair-specific adjustment to the space between two glyphs. Negative = tighter; positive = looser.</dd>
-      <dt>Zone</dt><dd>One equal-height horizontal slice across the full em range (ascender to descender). More zones capture finer vertical contour detail at the cost of computation time.</dd>
-      <dt>Margin</dt><dd>The gap between the outermost ink edge of a glyph and its advance-width boundary — measured separately on the left and right side for every zone.</dd>
-      <dt>Pair Mean</dt><dd>The arithmetic mean of all valid zone gaps for a pair: right margin of glyph A + left margin of glyph B, averaged across every zone where both glyphs have ink.</dd>
-      <dt>Base Value</dt><dd>The reference pair mean from the self-pair of the base glyph (default <em>o</em> for LC, <em>O</em> for UC). It is the target spacing against which all corrections are computed.</dd>
-      <dt>LC / UC</dt><dd>Lowercase / Uppercase (including lining figures). Determines which base value is used for a given pair.</dd>
-      <dt>Mixed</dt><dd>A pair classification where one glyph is LC and the other is UC; the LC base value is used.</dd>
-      <dt>Bézier Curve</dt><dd>The parametric curve type used in OpenType outlines. Quadratic curves appear in TrueType fonts; cubic curves appear in CFF/OTF fonts. Coupler evaluates both types geometrically to extract ink extents.</dd>
-      <dt>Counter</dt><dd>The enclosed interior void of a glyph (e.g., the hole in "o" or "p"). Measured via an off-screen canvas pixel scan.</dd>
-      <dt>Print Area</dt><dd>The total ink area of a glyph (sum of ink-covered pixels in the zone pixel map), expressed in font-unit² equivalents.</dd>
-      <dt>Smooth</dt><dd>Reciprocal smoothing strength (0 = off, 99 = maximum). Limits the maximum step allowed between adjacent zone margins, anchoring from the zone of maximum glyph extent and spreading outward.</dd>
-      <dt>Bowl</dt><dd>Quadratic curvature applied to the smoothed margin profile after smoothing. Positive: margins bow outward (larger away from the anchor zone). Negative: margins bow inward (smaller away from the anchor zone).</dd>
-      <dt>Min Gap %</dt><dd>The minimum allowed zone gap after applying a kerning correction, expressed as a percentage of UPM. Acts as a collision guard; pairs that hit this floor are marked with ⚑.</dd>
-      <dt>Blur</dt><dd>Number of sub-zones computed per zone. Zone margins are the average of all sub-zone readings, suppressing quantization artifacts where curves cross zone boundaries obliquely.</dd>
-      <dt>Round Module</dt><dd>Kerning values are rounded to the nearest multiple of this number (e.g., 46 → values like −92, −46, 0, 46, 92). Use 1 for plain integer rounding.</dd>
-      <dt>Threshold</dt><dd>Minimum absolute value for a correction to be retained. Corrections in the range (−threshold … +threshold) are discarded as noise.</dd>
-      <dt>Tracking</dt><dd>A global offset added to the effective base value before computing corrections. Negative tightens all spacing; positive loosens it.</dd>
-      <dt>Self-Kern</dt><dd>The kerning correction of a glyph paired with itself (A+A). A non-zero self-kern indicates unbalanced sidebearings in the original font.</dd>
-      <dt>ΔAdvanceWidth</dt><dd>Suggested advance-width adjustment to balance the self-pair: half the self-kern correction, applied symmetrically to both sides.</dd>
-      <dt>ΔSidebearing</dt><dd>Suggested sidebearing shift (glyph position within its bounding box): one quarter of the self-kern correction.</dd>
-      <dt>Small Caps (SC)</dt><dd>Small-capital glyph variants, identified by names ending in <code style="font-family:var(--mono);color:var(--accent)">.sc</code> or <code style="font-family:var(--mono);color:var(--accent)">.smcp</code>.</dd>
-      <dt>OSF</dt><dd><em>Oldstyle Figures</em> — non-lining numerals, identified by names ending in <code style="font-family:var(--mono);color:var(--accent)">.osf</code> or PUA code points U+F730–U+F739.</dd>
-      <dt>Pair Limit</dt><dd>Maximum number of kerning pairs to compute, prioritized by frequency of occurrence in real-world text (source: Andre Fuchs kerning-pairs corpus). Set to 0 to compute all pairs.</dd>
-      <dt>Capped (⚑)</dt><dd>The computed correction was reduced because it would have violated the Min Gap floor. The tightest-zone gap minus the Min Gap determines the maximum allowable negative correction.</dd>
-      <dt>Pair Preview Mode</dt><dd>Clicking a table row (or pressing ⊙ Pair) activates pair preview: the selected pair is shown in the context string <em>oABo nABn OABO HABHAB</em>. Navigate with ↑↓ arrow keys; exit with Escape.</dd>
-    </dl>
   </div>
 </div>
 
@@ -433,8 +379,8 @@ tr.selected:hover td{background:var(--bg4);}
     <select id="preset-select" onchange="applyPreset(this.value)">
       <option value="">— presets —</option>
       <option value="AVATAWAVE Coupling">Caps pairs · AVATAWAVE</option>
-      <option value="vrvocpallholbofbofto">Classic UC pairs</option>
-      <option value="ATAVATTDXC+ ComFamToTy ocaleam vrvocpallholbofbofto">Ligatures &amp; mixed</option>
+      <option value="AV AT AW AY LT LV LY VA TA WA YA">Classic UC pairs</option>
+      <option value="fffi ffl Th Ty To">Ligatures &amp; mixed</option>
       <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">Full uppercase</option>
       <option value="abcdefghijklmnopqrstuvwxyz">Full lowercase</option>
       <option value="0123456789">Digits</option>
