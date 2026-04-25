@@ -7,7 +7,6 @@
 # IS_GLYPHS detection: WKUserScript injects window.__IS_GLYPHS=true at document start.
 
 from __future__ import print_function
-import gc
 import json
 import objc
 import os
@@ -45,69 +44,6 @@ GSCURVE    = 'curve'
 
 
 # ── Path conversion ───────────────────────────────────────────────────────────
-
-_IDENTITY_TRANSFORM = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-
-
-def _apply_transform_to_nodes(nd_list, transform):
-    m11, m12, m21, m22, tX, tY = transform
-    return [(m11 * x + m21 * y + tX, m12 * x + m22 * y + tY, t)
-            for (x, y, t) in nd_list]
-
-
-def _compose_transforms(outer, inner):
-    a11, a12, a21, a22, atX, atY = outer
-    b11, b12, b21, b22, btX, btY = inner
-    return (
-        a11 * b11 + a21 * b12,
-        a12 * b11 + a22 * b12,
-        a11 * b21 + a21 * b22,
-        a12 * b21 + a22 * b22,
-        a11 * btX + a21 * btY + atX,
-        a12 * btX + a22 * btY + atY,
-    )
-
-
-def _collect_layer_paths(layer, font, master_id, transform=None, depth=0):
-    """Return list of node-lists for a layer, recursively resolving components."""
-    if depth > 8:
-        return []
-    paths_py = []
-    try:
-        for path in (layer.paths or []):
-            # str(nd.type) forces ObjC NSString → plain Python str so the
-            # tuple contains no PyObjC proxies that could confuse the GC.
-            nd_list = [(float(nd.x), float(nd.y), str(nd.type)) for nd in path.nodes]
-            if nd_list:
-                if transform is not None:
-                    nd_list = _apply_transform_to_nodes(nd_list, transform)
-                paths_py.append(nd_list)
-    except Exception:
-        pass
-    try:
-        for comp in (layer.components or []):
-            try:
-                ref_glyph = font.glyphs[str(comp.name)]  # str() avoids NSString proxy
-                if ref_glyph is None:
-                    continue
-                ref_layer = ref_glyph.layers[master_id]
-                if ref_layer is None:
-                    continue
-                try:
-                    ct = tuple(float(v) for v in comp.transform)
-                    if len(ct) != 6:
-                        ct = _IDENTITY_TRANSFORM
-                except Exception:
-                    ct = _IDENTITY_TRANSFORM
-                composed = _compose_transforms(transform, ct) if transform is not None else ct
-                paths_py.extend(
-                    _collect_layer_paths(ref_layer, font, master_id, composed, depth + 1))
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return paths_py
-
 
 def _prefetch_layer_paths(layer):
     paths_py = []
@@ -187,10 +123,8 @@ class _NavDelegate(NSObject):
                 self._pending_cmd   = (url.host() or '').lower()
                 self._pending_query = url.query() or ''
                 print('[Coupler] IPC cmd=%r (deferred)' % self._pending_cmd)
-                # Cancel any still-queued dispatch before scheduling a new one.
-                # Rapid IPC calls (e.g. double-click Load) must not stack
-                # multiple _send_glyph_data calls on the runloop.
-                NSObject.cancelPreviousPerformRequestsWithTarget_(self)
+                # Delay 0 fires after the current runloop cycle finishes,
+                # giving WebKit time to process the cancellation first.
                 self.performSelector_withObject_afterDelay_(
                     'couplerDispatch:', None, 0.0)
                 return
@@ -205,9 +139,6 @@ class _NavDelegate(NSObject):
         dialog = self._dialog
         if not dialog:
             return
-        # Guard against a stale dispatch firing after _cleanup() has run.
-        if not getattr(dialog, '_webview', None):
-            return
         try:
             if cmd == 'requestdata':
                 dialog._send_glyph_data()
@@ -220,13 +151,6 @@ class _NavDelegate(NSObject):
                     print('[Coupler] applykerning parse error: %s' % pe)
                     pairs = []
                 dialog._apply_kerning(pairs)
-            elif cmd == 'applyspacing':
-                try:
-                    items = json.loads(urllib.parse.unquote(query)) if query else []
-                except Exception as pe:
-                    print('[Coupler] applyspacing parse error: %s' % pe)
-                    items = []
-                dialog._apply_spacing(items)
         except Exception:
             traceback.print_exc()
 
@@ -247,19 +171,6 @@ class CouplerDialog(object):
 
     def _cleanup(self):
         """Safely tear down WKWebView and window before the dialog is replaced."""
-        nd = self._nav_delegate
-        if nd is not None:
-            try:
-                # Cancel any pending couplerDispatch: scheduled via
-                # performSelector:afterDelay: so it cannot fire on a
-                # torn-down dialog and crash in _send_glyph_data.
-                NSObject.cancelPreviousPerformRequestsWithTarget_(nd)
-            except Exception:
-                pass
-            try:
-                nd._dialog = None   # break the back-reference / retain cycle
-            except Exception:
-                pass
         try:
             if self._webview:
                 self._webview.setNavigationDelegate_(None)
@@ -268,7 +179,7 @@ class CouplerDialog(object):
             pass
         try:
             if self._window:
-                self._window.close()
+                self._window.close()   # hides and releases the NSWindow properly
         except Exception:
             pass
         self._webview      = None
@@ -333,44 +244,18 @@ class CouplerDialog(object):
     def _send_identity(self):
         try:
             master = self._master
-            fn = self._font.familyName or 'Untitled'
-            mn = (master.name if master else 'Master')
+            fn = (self._font.familyName or 'Untitled').replace("'", "\\'")
+            mn = (master.name if master else 'Master').replace("'", "\\'")
             n  = len(list(self._font.glyphs))
             print('[Coupler] identify: %s / %s / %d glyphs' % (fn, mn, n))
-            # json.dumps produces a properly escaped JS string literal that
-            # handles backslashes, quotes, control chars and non-ASCII safely.
-            self._js('setFontInfo(%s,%s,%d)' % (json.dumps(fn), json.dumps(mn), n))
+            self._js("setFontInfo('%s','%s',%d)" % (fn, mn, n))
         except Exception:
             traceback.print_exc()
 
     def _send_glyph_data(self):
-        # Python's cyclic GC can crash when it traverses PyObjC proxy objects
-        # (GSGlyph, GSLayer, GSNode …) that are live on the stack: ObjC's ARC
-        # retains are invisible to gc_refs accounting, so visit_decref can push
-        # gc_refs below zero → abort.  Disable the cyclic GC for the duration
-        # so it cannot fire mid-traversal while ObjC proxies are alive.
-        # Do NOT call gc.collect() here — we are already inside an ObjC callback
-        # (method_stub), so an explicit collect would crash for the same reason.
-        gc.disable()
         try:
-            self._send_glyph_data_inner()
-        finally:
-            gc.enable()
-
-    def _send_glyph_data_inner(self):
-        try:
-            # Always resolve font and master together from the live Glyphs API
-            # so master_id is guaranteed to belong to this font.  Using self._font
-            # with a master from a different font (e.g. two fonts open) would make
-            # layer lookups by master_id return None for every glyph → silent skip
-            # or, in older Glyphs builds, an ObjC exception → crash.
-            font = Glyphs.font or self._font
-            if not font:
-                return
-            master = font.selectedFontMaster
-            if not master:
-                return
-            self._font = font   # refresh so _master property stays consistent
+            font      = self._font
+            master    = self._master   # property → always current selection
             master_id = master.id
             all_glyphs = list(font.glyphs)
             n_all      = len(all_glyphs)
@@ -394,10 +279,10 @@ class CouplerDialog(object):
             for idx, glyph in enumerate(all_glyphs):
                 try:
                     layer = glyph.layers[master_id]
-                    if layer is None:
+                    if layer is None or not layer.paths or len(layer.paths) == 0:
                         skipped += 1
                         continue
-                    paths_py = _collect_layer_paths(layer, font, master_id)
+                    paths_py = _prefetch_layer_paths(layer)
                     if not paths_py:
                         skipped += 1
                         continue
@@ -410,7 +295,7 @@ class CouplerDialog(object):
                         try:    uni = int(glyph.unicode, 16)
                         except (ValueError, TypeError): pass
                     glyphs_data.append({
-                        'name':         str(glyph.name),
+                        'name':         glyph.name,
                         'advanceWidth': float(layer.width or 0),
                         'unicode':      uni,
                         'commands':     commands,
@@ -489,55 +374,6 @@ class CouplerDialog(object):
             print('[Coupler] ' + summary)
             self._webview.evaluateJavaScript_completionHandler_(
                 'showApplyResult && showApplyResult(%s)' % json.dumps({'ok': ok, 'msg': summary}),
-                None)
-            Message(summary, 'Coupler — Done')
-        except Exception:
-            traceback.print_exc()
-
-    def _apply_spacing(self, items):
-        try:
-            if not items:
-                return
-            from AppKit import NSAlert, NSAlertFirstButtonReturn
-            alert = NSAlert.alloc().init()
-            alert.setMessageText_('Apply Spacing — %s' % self._master.name)
-            alert.setInformativeText_(
-                'Set advance width and left sidebearing for %d glyphs in master "%s"?\n\n'
-                'This overwrites the current horizontal metrics.' % (
-                    len(items), self._master.name))
-            alert.addButtonWithTitle_('Apply')
-            alert.addButtonWithTitle_('Cancel')
-            if alert.runModal() != NSAlertFirstButtonReturn:
-                return
-
-            master_id = self._master.id
-            font      = self._font
-            ok        = 0
-            try:   font.disableUpdateInterface()
-            except AttributeError: pass
-            try:
-                for item in items:
-                    try:
-                        glyph = font.glyphs[item['name']]
-                        if glyph is None:
-                            continue
-                        layer = glyph.layers[master_id]
-                        if layer is None:
-                            continue
-                        layer.width = int(round(layer.width + item['dwidth']))
-                        layer.LSB   = int(round(layer.LSB   + item['dlsb']))
-                        ok += 1
-                    except Exception as e:
-                        print('[Coupler] spacing %s: %s' % (item.get('name', '?'), e))
-            finally:
-                try:   font.enableUpdateInterface()
-                except AttributeError: pass
-
-            summary = 'Applied spacing for %d glyphs → master "%s".' % (ok, self._master.name)
-            print('[Coupler] ' + summary)
-            self._webview.evaluateJavaScript_completionHandler_(
-                'showSpacingApplyResult && showSpacingApplyResult(%s)' % json.dumps(
-                    {'ok': ok, 'msg': summary}),
                 None)
             Message(summary, 'Coupler — Done')
         except Exception:

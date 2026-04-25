@@ -454,7 +454,7 @@ tr.selected:hover td{background:var(--bg4);}
 
   <div class="ptextrow">
     <label>Text</label>
-    <input type="text" id="preview-text" value="AVATAWAVE Coupling" oninput="document.getElementById('preset-select').value='';renderPreview()">
+    <input type="text" id="preview-text" value="AVATAWAVE Coupling" oninput="renderPreview()">
     <select id="preset-select" onchange="applyPreset(this.value)">
       <option value="">— presets —</option>
       <option value="AVATAWAVE Coupling">Caps pairs · AVATAWAVE</option>
@@ -505,9 +505,6 @@ tr.selected:hover td{background:var(--bg4);}
       <button id="pair-preview-btn" class="tbtn" onclick="togglePairPreview()" title="Toggle pair preview mode (also: Esc)">⊙ Pair</button>
       <button class="btn-exp" onclick="exportCSV()">↓ Export</button>
     </div>
-    <div class="filter-group" id="spacing-filter-group" style="display:none">
-      <button class="btn-exp" id="btn-apply-spacing" onclick="applySpacingToGlyphs()" style="display:none">⊙ Apply Spacing</button>
-    </div>
   </div>
   <div class="tbl-wrap" id="kern-panel">
     <div class="empty" id="empty-state">
@@ -527,30 +524,23 @@ tr.selected:hover td{background:var(--bg4);}
       <tbody id="results-tbody"></tbody>
     </table>
   </div>
-  <div class="tbl-wrap" id="spacing-panel" style="display:none;flex-direction:column">
+  <div class="tbl-wrap" id="spacing-panel" style="display:none">
     <div class="empty" id="spacing-empty">
       <div class="eico">⊙</div>
       <div>Compute kerning to see spacing corrections</div>
     </div>
-    <div id="spacing-content" style="display:none;flex:1;min-height:0;flex-direction:row;gap:0;overflow:hidden">
-      <div id="spacing-histogram" style="width:280px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:0 8px"></div>
-      <div style="flex:1;min-width:0;overflow:auto">
-        <table id="spacing-table">
-          <thead><tr>
-            <th>Glyph</th>
-            <th>Cls</th>
-            <th title="Current advance width">Old AW</th>
-            <th title="New advance width rounded to module">New AW</th>
-            <th title="Net advance width change">Δ AW</th>
-            <th title="Left margin correction vs base glyph">Δ Left</th>
-            <th title="Right margin correction vs base glyph">Δ Right</th>
-            <th title="New computed left margin">New L</th>
-            <th title="New computed right margin">New R</th>
-          </tr></thead>
-          <tbody id="spacing-tbody"></tbody>
-        </table>
-      </div>
-    </div>
+    <table id="spacing-table" style="display:none">
+      <thead><tr>
+        <th>Glyph</th>
+        <th>Pair (xx)</th>
+        <th title="Kerning value for this glyph paired with itself">Self-kern</th>
+        <th title="Suggested advance width adjustment to bring self-pair to zero">ΔAdvanceWidth</th>
+        <th title="Suggested sidebearing shift (move glyph within bounds)">ΔSidebearing</th>
+        <th>Class</th>
+        <th>Mean</th>
+      </tr></thead>
+      <tbody id="spacing-tbody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -635,6 +625,7 @@ function applyParamPreset(key){
   document.getElementById('p-blur').value     =pr.blur;
   document.getElementById('p-round').value    =pr.round;
   document.getElementById('p-threshold').value=pr.threshold;
+  document.getElementById('preset-params').value='';
 }
 
 // ── LOG / STATUS ──────────────────────────────────────
@@ -735,12 +726,12 @@ function smoothMargins(arr,zH,pct){
   if(pct<=0)return arr.slice();
   const mD=pct*zH,n=arr.length,out=arr.slice();
   let aZ=-1,aV=Infinity;
-  for(let z=0;z<n;z++)if(arr[z]!==null&&arr[z]<aV){aV=arr[z];aZ=z;}
+  for(let z=0;z<n;z++)if(arr[z]!==-1&&arr[z]<aV){aV=arr[z];aZ=z;}
   if(aZ===-1)return out;
   let prev=aZ;
-  for(let z=aZ-1;z>=0;z--){if(out[z]===null)continue;const mA=r1(out[prev]+mD);if(out[z]>mA)out[z]=mA;if(out[z]<aV)out[z]=r1(aV);prev=z;}
+  for(let z=aZ-1;z>=0;z--){if(out[z]===-1)continue;const mA=r1(out[prev]+mD);if(out[z]>mA)out[z]=mA;if(out[z]<aV)out[z]=r1(aV);prev=z;}
   prev=aZ;
-  for(let z=aZ+1;z<n;z++){if(out[z]===null)continue;const mA=r1(out[prev]+mD);if(out[z]>mA)out[z]=mA;if(out[z]<aV)out[z]=r1(aV);prev=z;}
+  for(let z=aZ+1;z<n;z++){if(out[z]===-1)continue;const mA=r1(out[prev]+mD);if(out[z]>mA)out[z]=mA;if(out[z]<aV)out[z]=r1(aV);prev=z;}
   return out;
 }
 
@@ -755,7 +746,7 @@ function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   for(let z=0;z<p.zones;z++){
     const s0=z*p.blur;let sL=0,sR=0,cnt=0;
     for(let s=0;s<p.blur;s++){const sub=subR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
-    if(cnt===0){lR.push(null);rR.push(null);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+    if(cnt===0){lR.push(-1);rR.push(-1);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
   }
   const leftSm=smoothMargins(lR,zH,p.smooth);
   const rightSm=smoothMargins(rR,zH,p.smooth);
@@ -781,7 +772,7 @@ function classifyGlyph(unicode,name){
 // ── PAIR MEAN ─────────────────────────────────────────
 function pairMean(rA,lB){
   const zv=[];let sum=0;
-  for(let z=0;z<rA.length;z++){const a=rA[z],b=lB[z];if(a===null||b===null)continue;const s=a+b;sum+=s;zv.push({z,rA:a,lB:b,sum:r1(s)});}
+  for(let z=0;z<rA.length;z++){const a=rA[z],b=lB[z];if(a===-1||b===-1)continue;const s=a+b;sum+=s;zv.push({z,rA:a,lB:b,sum:r1(s)});}
   if(zv.length===0)return null;
   return{mean:sum/zv.length,validCount:zv.length,zoneValues:zv};
 }
@@ -950,7 +941,8 @@ async function runAnalysis(){
 
     log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value} blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold} tracking=${p.tracking} baseLc=${p.baselc} baseUc=${p.baseuc} pairlimit=${p.pairlimit||'all'}`,'info');
 
-    // Step 1: margins — all glyphs in font (allowedChars filter only used for pair building)
+    // Step 1: margins — only for glyphs whose charLabel appears in KERNING_PAIRS
+    const allowedChars=buildAllowedChars(p.baselc,p.baseuc);
     const allKeys=Object.keys(fontObj.glyphs.glyphs);
     let done=0;
     glyphCache={};
@@ -961,6 +953,7 @@ async function runAnalysis(){
       const gk=g.name??`glyph_${key}`;
       const unicode=g.unicodes?.[0]??null;
       const cl=cLbl(unicode,g.name,gk);
+      if(!allowedChars.has(cl))continue;
       const{left,right,leftRaw,rightRaw,advanceWidth}=computeGlyphMargins(g,upm,p,yBot,yTop);
       const cls=classifyGlyph(unicode,gk);
       glyphCache[gk]={left,right,leftRaw,rightRaw,charLabel:cl,unicode,glyphName:gk,cls,advanceWidth};
@@ -1152,7 +1145,7 @@ function computeMarginsFromCommands(commands, aw, p, yBot, yTop){
   for(let z=0;z<p.zones;z++){
     const s0=z*p.blur;let sL=0,sR=0,cnt=0;
     for(let s=0;s<p.blur;s++){const sub=subR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
-    if(cnt===0){lR.push(null);rR.push(null);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+    if(cnt===0){lR.push(-1);rR.push(-1);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
   }
   const leftSm=smoothMargins(lR,zH,p.smooth);
   const rightSm=smoothMargins(rR,zH,p.smooth);
@@ -1185,15 +1178,17 @@ async function runAnalysisFromGlyphsData(data){
     log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value} blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold} tracking=${p.tracking} baseLc=${p.baselc} baseUc=${p.baseuc} pairlimit=${p.pairlimit||'all'}`,'info');
     dbg(`yBot=${yBot} yTop=${yTop} upm=${upm}`);
 
-    // Step 1: margins — all glyphs (allowedChars filter only used for pair building)
+    // Step 1: margins — only for glyphs whose charLabel appears in KERNING_PAIRS
+    const allowedChars=buildAllowedChars(p.baselc,p.baseuc);
     let done=0;
     const allGlyphs=data.glyphs;
-    dbg(`Step 1: computing margins for ${allGlyphs.length} glyphs…`);
+    dbg(`Step 1: computing margins for ${allGlyphs.length} glyphs (filtered by KERNING_PAIRS)…`);
     setProgress(40);setStatus('Computing margins…','busy');
     for(const g of allGlyphs){
       done++;
       if(!g.commands||g.commands.length===0)continue;
       const cl=cLbl(g.unicode,g.name,g.name);
+      if(!allowedChars.has(cl))continue;
       const{left,right,leftRaw,rightRaw,advanceWidth}=computeMarginsFromCommands(g.commands,g.advanceWidth,p,yBot,yTop);
       const cls=classifyGlyph(g.unicode,g.name);
       glyphCache[g.name]={left,right,leftRaw,rightRaw,charLabel:cl,unicode:g.unicode,glyphName:g.name,cls,advanceWidth};
@@ -1307,41 +1302,6 @@ function showApplyResult(result){
   setStatus(result.msg, result.ok>0?'active':'error');
 }
 
-function applySpacingToGlyphs(){
-  if(!IS_GLYPHS){return;}
-  const gks=Object.keys(glyphCache);
-  if(!gks.length){alert('No spacing data — run Compute first.');return;}
-  const p=P();
-  const trk=p.tracking/2;
-  const baseLcGC=glyphCache[p.baselc],baseUcGC=glyphCache[p.baseuc];
-  const baseLcL=baseLcGC?avgMargin(baseLcGC.left)+trk:null;
-  const baseLcR=baseLcGC?avgMargin(baseLcGC.right)+trk:null;
-  const baseUcL=baseUcGC?avgMargin(baseUcGC.left)+trk:null;
-  const baseUcR=baseUcGC?avgMargin(baseUcGC.right)+trk:null;
-  const items=[];
-  for(const gk of gks){
-    const gc=glyphCache[gk];
-    if(!gc)continue;
-    const isUC=gc.cls==='UC';
-    const bL=isUC?baseUcL:baseLcL,bR=isUC?baseUcR:baseLcR;
-    if(bL===null||bR===null)continue;
-    const gL=avgMargin(gc.left),gR=avgMargin(gc.right);
-    if(gL===null||gR===null)continue;
-    const dL=rtm(bL-gL,p.round);
-    const dR=rtm(bR-gR,p.round);
-    const newAW=rtm(gc.advanceWidth+dL+dR,p.round);
-    const dWidth=newAW-gc.advanceWidth;
-    items.push({name:gc.glyphName,dlsb:dL,dwidth:dWidth});
-  }
-  if(!items.length){alert('No adjustments to apply.');return;}
-  window.location.href='coupler://applyspacing?'+encodeURIComponent(JSON.stringify(items));
-}
-
-function showSpacingApplyResult(result){
-  log(result.msg, result.ok>0?'ok':'err');
-  setStatus(result.msg, result.ok>0?'active':'error');
-}
-
 // ── TABLE ─────────────────────────────────────────────
 function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=col!=='correction';}sortAndRender();}
 function sortAndRender(){
@@ -1425,7 +1385,6 @@ function switchTab(tab){
   document.getElementById('kern-panel').style.display=tab==='kern'?'flex':'none';
   document.getElementById('spacing-panel').style.display=tab==='spacing'?'flex':'none';
   document.getElementById('kern-filter-group').style.display=tab==='kern'?'flex':'none';
-  document.getElementById('spacing-filter-group').style.display=tab==='spacing'?'flex':'none';
   if(tab==='spacing')renderSpacingTable();
 }
 
@@ -1450,88 +1409,39 @@ function togglePairPreview(){
  *   - ΔSidebearing: quarter of the self-kern (shift glyph inside bounds)
  *   Net effect: if applied, the self-pair kern approaches zero.
  */
-function avgMargin(arr){
-  let sum=0,cnt=0;
-  for(const v of arr)if(v!==null){sum+=v;cnt++;}
-  return cnt>0?sum/cnt:null;
-}
-
-function showSpacingContent(show){
-  const empty=document.getElementById('spacing-empty');
-  const content=document.getElementById('spacing-content');
-  if(show){empty.style.display='none';content.style.display='flex';}
-  else{empty.style.display='flex';content.style.display='none';}
-}
-
 function renderSpacingTable(){
-  const gks=Object.keys(glyphCache);
-  if(!gks.length){showSpacingContent(false);return;}
-  const p=P();
-  const baseLcGC=glyphCache[p.baselc],baseUcGC=glyphCache[p.baseuc];
-  const trk=p.tracking/2; // tracking split equally across left and right margin targets
-  const baseLcL=baseLcGC?avgMargin(baseLcGC.left)+trk:null;
-  const baseLcR=baseLcGC?avgMargin(baseLcGC.right)+trk:null;
-  const baseUcL=baseUcGC?avgMargin(baseUcGC.left)+trk:null;
-  const baseUcR=baseUcGC?avgMargin(baseUcGC.right)+trk:null;
-
-  const rows=[];
-  for(const gk of gks){
-    const gc=glyphCache[gk];
-    if(!gc)continue;
-    const isUC=gc.cls==='UC';
-    const bL=isUC?baseUcL:baseLcL,bR=isUC?baseUcR:baseLcR;
-    if(bL===null||bR===null)continue;
-    const gL=avgMargin(gc.left),gR=avgMargin(gc.right);
-    if(gL===null||gR===null)continue;
-    const dL=rtm(bL-gL,p.round);
-    const dR=rtm(bR-gR,p.round);
-    const oldAW=gc.advanceWidth;
-    const newAW=rtm(oldAW+dL+dR,p.round);
-    const dAW=newAW-oldAW;
-    const newL=r1(gL+dL);
-    const newR=r1(gR+dR);
-    rows.push({gk,gc,oldAW,newAW,dAW,dL,dR,newL,newR});
-  }
-
-  if(!rows.length){
-    showSpacingContent(false);
-    document.getElementById('spacing-empty').querySelector('div:last-child').textContent='No glyphs with margins found';
+  if(!kerningData.length){
+    document.getElementById('spacing-table').style.display='none';
+    document.getElementById('spacing-empty').style.display='flex';
     return;
   }
-
-  rows.sort((a,b)=>a.newAW-b.newAW||(a.gc.charLabel<b.gc.charLabel?-1:1));
-
-  // Histogram grouped by newAW — horizontal rows with glyphs inside bars
-  const byAW=new Map();
-  for(const r of rows){if(!byAW.has(r.newAW))byAW.set(r.newAW,[]);byAW.get(r.newAW).push(r);}
-  const sortedAW=[...byAW.entries()].sort((a,b)=>a[0]-b[0]);
-  const maxCount=Math.max(...sortedAW.map(([,a])=>a.length));
-  const histEl=document.getElementById('spacing-histogram');
-  let histHtml='<div style="display:flex;flex-direction:column;gap:2px;padding:8px 0">';
-  for(const[aw,items] of sortedAW){
-    const pct=Math.max(6,Math.round(items.length/maxCount*100));
-    const chars=items.map(r=>r.gc.charLabel).join(' ');
-    histHtml+=`<div style="display:flex;align-items:center;gap:6px">`;
-    histHtml+=`<span style="font-size:10px;color:var(--text2);width:44px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums">${aw}</span>`;
-    histHtml+=`<div style="flex:1;min-width:0;background:rgba(255,255,255,.07);border-radius:3px;height:24px;position:relative">`;
-    histHtml+=`<div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:var(--accent);opacity:.8;border-radius:3px;display:flex;align-items:center;padding:0 7px;overflow:hidden;white-space:nowrap;font-size:14px;letter-spacing:.05em;color:#fff;line-height:1">${esc(chars)}</div>`;
-    histHtml+=`</div>`;
-    histHtml+=`<span style="font-size:10px;color:var(--text2);flex-shrink:0;width:22px;text-align:left">${items.length}</span>`;
-    histHtml+=`</div>`;
+  // Build self-pair map
+  const selfKern={};
+  for(const d of kerningData){
+    if(d.left===d.right)selfKern[d.left]=d;
   }
-  histHtml+='</div>';
-  histEl.innerHTML=histHtml;
-
+  const rows=Object.values(selfKern).sort((a,b)=>Math.abs(b.correction)-Math.abs(a.correction));
+  if(!rows.length){
+    document.getElementById('spacing-table').style.display='none';
+    document.getElementById('spacing-empty').style.display='flex';
+    document.getElementById('spacing-empty').querySelector('div:last-child').textContent='No self-pairs found (try computing all pairs)';
+    return;
+  }
+  document.getElementById('spacing-table').style.display='table';
+  document.getElementById('spacing-empty').style.display='none';
   const tbody=document.getElementById('spacing-tbody');
   tbody.innerHTML='';
-  const fmt=v=>v===0?'0':(v>0?'+'+v:String(v));
-  for(const r of rows){
+  for(const d of rows){
     const tr=document.createElement('tr');
-    const cls=r.gc.cls==='UC'?'tuc':'tlc';
-    tr.innerHTML=`<td class="cc">${esc(r.gc.charLabel)}</td><td class="${cls}">${r.gc.cls}</td><td>${r.oldAW}</td><td style="font-weight:700">${r.newAW}</td><td class="${r.dAW<0?'vneg':r.dAW>0?'vpos':'vzero'}">${fmt(r.dAW)}</td><td class="${r.dL<0?'vneg':r.dL>0?'vpos':'vzero'}">${fmt(r.dL)}</td><td class="${r.dR<0?'vneg':r.dR>0?'vpos':'vzero'}">${fmt(r.dR)}</td><td>${r.newL}</td><td>${r.newR}</td>`;
+    const cc=d.correction<0?'vneg':d.correction>0?'vpos':'vzero';
+    const tc=d.tag==='UC'?'tuc':d.tag==='mixed'?'tmix':'tlc';
+    // ΔAdvanceWidth = half the correction (split between left and right margins)
+    const dAW=Math.round(d.correction/2);
+    // ΔSidebearing = quarter the correction (move glyph within its box)
+    const dSB=Math.round(d.correction/4);
+    tr.innerHTML=`<td class="cc">${esc(d.left)}</td><td style="color:var(--text2)">${esc(d.left)}+${esc(d.right)}</td><td class="${cc}" style="font-weight:700">${d.correction}</td><td class="${dAW<0?'vneg':dAW>0?'vpos':'vzero'}">${dAW>0?'+':''}${dAW}</td><td class="${dSB<0?'vneg':dSB>0?'vpos':'vzero'}">${dSB>0?'+':''}${dSB}</td><td class="${tc}">${d.tag}</td><td>${d.mean}</td>`;
     tbody.appendChild(tr);
   }
-  showSpacingContent(true);
 }
 
 function selectPairRow(idx){
@@ -1571,7 +1481,7 @@ document.addEventListener('keydown',e=>{
     const cur=opts.findIndex(o=>o.value===document.getElementById('preview-text').value)||0;
     let next=e.key==='ArrowRight'?cur+1:cur-1;
     next=Math.max(0,Math.min(opts.length-1,next));
-    if(opts[next]){e.preventDefault();sel.value=opts[next].value;applyPreset(opts[next].value);}
+    if(opts[next]){e.preventDefault();applyPreset(opts[next].value);}
   }
 });
 
@@ -1691,6 +1601,7 @@ function resolveGlyph(ch){
 function syncSize(v){document.getElementById('psize').value=v;document.getElementById('psize-n').value=v;}
 function applyPreset(val){
   if(!val)return;
+  document.getElementById('preset-select').value='';
   if(val.startsWith('sc:')){
     // Activate small caps mode and set text
     if(!showSmallCaps)toggleSmallCaps();
@@ -1831,14 +1742,14 @@ function renderPreview(){
           const zHi=baseY-(yBotGlobal+(z+1)*zH_fu)*sc;
           const top=Math.min(zLo,zHi),bot=Math.max(zLo,zHi);
           // left margin — amber, solid stripe + border
-          if(lv!==null){
+          if(lv!==-1&&lv>0){
             ctx.fillStyle='rgba(232,140,0,.25)';
             ctx.fillRect(x,top,lv*sc,bot-top);
             ctx.strokeStyle='rgba(232,140,0,.7)';ctx.lineWidth=.8;
             ctx.strokeRect(x+.4,top+.4,lv*sc-.8,bot-top-.8);
           }
           // right margin — green, solid stripe + border
-          if(rv!==null){
+          if(rv!==-1&&rv>0){
             ctx.fillStyle='rgba(50,180,100,.22)';
             ctx.fillRect(x+aw-rv*sc,top,rv*sc,bot-top);
             ctx.strokeStyle='rgba(50,180,100,.65)';ctx.lineWidth=.8;
@@ -2073,9 +1984,6 @@ if(IS_GLYPHS){
   // Rename Export button to Apply
   const expBtn=document.querySelector('.btn-exp');
   if(expBtn){expBtn.textContent='⊙ Apply to Font';expBtn.onclick=applyToGlyphs;}
-  // Show Apply Spacing button (Glyphs mode only)
-  const asBtn=document.getElementById('btn-apply-spacing');
-  if(asBtn)asBtn.style.display='';
   // Hide testpage button (no font file available)
   const tpBtn=document.querySelector('.btn-hdr.testpage');
   if(tpBtn)tpBtn.style.display='none';
