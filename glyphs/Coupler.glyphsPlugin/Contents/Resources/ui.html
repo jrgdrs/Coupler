@@ -37,8 +37,8 @@ header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:
 .btn-hdr.testpage:hover{background:rgba(76,175,125,.1);}
 
 /* ── Layout ── */
-.layout{display:grid;grid-template-columns:296px 1fr;grid-template-rows:auto 1fr;height:calc(100vh - 45px);}
-.left-panel{grid-row:1/3;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;}
+.layout{display:grid;grid-template-columns:296px 1fr;grid-template-rows:auto 1fr;height:calc(100vh - 45px);min-height:0;}
+.left-panel{grid-row:1/3;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;min-height:0;}
 
 /* ── Drop zone ── */
 .drop-zone{margin:10px 10px 0;border:2px dashed var(--border2);border-radius:6px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;flex-shrink:0;}
@@ -162,6 +162,39 @@ tr.selected:hover td{background:var(--bg4);}
 .help-kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:6px 0;}
 .help-kv dt{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap;padding-top:1px;}
 .help-kv dd{font-size:12px;color:var(--text2);line-height:1.5;}
+
+/* ── Mobile / iPhone responsive ── */
+@media (max-width:768px){
+  header{flex-wrap:wrap;gap:8px;padding:8px 12px;}
+  .header-sep{display:none;}
+  .header-actions{width:100%;justify-content:flex-end;}
+  .layout{display:flex;flex-direction:column;height:auto;}
+  .left-panel{border-right:none;border-bottom:1px solid var(--border);max-height:none;}
+  .params-section{overflow-y:visible;}
+  .preview-panel{min-height:220px;}
+  .canvas-wrap{overflow-x:auto;}
+  .results-panel{min-height:40vh;flex:1;}
+  .rh{flex-wrap:wrap;gap:6px;}
+  .filter-group{width:100%;flex-wrap:wrap;}
+  .search-box{width:100%;min-width:0;}
+  input[type=number],input[type=text]{min-height:38px;font-size:15px;}
+  .btn-run{padding:13px;font-size:13px;}
+  .btn-hdr{padding:6px 12px;font-size:11px;}
+  .tbtn{padding:5px 12px;font-size:11px;}
+  .trow{gap:8px;}
+  .pr{grid-template-columns:1fr 80px;}
+  .pcontrols input[type=range]{width:100px;}
+  table{font-size:11px;}
+  td,th{padding:4px 6px;}
+}
+@media (max-width:480px){
+  .logo-mark{font-size:18px;}
+  .pr{grid-template-columns:1fr 70px;}
+  input[type=number]{font-size:14px;}
+  .pcontrols{flex-wrap:wrap;gap:4px;}
+  .pcontrols input[type=range]{width:80px;}
+  .tab-btns{flex-wrap:wrap;}
+}
 </style>
 </head>
 <body>
@@ -234,7 +267,7 @@ tr.selected:hover td{background:var(--bg4);}
     <h3>Computing Kerning — Four-Step Pipeline</h3>
     <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:1.8">
       <li><strong>Measure margins</strong> — Every glyph is sliced into <em>Zones</em> equal horizontal bands. For each band, Bézier intersection geometry (cubic and quadratic) determines the leftmost and rightmost ink extent. Each zone margin is the average of <em>Blur</em> sub-zones, which smooths staircase artifacts where curves cross band boundaries at oblique angles.</li>
-      <li><strong>Smooth &amp; shape</strong> — A reciprocal step-limit pass (<em>Smooth</em>) prevents sudden jumps between adjacent zone margins, anchoring from the zone of maximum glyph extent outward. An optional quadratic <em>Bowl</em> then bends the entire profile: positive values bow margins outward (convex); negative values bow them inward (concave).</li>
+      <li><strong>Smooth &amp; shape</strong> — A reciprocal step-limit pass (<em>Smooth</em>) prevents sudden jumps between adjacent zone margins, anchoring from the zone of maximum glyph extent outward.</li>
       <li><strong>Establish baselines</strong> — The self-pair of the reference glyph (default <code style="font-family:var(--mono);color:var(--accent)">o+o</code> for LC, <code style="font-family:var(--mono);color:var(--accent)">O+O</code> for UC) is measured and its mean gap becomes the target spacing. A global <em>Tracking</em> offset shifts the effective baseline before corrections are computed.</li>
       <li><strong>Compute pair corrections</strong> — For every pair, the mean zone gap (pair mean) is computed. Correction = baseline − pair mean. Corrections that would violate the <em>Min gap</em> floor are capped (⚑). Corrections below the <em>Threshold</em> are zeroed out. The final value is rounded to the nearest multiple of the <em>Round module</em>.</li>
     </ol>
@@ -264,7 +297,6 @@ tr.selected:hover td{background:var(--bg4);}
       <dt>Counter</dt><dd>The enclosed interior void of a glyph (e.g., the hole in "o" or "p"). Measured via an off-screen canvas pixel scan.</dd>
       <dt>Print Area</dt><dd>The total ink area of a glyph (sum of ink-covered pixels in the zone pixel map), expressed in font-unit² equivalents.</dd>
       <dt>Smooth</dt><dd>Reciprocal smoothing strength (0 = off, 99 = maximum). Limits the maximum step allowed between adjacent zone margins, anchoring from the zone of maximum glyph extent and spreading outward.</dd>
-      <dt>Bowl</dt><dd>Quadratic curvature applied to the smoothed margin profile after smoothing. Positive: margins bow outward (larger away from the anchor zone). Negative: margins bow inward (smaller away from the anchor zone).</dd>
       <dt>Min Gap %</dt><dd>The minimum allowed zone gap after applying a kerning correction, expressed as a percentage of UPM. Acts as a collision guard; pairs that hit this floor are marked with ⚑.</dd>
       <dt>Blur</dt><dd>Number of sub-zones computed per zone. Zone margins are the average of all sub-zone readings, suppressing quantization artifacts where curves cross zone boundaries obliquely.</dd>
       <dt>Round Module</dt><dd>Kerning values are rounded to the nearest multiple of this number (e.g., 46 → values like −92, −46, 0, 46, 92). Use 1 for plain integer rounding.</dd>
@@ -316,21 +348,14 @@ tr.selected:hover td{background:var(--bg4);}
       <div class="pl" data-tip="Zones (subtlety)&#10;&#10;Number of equal-height slices spanning the full em height (ascender to descender).&#10;&#10;More zones = finer vertical detail captured from the glyph contours, but computation time grows quadratically.&#10;Fewer zones = faster but coarser — subtle diagonal shapes may be averaged away.&#10;&#10;Recommended: 9–16 for most text fonts.&#10;Default: 9">
         Zones <span style="color:var(--text3);font-style:italic;font-size:9px">(subtlety)</span><span>--zones · height divisions</span>
       </div>
-      <input type="number" id="p-zones" value="9" min="1" max="64">
+      <input type="number" id="p-zones" value="28" min="1" max="64">
     </div>
 
     <div class="pr">
       <div class="pl" data-tip="Smooth (diagonals and counter)&#10;&#10;Controls how aggressively adjacent zone margins are smoothed. Uses a reciprocal scale: 0 = no smoothing (off), higher values = more smoothing.&#10;&#10;99 = maximum smoothing (tight step limit of 1% of zone height between neighbors).&#10;60 = moderate smoothing (step limit of 40% of zone height).&#10;0 = disabled entirely.&#10;&#10;Anchors at the zone with maximum glyph extent. Diagonal strokes and open counters are smoothed toward that anchor.&#10;Default: 60">
         Smooth <span style="color:var(--text3);font-style:italic;font-size:9px">(diagonals and counter)</span><span>--smooth · 0=off, 99=max smooth</span>
       </div>
-      <input type="number" id="p-smooth" value="60" min="0" max="99">
-    </div>
-
-    <div class="pr">
-      <div class="pl" data-tip="Bowl (curve shape)&#10;&#10;Applies a quadratic curve to the margin profile after smoothing, bending the straight-line gradient into a convex or concave arc.&#10;&#10;+positive = margins bow outward (convex, glyphs appear further apart toward stroke extremes — useful for letters with strong horizontal stress).&#10;-negative = margins bow inward (concave, glyphs appear closer at the extremes — useful for rounded letters).&#10;0 = no curvature, linear profile from smoothing.&#10;&#10;The bowl value is a strength factor; ±100 produces a full quadratic shift of one zone-height.&#10;Default: 0">
-        Bowl <span style="color:var(--text3);font-style:italic;font-size:9px">(curve shape)</span><span>--bowl · profile curvature</span>
-      </div>
-      <input type="number" id="p-bowl" value="0" min="-200" max="200">
+      <input type="number" id="p-smooth" value="50" min="0" max="99">
     </div>
 
     <div class="pr">
@@ -344,21 +369,21 @@ tr.selected:hover td{background:var(--bg4);}
       <div class="pl" data-tip="Blur (less details)&#10;&#10;Each zone is internally sub-divided into N sub-zones. Margins are computed per sub-zone and averaged back into the zone.&#10;&#10;This acts as a vertical blur pass before zone assignment, preventing staircase artifacts where curves cross zone boundaries at oblique angles.&#10;&#10;Higher = smoother edges but slower. Lower = faster but sharper step transitions.&#10;Default: 10">
         Blur <span style="color:var(--text3);font-style:italic;font-size:9px">(less details)</span><span>--blur · sub-zones per zone</span>
       </div>
-      <input type="number" id="p-blur" value="10" min="1" max="50">
+      <input type="number" id="p-blur" value="5" min="1" max="50">
     </div>
 
     <div class="pr">
       <div class="pl" data-tip="Round module (cadence)&#10;&#10;Snaps kerning correction values to the nearest multiple of N.&#10;&#10;Useful for font production systems that prefer a regular cadence of kerning values. Example: 46 produces values like −92, −46, 0, 46, 92.&#10;&#10;Use 1 for plain integer rounding with no module snap.&#10;Default: 1">
         Round module <span style="color:var(--text3);font-style:italic;font-size:9px">(cadence)</span><span>--round · kern snap value</span>
       </div>
-      <input type="number" id="p-round" value="1" min="1">
+      <input type="number" id="p-round" value="20" min="1">
     </div>
 
     <div class="pr">
       <div class="pl" data-tip="Threshold&#10;&#10;Kerning corrections with an absolute value below this threshold are discarded and set to zero.&#10;&#10;This filters out noise: tiny corrections that are imperceptible in practice and would only bloat the kerning table.&#10;&#10;Example: threshold=5 removes all corrections in the range (−5 … +5).&#10;Set to 0 to keep all corrections including very small ones.&#10;Default: 0">
         Threshold <span style="color:var(--text3);font-style:italic;font-size:9px">(suppress noise)</span><span>--threshold · min abs correction</span>
       </div>
-      <input type="number" id="p-threshold" value="0" min="0">
+      <input type="number" id="p-threshold" value="40" min="0">
     </div>
 
     <div class="pr">
@@ -386,7 +411,7 @@ tr.selected:hover td{background:var(--bg4);}
       <div class="pl" data-tip="Pair limit&#10;&#10;Maximum number of kerning pairs to generate, ranked by frequency of occurrence in real-world text (based on the Andre Fuchs kerning-pairs corpus).&#10;&#10;Only the top N most common pairs are computed and included in the output. This drastically reduces computation time for large fonts.&#10;&#10;Set to 0 to generate all pairs.&#10;Default: 0 (all)">
         Pair limit <span style="color:var(--text3);font-style:italic;font-size:9px">(top N by frequency)</span><span>--pairs · 0 = all pairs</span>
       </div>
-      <input type="number" id="p-pairlimit" value="0" min="0">
+      <input type="number" id="p-pairlimit" value="1000" min="0">
     </div>
 
     <div class="sec" style="margin-top:4px">Results</div>
@@ -521,6 +546,7 @@ tr.selected:hover td{background:var(--bg4);}
 
 </div><!-- /layout -->
 
+<script src="fuchs.js"></script>
 <script>
 // ══════════════════════════════════════════════════════
 // STATE
@@ -547,7 +573,7 @@ let currentUPM=1000,yBotGlobal=0,yTopGlobal=0,xHeightGlobal=0;
 let glyphsByName={};         // name → {commands, advanceWidth, unicode} (Glyphs mode)
 let unicodeToGlyphName={};   // codepoint → glyph name (Glyphs mode)
 
-const DEFAULTS={zones:9,smooth:60,bowl:0,round:1,blur:10,mingap:8,threshold:0,baselc:'o',baseuc:'O',tracking:0,pairlimit:0};
+const DEFAULTS={zones:28,smooth:50,round:20,blur:5,mingap:8,threshold:40,baselc:'o',baseuc:'O',tracking:0,pairlimit:1000};
 
 function P(){
   const mg=parseFloat(document.getElementById('p-mingap').value);
@@ -557,7 +583,6 @@ function P(){
     round:     parseInt(document.getElementById('p-round').value)     ||DEFAULTS.round,
     blur:      parseInt(document.getElementById('p-blur').value)      ||DEFAULTS.blur,
     mingap:    (isNaN(mg)?DEFAULTS.mingap:mg)/100,
-    bowl:      parseFloat(document.getElementById('p-bowl').value)||0,
     threshold: parseFloat(document.getElementById('p-threshold').value)||0,
     baselc:    (document.getElementById('p-baselc').value||DEFAULTS.baselc).trim(),
     baseuc:    (document.getElementById('p-baseuc').value||DEFAULTS.baseuc).trim(),
@@ -566,7 +591,7 @@ function P(){
   };
 }
 function resetParams(){
-  ['zones','smooth','bowl','round','blur','mingap','threshold','tracking','pairlimit'].forEach(k=>{
+  ['zones','smooth','round','blur','mingap','threshold','tracking','pairlimit'].forEach(k=>{
     document.getElementById('p-'+k).value=DEFAULTS[k];
   });
   document.getElementById('p-baselc').value=DEFAULTS.baselc;
@@ -575,20 +600,20 @@ function resetParams(){
 
 // Parameter presets for common font styles
 const PARAM_PRESETS={
-  'default':        {zones:9,  smooth:60, bowl:0,   mingap:8,  blur:10, round:1, threshold:0},
+  'default':        {zones:9,  smooth:60,   mingap:8,  blur:10, round:1, threshold:0},
   // Serif weights
-  'serif-reg':      {zones:81, smooth:14, bowl:10,  mingap:12, blur:3,  round:1, threshold:0},
-  'serif-it':       {zones:81, smooth:14, bowl:-10, mingap:4,  blur:3,  round:1, threshold:0},
-  'serif-bold':     {zones:81, smooth:14, bowl:5,   mingap:4,  blur:3,  round:1, threshold:0},
-  'serif-boldit':   {zones:81, smooth:14, bowl:-5,  mingap:12, blur:3,  round:1, threshold:0},
+  'serif-reg':      {zones:81, smooth:14,  mingap:12, blur:3,  round:1, threshold:0},
+  'serif-it':       {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
+  'serif-bold':     {zones:81, smooth:14,   mingap:4,  blur:3,  round:1, threshold:0},
+  'serif-boldit':   {zones:81, smooth:14,  mingap:12, blur:3,  round:1, threshold:0},
   // Sans-serif weights
-  'sans-light':     {zones:9,  smooth:40, bowl:0,   mingap:6,  blur:8,  round:1, threshold:0},
-  'sans-regular':   {zones:9,  smooth:55, bowl:0,   mingap:8,  blur:8,  round:1, threshold:0},
-  'sans-bold':      {zones:9,  smooth:65, bowl:0,   mingap:10, blur:6,  round:1, threshold:0},
+  'sans-light':     {zones:9,  smooth:40,   mingap:6,  blur:8,  round:1, threshold:0},
+  'sans-regular':   {zones:9,  smooth:55,   mingap:8,  blur:8,  round:1, threshold:0},
+  'sans-bold':      {zones:9,  smooth:65,   mingap:10, blur:6,  round:1, threshold:0},
   // Slab-serif weights
-  'slab-light':     {zones:40, smooth:30, bowl:8,   mingap:7,  blur:5,  round:1, threshold:0},
-  'slab-regular':   {zones:40, smooth:35, bowl:12,  mingap:10, blur:5,  round:1, threshold:0},
-  'slab-bold':      {zones:40, smooth:40, bowl:8,   mingap:12, blur:4,  round:1, threshold:0},
+  'slab-light':     {zones:40, smooth:30,   mingap:7,  blur:5,  round:1, threshold:0},
+  'slab-regular':   {zones:40, smooth:35,  mingap:10, blur:5,  round:1, threshold:0},
+  'slab-bold':      {zones:40, smooth:40,   mingap:12, blur:4,  round:1, threshold:0},
 };
 function applyParamPreset(key){
   if(!key)return;
@@ -596,7 +621,6 @@ function applyParamPreset(key){
   if(!pr)return;
   document.getElementById('p-zones').value    =pr.zones;
   document.getElementById('p-smooth').value   =pr.smooth;
-  document.getElementById('p-bowl').value     =pr.bowl??0;
   document.getElementById('p-mingap').value   =pr.mingap;
   document.getElementById('p-blur').value     =pr.blur;
   document.getElementById('p-round').value    =pr.round;
@@ -711,35 +735,6 @@ function smoothMargins(arr,zH,pct){
   return out;
 }
 
-// ── BOWL ─────────────────────────────────────────────
-/**
- * Applies a quadratic curvature to a margin array after smoothing.
- * The anchor zone (minimum value = max glyph extent) stays unchanged.
- * Other zones are shifted by: delta * (distFromAnchor/maxDist)^2 * bowlStrength
- * where bowlStrength = bowl/100 * zoneHeight.
- * Positive bowl → margins grow quadratically away from anchor (bow outward).
- * Negative bowl → margins shrink quadratically away from anchor (bow inward).
- */
-function applyBowl(arr, bowl, zones){
-  if(bowl===0||!arr||zones<3)return arr.slice();
-  const out=arr.slice();
-  // find anchor (min valid value)
-  let aZ=-1,aV=Infinity;
-  for(let z=0;z<zones;z++)if(arr[z]!==-1&&arr[z]<aV){aV=arr[z];aZ=z;}
-  if(aZ===-1)return out;
-  const maxDist=Math.max(aZ, zones-1-aZ)||1;
-  const strength=(bowl/100);  // fraction of zone-count range to shift
-  for(let z=0;z<zones;z++){
-    if(out[z]===-1)continue;
-    const dist=Math.abs(z-aZ);
-    const t=dist/maxDist;  // 0 at anchor, 1 at furthest zone
-    const shift=strength*t*t*(zones);  // quadratic, scaled by zone count
-    out[z]=r1(Math.max(aV, out[z]+shift));
-  }
-  console.log (out);
-  return out;
-}
-
 // ── GLYPH MARGINS ─────────────────────────────────────
 function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   const aw=glyph.advanceWidth??0;
@@ -755,12 +750,8 @@ function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   }
   const leftSm=smoothMargins(lR,zH,p.smooth);
   const rightSm=smoothMargins(rR,zH,p.smooth);
-  // Bowl: apply quadratic curvature to the smoothed margin profile
-  // anchor = zone of minimum margin (maximum glyph extent), bowl bends other zones
-  // bowl > 0: bow outward (larger margins farther from anchor)
-  // bowl < 0: bow inward (smaller margins farther from anchor)
-  const left=applyBowl(leftSm,p.bowl,p.zones);
-  const right=applyBowl(rightSm,p.bowl,p.zones);
+  const left=leftSm;
+  const right=rightSm;
   let unicode=null;
   if(glyph.unicodes?.length>0)unicode=glyph.unicodes[0];
   return{left,right,leftRaw:lR,rightRaw:rR,advanceWidth:aw,unicode};
@@ -860,9 +851,61 @@ function measureCounterPrint(gc, upm, p, yBot, yTop){
   return{print:totalPrint,counter:totalCounter};
 }
 
-// Top kerning pairs by frequency (source: Andre Fuchs kerning-pairs corpus)
-// Each entry is a pair string like "AV", "To", etc.
-const KERN_PAIRS_FREQ = ['E ','e ','Ë ','ë ','O ','o ','A ',' T',' t',' d',' A','D ','ea','të','T ','t ','R ','r ',' e',' C','ST','st','TA','te','LA','ta','re','AS',' V',' c',' W','SZ','et',' v','sz','nt',', ','. ','RA',' w','ra','ge',' O','OV','ov','L ','Ă ',' o','DA','CO','TT','tt','Í ','í ','AT','at','AA',' Z','KO',' J','co',' f','OW','ow','K ','SA','ko','TO',' G','to','ų ','JA','KA',' z','Ā ',' j','ij','ka','VA','RO','Y ','y ',' g',' Î','W ','AU','ro','CZ','va',' Y','cz','ze','RZ','GY','rz','YA','gy','Ä ',' î','PA','ya','EG','w ',' y','WA','ke','în','wa','ce','V ','CA','of','F ','ve','f ','za','KU','GA','LO','ca','ga','v ','ku','LU','rd','nj','Z ','ZY','z ','zy','TÄ','É ','é ','KS','ks','OJ','tä','TĀ','AŠ',' é','FO','Å ','tā','AV','FÖ','ÃO','av','fo','YC','yc','EJ','fö','af','rë','AY','LT','ny','WY','LJ','VO','lj','vv','vo','AG','we','ay','AC','UA','OA','RT','rt','go','gj','DZ','ÁS','RU',' Q','BA','TÁ','AJ','aj','tá','OT','ĀS',' q','ot','r.','TS','ts','JĀ','EC','ÓW','ów','ez','TĂ','TY','tă','ře','ty','KĀ','Ł ','ł ','EV',' 1','kā','DÁ','À ','ev','L\'','CĂ','LY','RS','rs','ly','că','ŁA','A.','té','ła','WO',' À','Ę ','ę ','ZT','Ě ','ě ','ný','S,','s,','Ą ','ye','wo','ké','RĀ','rā','YM','Ý ','ý ','KT','kt','AŞ','KÖ','e,','ré','ÝC','ýc',' (','Ė ','ė ','kö','SÄ','SÁ','LÄ','BY','zá','by','Á ','RY','ÉG','A,','ŁO','LÁ',' Č','vd','ry','RÁ',' Á','fi','ÁT','ÇÃ','çã','át','ët','AW','ZO','rá','aw','CT','T,','t,','ct','VY','zo',' Ç','kë','ŠA','fe',' Į','S.','DJ','dj','PÅ',' Å','s.','Ó ','ó ','VÁ',' į','O,','o,','LS',' Ä','SĂ','VÝ','RG','rg','vē','ŞT','şt',' ç','vá','KÝ','ký','RĂ','vě','LĀ','GÁ','P ','ía','p ','VÄ','Ť ','ť ','ră','CJ','cj','EY','vä','SV','JĄ','DT','ét','AÇ','ím','AO','ÁV',' č','ey',' Ž','T.','ĄC','KÄ','t.','ÁG','DŽ','OZ','áv','oz','GT','kä','ĀT','āt','sv','Ő ','ő ',' Ö','UX','CY','YS','ys','ēt','SJ','YT','VÕ','cy','KY','CC','sj',' 2','LG','ky','če','cc','JÄ','võ','X ','ŁY','x ','Ī ','ī ','VĀ',' ž','DĀ','ĀJ','āj','B ','b ','YO','TZ','JÁ','ĐA','đa','ŠT','že','ÝM','št','RÅ','Ž ','ž ','rå','St','yo',' ö','WS','r,','że','e.','RÓ','TV','TÓ','tó','ÖZ','öz','FT','ft','YÖ','yö','ŠÍ','tv','vé','ró','ÄT','ät','ws','AČ','ČA','ŞA','CÍ','PĀ','ča','gö','EČ','TÖ','RV','rv',') ','RÄ','zé','rä','DY','FA','KÁ','vā','tö','k,','FØ','ká','RJ','YW','ÉC','fø','EĆ','TŐ','tő','U,',' ë','TW','fa','Le','tw','UJ','uj','AĞ','ět','tě','TJ','PÄ','Da','LŐ','MY','ĂT','ăt','çe','čč','ČČ','LÓ','VS','ef','ÁC','LĂ','YV','O.','o.','BÁ','ew','PĂ','ex','zw','ÉV','U.','vs','rė','VÆ','év','TÀ','tà','væ','RC',' Ż','rc','my','RÆ','ÄS','ò ','Ò ','ræ','OŽ','ož','Au','SŤ','sť','Ve','D,','LÜ','zd','vt','VT','È ','ĀC','ÖT',' ż','SÅ','PT','öt','pt','ÄY','äy','ff','è ','Po','tē','SY','RW','CÂ','rw','će','La','gé','SĀ','CĪ','VJ','OY','ÅG','RÝ','RÜ','ŁU','Re','zv','Az','rý','EĞ','rē','ÁŠ','ÍS','ís','sy','Ja','câ','oy','tė','Ē ','cī','ē ','Ta','ZS','ZC','zc','ĽA','rf','ľa','zs','ÖV','SÃ','kė','Y,','Ż ','ż ','ZÖ','zö','öv','ať','AŤ','mj','KJ','YY','KÕ','YJ','ĆA','ća','ža','kj','We','eż','BĀ','ĒC','ÅT','yd','åt','ež','Co','KÓ','kó','DV','ęt','ÄV','äv','ļa','A\''];
+// ── Kerning-pair helpers (uses KERNING_PAIRS from fuchs.js) ─────────────────
+// Returns the set of all char-labels that appear as left or right in KERNING_PAIRS.
+// Always includes the reference glyphs so baselines can always be computed.
+function buildAllowedChars(baseLcChar, baseUcChar){
+  const s=new Set([baseLcChar,baseUcChar]);
+  for(const pair of KERNING_PAIRS){const c=[...pair];if(c.length>=2){s.add(c[0]);s.add(c[1]);}}
+  return s;
+}
+
+// Walk KERNING_PAIRS in frequency order and return [{kA,kB}] up to limit (0=all).
+function buildPairQueue(labelToKey, limit){
+  const q=[],seen=new Set(),lim=limit>0?limit:Infinity;
+  for(const pair of KERNING_PAIRS){
+    if(q.length>=lim)break;
+    const c=[...pair];if(c.length<2)continue;
+    const kA=labelToKey[c[0]],kB=labelToKey[c[1]];
+    if(!kA||!kB)continue;
+    const id=kA+'|'+kB;if(seen.has(id))continue;
+    seen.add(id);q.push({kA,kB});
+  }
+  return q;
+}
+
+// For each computed glyph add two pairs with space:
+//   glyph + space  → pairMean(glyph.right, base.left)
+//   space + glyph  → pairMean(base.right,  glyph.left)
+// Base margin is used to simulate a "normal" adjacent character.
+// Only added to kerningData if the rounded correction is outside the threshold.
+function addSpacePairs(gks, gc, p, bvLC, bvUC){
+  const baseLcGC=gc[p.baselc],baseUcGC=gc[p.baseuc];
+  for(const k of gks){
+    const g=gc[k];
+    const isUC=g.cls==='UC';
+    const baseGC=isUC?baseUcGC:baseLcGC;
+    const baseVal=isUC?bvUC:bvLC;
+    if(!baseGC)continue;
+    const tag=isUC?'UC':'LC';
+    const cL=g.charLabel;
+    // glyph + space
+    const rC=pairMean(g.right,baseGC.left);
+    if(rC){
+      const corr=rtm(baseVal-rC.mean,p.round);
+      if(Math.abs(corr)>p.threshold)
+        kerningData.push({left:cL,right:'space',correction:corr,mean:r1(rC.mean),base:r1(baseVal),tag,capped:false,zones:rC.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:rC.zoneValues});
+    }
+    // space + glyph
+    const lC=pairMean(baseGC.right,g.left);
+    if(lC){
+      const corr=rtm(baseVal-lC.mean,p.round);
+      if(Math.abs(corr)>p.threshold)
+        kerningData.push({left:'space',right:cL,correction:corr,mean:r1(lC.mean),base:r1(baseVal),tag,capped:false,zones:lC.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:lC.zoneValues});
+    }
+  }
+}
+
 
 // ══════════════════════════════════════════════════════
 // MAIN ANALYSIS
@@ -898,19 +941,22 @@ async function runAnalysis(){
 
     log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value} blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold} tracking=${p.tracking} baseLc=${p.baselc} baseUc=${p.baseuc} pairlimit=${p.pairlimit||'all'}`,'info');
 
-    // Step 1: margins
+    // Step 1: margins — only for glyphs whose charLabel appears in KERNING_PAIRS
+    const allowedChars=buildAllowedChars(p.baselc,p.baseuc);
     const allKeys=Object.keys(fontObj.glyphs.glyphs);
     let done=0;
     glyphCache={};
     for(const key of allKeys){
       const g=fontObj.glyphs.glyphs[key];
-      if(!g.path||g.path.commands.length===0){done++;continue;}
-      const{left,right,leftRaw,rightRaw,advanceWidth,unicode}=computeGlyphMargins(g,upm,p,yBot,yTop);
+      done++;
+      if(!g.path||g.path.commands.length===0)continue;
       const gk=g.name??`glyph_${key}`;
+      const unicode=g.unicodes?.[0]??null;
       const cl=cLbl(unicode,g.name,gk);
+      if(!allowedChars.has(cl))continue;
+      const{left,right,leftRaw,rightRaw,advanceWidth}=computeGlyphMargins(g,upm,p,yBot,yTop);
       const cls=classifyGlyph(unicode,gk);
       glyphCache[gk]={left,right,leftRaw,rightRaw,charLabel:cl,unicode,glyphName:gk,cls,advanceWidth};
-      done++;
       if(done%50===0){setProgress(done/allKeys.length*40);await new Promise(r=>setTimeout(r,0));}
     }
     setProgress(40);
@@ -961,80 +1007,40 @@ async function runAnalysis(){
     const minGapFU=upm*p.mingap;
     log(`Min gap floor: ${r1(minGapFU)} fu (${Math.round(p.mingap*100)}% × UPM ${upm})`);
 
-    // Build set of pairs to compute, filtered by frequency ranking if pairlimit>0
-    // charLabel → glyph key map for fast lookup
+    // Build pair queue from KERNING_PAIRS in frequency order (pairlimit=0 means all)
     const labelToKey={};
     for(const k of gks)labelToKey[glyphCache[k].charLabel]=k;
-
-    let pairQueue=[];  // [{kA,kB}]
-    if(p.pairlimit>0&&KERN_PAIRS_FREQ.length>0){
-      // Use frequency-ordered list: each entry is a 2-char string "AV"
-      const seen=new Set();
-      for(const pair of KERN_PAIRS_FREQ){
-        if(pairQueue.length>=p.pairlimit)break;
-        // pair might be multi-byte chars; split into individual unicode chars
-        const chars=[...pair.replace(/&#x27;/g,"'").replace(/&quot;/g,'"')];
-        if(chars.length<2)continue;
-        const cA=chars[0],cB=chars[1];
-        const kA=labelToKey[cA],kB=labelToKey[cB];
-        if(!kA||!kB)continue;
-        const id=kA+'|'+kB;
-        if(seen.has(id))continue;
-        seen.add(id);
-        pairQueue.push({kA,kB});
-      }
-      // If we still need more pairs to fill the limit, fill from all pairs
-      if(pairQueue.length<p.pairlimit){
-        const needed=p.pairlimit-pairQueue.length;
-        const seenSet=new Set(pairQueue.map(({kA,kB})=>kA+'|'+kB));
-        outer: for(const kA of gks){
-          for(const kB of gks){
-            if(pairQueue.length>=p.pairlimit)break outer;
-            const id=kA+'|'+kB;
-            if(!seenSet.has(id)){seenSet.add(id);pairQueue.push({kA,kB});}
-          }
-        }
-      }
-      log(`Pair limit: ${p.pairlimit} (freq-ranked: ${pairQueue.length} pairs queued)`);
-    } else {
-      // All pairs
-      for(const kA of gks)for(const kB of gks)pairQueue.push({kA,kB});
-    }
+    const pairQueue=buildPairQueue(labelToKey,p.pairlimit);
+    log(`Pair queue: ${pairQueue.length.toLocaleString()} pairs${p.pairlimit>0?' (limit '+p.pairlimit+')':''}`,"info");
 
     const totalPairs=pairQueue.length;
     done=0;
-    for(const {kA,kB} of pairQueue){
-      const{right:rA,charLabel:cA,unicode:uA,glyphName:nA,cls:clA}=glyphCache[kA];
-      const{left:lB,charLabel:cB,unicode:uB,glyphName:nB,cls:clB}=glyphCache[kB];
-        
-        // dummy block to match original structure
-        const calc=pairMean(rA,lB);
+    for(let pi=0;pi<pairQueue.length;pi++){
+      const {kA,kB}=pairQueue[pi];
+      try{
+        const gcA=glyphCache[kA],gcB=glyphCache[kB];
+        if(!gcA||!gcB)continue;
+        const calc=pairMean(gcA.right,gcB.left);
         if(!calc)continue;
-        const bothUC=clA==='UC'&&clB==='UC';
+        const bothUC=gcA.cls==='UC'&&gcB.cls==='UC';
         const base=bothUC?baseValueUC:baseValueLC;
-        const tag=bothUC?'UC':(clA==='UC'||clB==='UC')?'mixed':'LC';
+        const tag=bothUC?'UC':(gcA.cls==='UC'||gcB.cls==='UC')?'mixed':'LC';
         let corr=rtm(base-calc.mean,p.round);
         let capped=false;
-        // Min gap per zone: each zone gap after correction must stay >= minGapFU.
-        // gap_after[z] = zoneGap[z] + correction  (correction is negative for tightening)
-        // => correction >= minGapFU - zoneGap[z]  for every valid zone z
-        // => most restrictive: correction >= minGapFU - min(zoneGap[z])
-        // i.e. the tightest zone determines how much we can tighten.
         if(minGapFU>0&&corr<0){
-          // find the tightest existing zone gap among valid zones
           const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
-          // room to tighten: can reduce spacing by at most (minZG - minGapFU)
           const room=minZG-minGapFU;
-          // maxNegCorr is the most negative (tightest) allowed correction
           const maxNeg=room>0?-rtm(room,p.round):0;
           if(corr<maxNeg){corr=maxNeg;capped=true;}
         }
-        // Threshold: suppress near-zero corrections
         if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
-        kerningData.push({left:cA,right:cB,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
-      done++;
-      if(done%Math.max(1,Math.floor(totalPairs/20))===0){setProgress(45+done/totalPairs*50);await new Promise(r=>setTimeout(r,0));}
-    }  // end pairQueue loop
+        kerningData.push({left:gcA.charLabel,right:gcB.charLabel,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
+      }catch(pairErr){console.warn('pair error',kA,kB,pairErr);}
+      if(pi%Math.max(1,Math.floor(pairQueue.length/20))===0){setProgress(45+pi/pairQueue.length*50);await new Promise(r=>setTimeout(r,0));}
+    }
+
+    // Space pairs: glyph+space and space+glyph, using base glyph margin
+    addSpacePairs(gks,glyphCache,p,baseValueLC,baseValueUC);
 
     setProgress(100);
     document.getElementById('s-glyphs').textContent=gc;
@@ -1143,9 +1149,7 @@ function computeMarginsFromCommands(commands, aw, p, yBot, yTop){
   }
   const leftSm=smoothMargins(lR,zH,p.smooth);
   const rightSm=smoothMargins(rR,zH,p.smooth);
-  const left=applyBowl(leftSm,p.bowl,p.zones);
-  const right=applyBowl(rightSm,p.bowl,p.zones);
-  return{left,right,leftRaw:lR,rightRaw:rR,advanceWidth:aw};
+  return{left:leftSm,right:rightSm,leftRaw:lR,rightRaw:rR,advanceWidth:aw};
 }
 
 // Build a Path2D from Glyphs-mode commands at a given canvas position + scale.
@@ -1174,18 +1178,20 @@ async function runAnalysisFromGlyphsData(data){
     log(`Params: zones=${p.zones} smooth=${document.getElementById('p-smooth').value} blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% thresh=${p.threshold} tracking=${p.tracking} baseLc=${p.baselc} baseUc=${p.baseuc} pairlimit=${p.pairlimit||'all'}`,'info');
     dbg(`yBot=${yBot} yTop=${yTop} upm=${upm}`);
 
-    // Step 1: margins
+    // Step 1: margins — only for glyphs whose charLabel appears in KERNING_PAIRS
+    const allowedChars=buildAllowedChars(p.baselc,p.baseuc);
     let done=0;
     const allGlyphs=data.glyphs;
-    dbg(`Step 1: computing margins for ${allGlyphs.length} glyphs…`);
+    dbg(`Step 1: computing margins for ${allGlyphs.length} glyphs (filtered by KERNING_PAIRS)…`);
     setProgress(40);setStatus('Computing margins…','busy');
     for(const g of allGlyphs){
-      if(!g.commands||g.commands.length===0){done++;continue;}
-      const{left,right,leftRaw,rightRaw,advanceWidth}=computeMarginsFromCommands(g.commands,g.advanceWidth,p,yBot,yTop);
+      done++;
+      if(!g.commands||g.commands.length===0)continue;
       const cl=cLbl(g.unicode,g.name,g.name);
+      if(!allowedChars.has(cl))continue;
+      const{left,right,leftRaw,rightRaw,advanceWidth}=computeMarginsFromCommands(g.commands,g.advanceWidth,p,yBot,yTop);
       const cls=classifyGlyph(g.unicode,g.name);
       glyphCache[g.name]={left,right,leftRaw,rightRaw,charLabel:cl,unicode:g.unicode,glyphName:g.name,cls,advanceWidth};
-      done++;
       if(done%50===0){
         const pct=40+Math.round(done/allGlyphs.length*20);
         setProgress(pct);
@@ -1219,56 +1225,43 @@ async function runAnalysisFromGlyphsData(data){
     const labelToKey={};
     for(const k of gks)labelToKey[glyphCache[k].charLabel]=k;
 
-    let pairQueue=[];
-    if(p.pairlimit>0&&KERN_PAIRS_FREQ.length>0){
-      const seen=new Set();
-      for(const pair of KERN_PAIRS_FREQ){
-        if(pairQueue.length>=p.pairlimit)break;
-        const chars=[...pair];if(chars.length<2)continue;
-        const kA=labelToKey[chars[0]],kB=labelToKey[chars[1]];
-        if(!kA||!kB)continue;
-        const id=kA+'|'+kB;if(seen.has(id))continue;
-        seen.add(id);pairQueue.push({kA,kB});
-      }
-      if(pairQueue.length<p.pairlimit){
-        const seenSet=new Set(pairQueue.map(({kA,kB})=>kA+'|'+kB));
-        outer:for(const kA of gks){for(const kB of gks){if(pairQueue.length>=p.pairlimit)break outer;const id=kA+'|'+kB;if(!seenSet.has(id)){seenSet.add(id);pairQueue.push({kA,kB});}}}
-      }
-    } else {
-      for(const kA of gks)for(const kB of gks)pairQueue.push({kA,kB});
-    }
+    const pairQueue=buildPairQueue(labelToKey,p.pairlimit);
 
     const totalPairs=pairQueue.length;
     dbg(`Step 3: ${totalPairs} pairs queued`);
     log(`Pairs queued: ${totalPairs.toLocaleString()}`,'info');
     setProgress(68);setStatus(`Computing ${totalPairs.toLocaleString()} pairs…`,'busy');
     await new Promise(r=>setTimeout(r,0));
-    done=0;
-    for(const{kA,kB}of pairQueue){
-      const gcA=glyphCache[kA],gcB=glyphCache[kB];
-      if(!gcA||!gcB)continue;
-      const calc=pairMean(gcA.right,gcB.left);
-      if(!calc)continue;
-      const bothUC=gcA.cls==='UC'&&gcB.cls==='UC';
-      const base=bothUC?baseValueUC:baseValueLC;
-      const tag=bothUC?'UC':(gcA.cls==='UC'||gcB.cls==='UC')?'mixed':'LC';
-      let corr=rtm(base-calc.mean,p.round);
-      let capped=false;
-      if(minGapFU>0&&corr<0){
-        const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
-        const room=minZG-minGapFU;
-        const maxNeg=room>0?-rtm(room,p.round):0;
-        if(corr<maxNeg){corr=maxNeg;capped=true;}
-      }
-      if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
-      kerningData.push({left:gcA.charLabel,right:gcB.charLabel,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
-      done++;
-      if(done%Math.max(1,Math.floor(totalPairs/20))===0){
-        setProgress(68+Math.round(done/totalPairs*30));
-        setStatus(`Pairs ${done.toLocaleString()} / ${totalPairs.toLocaleString()}…`,'busy');
+    for(let pi=0;pi<pairQueue.length;pi++){
+      const {kA,kB}=pairQueue[pi];
+      try{
+        const gcA=glyphCache[kA],gcB=glyphCache[kB];
+        if(!gcA||!gcB)continue;
+        const calc=pairMean(gcA.right,gcB.left);
+        if(!calc)continue;
+        const bothUC=gcA.cls==='UC'&&gcB.cls==='UC';
+        const base=bothUC?baseValueUC:baseValueLC;
+        const tag=bothUC?'UC':(gcA.cls==='UC'||gcB.cls==='UC')?'mixed':'LC';
+        let corr=rtm(base-calc.mean,p.round);
+        let capped=false;
+        if(minGapFU>0&&corr<0){
+          const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
+          const room=minZG-minGapFU;
+          const maxNeg=room>0?-rtm(room,p.round):0;
+          if(corr<maxNeg){corr=maxNeg;capped=true;}
+        }
+        if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
+        kerningData.push({left:gcA.charLabel,right:gcB.charLabel,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
+      }catch(pairErr){console.warn('pair error',kA,kB,pairErr);}
+      if(pi%Math.max(1,Math.floor(pairQueue.length/20))===0){
+        setProgress(68+Math.round(pi/pairQueue.length*30));
+        setStatus(`Pairs ${pi.toLocaleString()} / ${pairQueue.length.toLocaleString()}…`,'busy');
         await new Promise(r=>setTimeout(r,0));
       }
     }
+
+    // Space pairs: glyph+space and space+glyph, using base glyph margin
+    addSpacePairs(gks,glyphCache,p,baseValueLC,baseValueUC);
 
     setProgress(100);
     const nz=kerningData.filter(d=>d.correction!==0).length;
