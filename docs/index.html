@@ -1081,7 +1081,31 @@ function dbg(msg){
   console.log('[Coupler dbg]',msg);
 }
 
-// Called by Python: webView.evaluateJavaScript('receiveGlyphData(...)')
+// ── Chunked glyph data accumulator (Glyphs mode) ─────────────────────────────
+// Python sends: beginGlyphData(meta) → appendGlyphChunk(arr) × N → finalizeGlyphData()
+// Each evaluateJavaScript call carries ~40 KB instead of the full 475 KB payload.
+// The JS engine can evaluate and GC each chunk before the next arrives, preventing
+// WebContent process memory accumulation that crashes Glyphs after repeated loads.
+let _chunkMeta   = null;
+let _chunkGlyphs = null;
+
+function beginGlyphData(meta){
+  _chunkMeta   = meta;
+  _chunkGlyphs = [];
+}
+
+function appendGlyphChunk(arr){
+  if(_chunkGlyphs) _chunkGlyphs.push(...arr);
+}
+
+function finalizeGlyphData(){
+  if(!_chunkMeta || !_chunkGlyphs){ log('finalizeGlyphData: no pending data','err'); return; }
+  const data = Object.assign({}, _chunkMeta, {glyphs: _chunkGlyphs});
+  _chunkMeta   = null;
+  _chunkGlyphs = null;  // release references so JS GC can collect
+  receiveGlyphData(data);
+}
+
 function receiveGlyphData(data){
   dbg(`receiveGlyphData: ${data.glyphs.length} glyphs, UPM=${data.upm}, yBot=${data.yBot}, yTop=${data.yTop}`);
   currentUPM  = data.upm;
