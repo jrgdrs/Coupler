@@ -101,34 +101,58 @@ def _paths_to_js_commands(paths_py):
 # conformance declaration needed; PyObjC exposes the method automatically.
 
 class _NavDelegate(NSObject):
-    _dialog = None
+    _dialog       = None
+    _pending_cmd   = ''
+    _pending_query = ''
 
     def webView_decidePolicyForNavigationAction_decisionHandler_(
             self, webview, action, handler):
+        """Called on the main thread by WKWebView for every navigation action.
+
+        We cancel coupler:// navigations immediately and then defer the heavy
+        Python work to the next runloop tick via performSelector:afterDelay:0.
+        This unblocks the main runloop before _send_glyph_data() starts, which
+        prevents the WebKit XPC channel from being flooded while the runloop is
+        stalled — the root cause of crashes after several computing runs.
+        """
         try:
             url    = action.request().URL()
             scheme = url.scheme() if url else None
             if scheme == 'coupler':
-                # Cancel the navigation immediately so the page stays intact.
-                handler(0)  # WKNavigationActionPolicyCancel
-                cmd   = (url.host() or '').lower()
-                query = url.query() or ''
-                print('[Coupler] IPC cmd=%r query_len=%d' % (cmd, len(query)))
-                if cmd == 'requestdata':
-                    self._dialog._send_glyph_data()
-                elif cmd == 'identify':
-                    self._dialog._send_identity()
-                elif cmd == 'applykerning':
-                    try:
-                        pairs = json.loads(urllib.parse.unquote(query)) if query else []
-                    except Exception as pe:
-                        print('[Coupler] applykerning parse error: %s' % pe)
-                        pairs = []
-                    self._dialog._apply_kerning(pairs)
+                handler(0)  # cancel immediately — page stays at file:// URL
+                self._pending_cmd   = (url.host() or '').lower()
+                self._pending_query = url.query() or ''
+                print('[Coupler] IPC cmd=%r (deferred)' % self._pending_cmd)
+                # Delay 0 fires after the current runloop cycle finishes,
+                # giving WebKit time to process the cancellation first.
+                self.performSelector_withObject_afterDelay_(
+                    'couplerDispatch:', None, 0.0)
                 return
         except Exception:
             traceback.print_exc()
-        handler(1)  # WKNavigationActionPolicyAllow (non-coupler navigations)
+        handler(1)  # allow normal (non-coupler) navigations
+
+    def couplerDispatch_(self, _):
+        """Runs in the next runloop cycle — main thread is free, XPC is healthy."""
+        cmd    = self._pending_cmd
+        query  = self._pending_query
+        dialog = self._dialog
+        if not dialog:
+            return
+        try:
+            if cmd == 'requestdata':
+                dialog._send_glyph_data()
+            elif cmd == 'identify':
+                dialog._send_identity()
+            elif cmd == 'applykerning':
+                try:
+                    pairs = json.loads(urllib.parse.unquote(query)) if query else []
+                except Exception as pe:
+                    print('[Coupler] applykerning parse error: %s' % pe)
+                    pairs = []
+                dialog._apply_kerning(pairs)
+        except Exception:
+            traceback.print_exc()
 
 
 # ── Dialog ────────────────────────────────────────────────────────────────────
@@ -136,15 +160,42 @@ class _NavDelegate(NSObject):
 class CouplerDialog(object):
 
     def __init__(self):
-        self._font   = Glyphs.font
+        self._font         = Glyphs.font
         if not self._font:
             Message('No font open.', 'Coupler')
             return
-        self._master       = self._font.selectedFontMaster
         self._webview      = None
         self._window       = None
         self._nav_delegate = None
         self._build_ui()
+
+    def _cleanup(self):
+        """Safely tear down WKWebView and window before the dialog is replaced."""
+        try:
+            if self._webview:
+                self._webview.setNavigationDelegate_(None)
+                self._webview.stopLoading()
+        except Exception:
+            pass
+        try:
+            if self._window:
+                self._window.close()   # hides and releases the NSWindow properly
+        except Exception:
+            pass
+        self._webview      = None
+        self._nav_delegate = None
+        self._window       = None
+
+    @property
+    def _master(self):
+        """Current selected master — re-read from Glyphs API on every access."""
+        try:
+            # Glyphs.font gives the freshest font reference regardless of which
+            # window is in front, avoiding stale proxy issues when masters change.
+            font = Glyphs.font or self._font
+            return font.selectedFontMaster if font else None
+        except Exception:
+            return None
 
     def _build_ui(self):
         from AppKit import NSWindow, NSURL
@@ -176,9 +227,11 @@ class CouplerDialog(object):
                  NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable)
         win = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             rect, style, NSBackingStoreBuffered, False)
+        master = self._master
         win.setTitle_('Coupler  ·  %s  ·  %s' % (
             self._font.familyName or 'Untitled',
-            self._master.name     or 'Master'))
+            master.name if master else 'Master'))
+        win.setReleasedWhenClosed_(False)   # keep ObjC object alive; we manage lifetime
         win.setMinSize_((760, 520))
         win.setContentView_(self._webview)
         win.makeKeyAndOrderFront_(None)
@@ -190,8 +243,9 @@ class CouplerDialog(object):
 
     def _send_identity(self):
         try:
+            master = self._master
             fn = (self._font.familyName or 'Untitled').replace("'", "\\'")
-            mn = (self._master.name or 'Master').replace("'", "\\'")
+            mn = (master.name if master else 'Master').replace("'", "\\'")
             n  = len(list(self._font.glyphs))
             print('[Coupler] identify: %s / %s / %d glyphs' % (fn, mn, n))
             self._js("setFontInfo('%s','%s',%d)" % (fn, mn, n))
@@ -200,11 +254,18 @@ class CouplerDialog(object):
 
     def _send_glyph_data(self):
         try:
-            font       = self._font
-            master     = self._master
-            master_id  = master.id
+            font      = self._font
+            master    = self._master   # property → always current selection
+            master_id = master.id
             all_glyphs = list(font.glyphs)
             n_all      = len(all_glyphs)
+
+            # Reflect current master in window title
+            try:
+                self._window.setTitle_('Coupler  ·  %s  ·  %s' % (
+                    font.familyName or 'Untitled', master.name or 'Master'))
+            except Exception:
+                pass
 
             print('[Coupler] _send_glyph_data: %s / %s / %d glyphs' % (
                 font.familyName, master.name, n_all))
@@ -345,6 +406,14 @@ class CouplerPlugin(GeneralPlugin):
                 return
         except Exception:
             pass
+        # Nil out the nav delegate before the old dialog is GC'd; WKWebView holds
+        # a weak navigationDelegate pointer and a dangling ref causes a crash.
+        if self._dialog is not None:
+            try:
+                self._dialog._cleanup()
+            except Exception:
+                pass
+        self._dialog = None
         self._dialog = CouplerDialog()
 
     def __del__(self):
