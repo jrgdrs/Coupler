@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v4.26.180 Beta</title>
+<title>Coupler — Font Kerning Analyzer - v4.26.65</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 :root{
@@ -77,9 +77,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:.4;}
 .btn-run:hover{background:#f0b030;}.btn-run:active{transform:scale(.98);}
 .btn-run:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;}
 
-.log-resize{height:4px;cursor:ns-resize;background:var(--border);flex-shrink:0;}
-.log-resize:hover,.log-resize.dragging{background:var(--accent);}
-.logbox{padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--text3);border-top:1px solid var(--border);height:52px;overflow-y:auto;flex-shrink:0;}
+.logbox{padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--text3);border-top:1px solid var(--border);max-height:52px;overflow-y:auto;flex-shrink:0;}
 .logbox .ll{line-height:1.55;}
 .ll.ok{color:var(--green);}.ll.err{color:var(--red);}.ll.info{color:var(--accent);}
 
@@ -203,8 +201,8 @@ tr.selected:hover td{background:var(--bg4);}
 
 <header>
   <div class="header-title">
-    <div class="logo-mark">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v4.26.180 Beta</span>
+    <div class="logo-mark">Coupler iv</div>
+    <span style="font-size:9px;color:var(--text3);margin-left:4px;opacity:.7">v4.26.65</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -221,8 +219,6 @@ tr.selected:hover td{background:var(--bg4);}
     <button class="help-close" onclick="document.querySelector('.help-overlay').classList.remove('show')">×</button>
     <h2>Coupler — How It Works</h2>
     <p>Coupler analyzes TrueType and OpenType fonts and computes optical kerning corrections based on the actual glyph contour geometry. No manual pair-by-pair editing — all values are derived mathematically from the outline shapes.</p>
-
-    <p>Try also the plugin for Glyphs3 <a href="Coupler 4.16.180.zip" style="font-family:var(--mono);color:var(--accent)">Download Coupler 4.16.180.zip</a></p>
 
     <h3>Workflow</h3>
     <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:1.7">
@@ -438,7 +434,6 @@ tr.selected:hover td{background:var(--bg4);}
 
   <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
   <button class="btn-run" id="btn-run" disabled onclick="runAnalysis()">▶ Compute Kerning</button>
-  <div class="log-resize" id="log-resize"></div>
   <div class="logbox" id="logbox"></div>
 </div>
 
@@ -616,7 +611,7 @@ function resetParams(){
 
 // Parameter presets for common font styles
 const PARAM_PRESETS={
-  'default':        {zones:24,  smooth:50,   mingap:6,  blur:5, round:20, threshold:40, pairlimit:1000 },
+  'default':        {zones:9,  smooth:60,   mingap:8,  blur:10, round:1, threshold:0},
   // Serif weights
   'serif-reg':      {zones:81, smooth:14,  mingap:12, blur:3,  round:1, threshold:0},
   'serif-it':       {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
@@ -655,77 +650,6 @@ function log(msg,cls=''){
 function setStatus(msg,cls=''){const el=document.getElementById('global-status');el.textContent=msg;el.className=cls;}
 function setProgress(p){document.getElementById('prog-fill').style.width=p+'%';}
 
-// ── LOG RESIZE DRAG ────────────────────────────────────
-{
-  const handle=document.getElementById('log-resize');
-  const logbox=document.getElementById('logbox');
-  let startY,startH;
-  handle.addEventListener('mousedown',e=>{
-    startY=e.clientY;startH=logbox.offsetHeight;
-    handle.classList.add('dragging');
-    const onMove=mv=>{
-      const newH=Math.max(24,Math.min(600,startH-(mv.clientY-startY)));
-      logbox.style.height=newH+'px';
-    };
-    const onUp=()=>{handle.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
-    document.addEventListener('mousemove',onMove);
-    document.addEventListener('mouseup',onUp);
-    e.preventDefault();
-  });
-}
-
-// ── STEM CADENCE ───────────────────────────────────────
-function measureStemCadence(){
-  if(!fontObj)return;
-  const upm=fontObj.unitsPerEm;
-  // x-height from OS/2; fall back to bounding-box top of glyph 'x'
-  let xh=fontObj.tables?.os2?.sxHeight||0;
-  if(!xh){
-    const xg=fontObj.charToGlyph('x');
-    if(xg&&xg.path&&xg.path.commands.length>0){const bb=xg.getBoundingBox();xh=Math.round(bb.y2);}
-  }
-  if(!xh){log('n cadence: no x-height available — skipped','info');return;}
-  const nGlyph=fontObj.charToGlyph('n');
-  if(!nGlyph||!nGlyph.path||nGlyph.path.commands.length===0){
-    log('n cadence: glyph "n" not found','info');return;
-  }
-  try{
-    // Derive vertical bounds directly from font (runAnalysis not yet called)
-    let yTop=upm*0.8,yBot=-(upm*0.2);
-    if(fontObj.tables?.os2){const o=fontObj.tables.os2;if(o.sTypoAscender)yTop=o.sTypoAscender;if(o.sTypoDescender!==undefined)yBot=o.sTypoDescender;}
-    else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.ascender)yTop=fontObj.tables.hhea.ascender;if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;}
-    const aw=nGlyph.advanceWidth||upm;
-    const scanYfu=xh/2;
-    const scale=4; // 4 px per font unit
-    const fontSize=scale*upm;
-    const topPad=4;
-    const baseline=topPad+Math.ceil(yTop*scale);
-    const W=Math.ceil(aw*scale);
-    const H=baseline+Math.ceil(Math.abs(yBot)*scale)+4;
-    const off=document.createElement('canvas');
-    off.width=W;off.height=H;
-    const ctx=off.getContext('2d');
-    ctx.fillStyle='#000';
-    ctx.fill(new Path2D(nGlyph.getPath(0,baseline,fontSize).toPathData(2)));
-    const scanRow=Math.round(baseline-scanYfu*scale);
-    if(scanRow<0||scanRow>=H){log(`n cadence: scan row ${scanRow} out of bounds (H=${H})`,'info');return;}
-    const px=ctx.getImageData(0,scanRow,W,1).data;
-    const runs=[];let inRun=false,rs=0;
-    for(let x=0;x<W;x++){
-      const ink=px[x*4+3]>127;
-      if(ink&&!inRun){inRun=true;rs=x;}
-      else if(!ink&&inRun){inRun=false;runs.push([rs,x-1]);}
-    }
-    if(inRun)runs.push([rs,W-1]);
-    if(runs.length<2){log(`n cadence: ${runs.length} ink run(s) at y=${Math.round(scanYfu)} fu — stems not distinct`,'info');return;}
-    const stemW=(runs[0][1]-runs[0][0]+1)/scale;
-    const interval=(runs[1][0]-runs[0][0])/scale;
-    const n=Math.max(1,Math.round(interval*4/stemW));
-    const cadence=interval/n;
-    log(`n cadence: y=${Math.round(scanYfu)} fu (½·x-height ${xh}) · stem ${Math.round(stemW)} fu · L→R ${Math.round(interval)} fu ÷ ${n} → cadence ${Math.round(cadence)} fu`,'info');
-  }catch(e){log('n cadence error: '+e.message,'err');}
-}
-
 // ── FONT LOAD ─────────────────────────────────────────
 const dz=document.getElementById('drop-zone');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
@@ -752,7 +676,6 @@ function loadFont(file){
       document.getElementById('btn-run').disabled=false;
       setStatus('Loaded','active');
       log(`Loaded: ${fn} — ${Object.keys(fontObj.glyphs.glyphs).length} glyphs`,'ok');
-      measureStemCadence();
       runAnalysis();
     }catch(err){setStatus('Load error','error');log('Error: '+err.message,'err');}
   };
@@ -1902,7 +1825,7 @@ function renderPreview(){
   for(let i=0;i<chars.length;i++){
     const ch=chars[i];
     const cp=ch.codePointAt(0);
-    if(cp===32){x+=fontSize*0.2;continue;}
+    if(cp===32){x+=fontSize*0.28;continue;}
     const glyph=resolveGlyph(ch);
     if(!glyph||!glyph.name)continue;
     const gk=glyph.name??'';
@@ -2202,10 +2125,10 @@ function openTestPage(){
     +'body{font-family:TF,serif;font-kerning:none;font-feature-settings:"kern" 0;color:#000;background:#fff;}'
     +'.pm{font-family:monospace;font-size:5.5pt;color:#999;border-bottom:0.4pt solid #ccc;padding-bottom:2pt;margin-bottom:2pt;line-height:1.4;}'
     +'.pm b{color:#000;}'
-    +'.sh{font-family:monospace;font-size:5.5pt;color:#ccc;border-top:0.3pt solid #eee;margin-top:4pt;padding-top:1pt;page-break-before:always;}'
+    +'.sh{font-family:monospace;font-size:5.5pt;color:#ccc;border-top:0.3pt solid #eee;margin-top:4pt;padding-top:1pt;}'
     +'.sj{font-family:monospace;font-size:5pt;color:#ddd;padding-top:1pt;}'
     +'.blk{word-break:break-all;margin:0;padding:0;}'
-    +'@media print{body{margin:12mm;}}'
+    +'@media print{body{margin:0;}}'
     +'<\/style><\/head><body>'
     +'<div class="pm"><b>Coupler Testprint<\/b> — '+pL+'<\/div>'
     +bH
