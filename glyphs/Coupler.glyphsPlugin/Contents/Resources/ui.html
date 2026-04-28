@@ -1203,6 +1203,7 @@ async function runAnalysis(){
     applyTextMode();
     renderPreview();
     if(currentTab==='spacing')renderSpacingTable();
+    if(currentTab==='cadence'){cadEnsureInit();renderCadence();}
     const nzCount=kerningData.filter(d=>d.correction!==0).length;
     setStatus(`${gc} gl · ${kerningData.length.toLocaleString()} pairs · ${nzCount.toLocaleString()} kern`,'active');
   }catch(err){
@@ -1446,6 +1447,8 @@ async function runAnalysisFromGlyphsData(data){
   const loadBtn=document.getElementById('btn-glyphs-load');
   if(loadBtn){loadBtn.disabled=false;loadBtn.textContent='▶  Load & Compute';}
   dbg('runAnalysisFromGlyphsData complete');
+  cadReset();
+  if(currentTab==='cadence'){cadEnsureInit();renderCadence();}
 }
 
 // Send non-zero pairs to Python for application to the font.
@@ -2065,13 +2068,26 @@ function cadReset(){
   });
 }
 
+function cadXHeight(){
+  const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm||1000;
+  if(!IS_GLYPHS&&fontObj){
+    const xg=fontObj.charToGlyph('x');
+    if(xg&&xg.path&&xg.path.commands.length>0)return Math.round(xg.getBoundingBox().y2);
+  } else if(IS_GLYPHS&&glyphsByName?.['x']?.commands){
+    // Y is negated in Glyphs commands (font-Y → screen-Y), so topmost point is most negative
+    let yMin=Infinity;
+    for(const c of glyphsByName['x'].commands)
+      for(const k of['y','y1','y2'])if(c[k]!==undefined)yMin=Math.min(yMin,c[k]);
+    if(yMin<0)return Math.round(-yMin);
+  }
+  return Math.round(upm*0.5);
+}
 function cadEnsureInit(){
   if(document.getElementById('cad-equator').value!=='')return;
+  if(IS_GLYPHS&&Object.keys(glyphsByName||{}).length===0)return;
   const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm;
   if(!upm)return;
-  let xh=(!IS_GLYPHS?fontObj?.tables?.os2?.sxHeight:xHeightGlobal)||0;
-  if(!xh&&!IS_GLYPHS&&fontObj){const xg=fontObj.charToGlyph('x');if(xg&&xg.path&&xg.path.commands.length>0)xh=Math.round(xg.getBoundingBox().y2);}
-  if(!xh)xh=Math.round(upm*0.5);
+  const xh=cadXHeight();
   const eq=Math.round(xh/2);
   document.getElementById('cad-equator').value=eq;
   const runs=cadScan(eq);
@@ -2211,9 +2227,7 @@ function renderCadence(){
   }
 
   const upm=IS_GLYPHS?currentUPM:fontObj.unitsPerEm;
-  let xh=(!IS_GLYPHS?fontObj?.tables?.os2?.sxHeight:xHeightGlobal)||0;
-  if(!xh&&!IS_GLYPHS&&fontObj){const xg=fontObj.charToGlyph('x');if(xg&&xg.path&&xg.path.commands.length>0)xh=Math.round(xg.getBoundingBox().y2);}
-  if(!xh)xh=Math.round(upm*0.5);
+  const xh=cadXHeight();
 
   // Glyph 'n' data
   let AW=upm,bbx1=0,bbx2=upm*0.5;

@@ -42,6 +42,17 @@ from WebKit import WKWebView, WKWebViewConfiguration
 GSOFFCURVE = 'offcurve'
 GSLINE     = 'line'
 GSCURVE    = 'curve'
+GSQCURVE   = 'qcurve'
+
+
+def _q2c(p0x, p0y, qx, qy, p2x, p2y):
+    """Elevate a quadratic Bezier (p0, q, p2) to cubic control points."""
+    return (
+        p0x + 2.0 / 3 * (qx - p0x),
+        p0y + 2.0 / 3 * (qy - p0y),
+        p2x + 2.0 / 3 * (qx - p2x),
+        p2y + 2.0 / 3 * (qy - p2y),
+    )
 
 
 # ── Path conversion ───────────────────────────────────────────────────────────
@@ -136,6 +147,7 @@ def _paths_to_js_commands(paths_py):
         for seg_i in range(num_oc):
             oc_s = oc_idx[seg_i]
             oc_e = oc_idx[(seg_i + 1) % num_oc]
+            p0 = nodes[oc_s]
             seg = []
             i = (oc_s + 1) % n
             while True:
@@ -154,6 +166,27 @@ def _paths_to_js_commands(paths_py):
                     'x2': offs[1][0], 'y2': -offs[1][1],
                     'x':  end_nd[0],  'y':  -end_nd[1],
                 })
+            elif end_nd[2] == GSQCURVE:
+                # Elevate TrueType quadratic segment(s) to cubic.
+                # Multiple consecutive off-curves imply on-curve midpoints between them.
+                if not offs:
+                    commands.append({'type': 'L', 'x': end_nd[0], 'y': -end_nd[1]})
+                else:
+                    cur_x, cur_y = p0[0], p0[1]
+                    for k, q in enumerate(offs):
+                        if k < len(offs) - 1:
+                            nx = (q[0] + offs[k + 1][0]) * 0.5
+                            ny = (q[1] + offs[k + 1][1]) * 0.5
+                        else:
+                            nx, ny = end_nd[0], end_nd[1]
+                        cp1x, cp1y, cp2x, cp2y = _q2c(cur_x, cur_y, q[0], q[1], nx, ny)
+                        commands.append({
+                            'type': 'C',
+                            'x1': cp1x, 'y1': -cp1y,
+                            'x2': cp2x, 'y2': -cp2y,
+                            'x':  nx,   'y':  -ny,
+                        })
+                        cur_x, cur_y = nx, ny
         commands.append({'type': 'Z'})
     return commands
 
