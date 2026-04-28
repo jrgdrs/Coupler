@@ -14,4 +14,4 @@ you can start it in glyphs's SCRIPT menu on the last line mentioned as Coupler..
 works directly with the Master you selected in Glyphs and can directly export the kerning values into the master without any file tackling
 
 
-Jörg Drees, 25.04.2026
+Jörg Drees
