@@ -211,13 +211,35 @@ tr.selected:hover td{background:var(--bg4);}
   .pcontrols input[type=range]{width:80px;}
   .tab-btns{flex-wrap:wrap;}
 }
+
+/* ── Compact mode (light-mode class, dark colors kept) ── */
+body.light-mode{min-height:0;}
+body.light-mode header{padding:7px 12px;border-bottom-color:transparent;}
+body.light-mode .header-sep,
+body.light-mode .header-font-info,
+body.light-mode .header-actions{display:none;}
+body.light-mode .layout{
+  grid-template-columns:220px;
+  height:auto;}
+body.light-mode .left-panel{border-right:none;height:auto;overflow:visible;}
+body.light-mode .preview-panel,body.light-mode .results-panel{display:none;}
+body.light-mode .params-section{flex:none;overflow-y:visible;padding-top:16px;}
+body.light-mode .pr:not([data-light="show"]){display:none;}
+body.light-mode .stats,body.light-mode .log-resize,body.light-mode .logbox,body.light-mode .prog{display:none;}
+body.light-mode .sec{display:none;}
+body.light-mode .btn-run{margin-top:8px;}
+#btn-light-act{display:none;margin:0 10px 12px;width:calc(100% - 20px);padding:9px;background:rgba(232,160,32,.12);color:var(--accent);font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;border:1px solid var(--accent);border-radius:var(--r);cursor:pointer;transition:all .15s;flex-shrink:0;}
+#btn-light-act:hover{background:rgba(232,160,32,.26);}
+#btn-light-act:active{transform:scale(.98);}
+#btn-light-act:disabled{background:transparent;color:var(--text3);border-color:var(--border2);cursor:not-allowed;}
+body.light-mode #btn-light-act{display:block;}
 </style>
 </head>
-<body>
+<body class="light-mode">
 
 <header>
   <div class="header-title">
-    <div class="logo-mark">Coupler</div>
+    <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
     <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.01.12 Beta</span>
   </div>
   <div class="header-sep"></div>
@@ -405,14 +427,14 @@ tr.selected:hover td{background:var(--bg4);}
       <input type="number" id="p-glowblur" value="20" min="0" max="200">
     </div>
 
-    <div class="pr">
+    <div class="pr" data-light="show">
       <div class="pl" data-tip="Round module (cadence)&#10;&#10;Snaps kerning correction values to the nearest multiple of N.&#10;&#10;Useful for font production systems that prefer a regular cadence of kerning values. Example: 46 produces values like −92, −46, 0, 46, 92.&#10;&#10;Use 1 for plain integer rounding with no module snap.&#10;Default: 1">
         Round module <span style="color:var(--text3);font-style:italic;font-size:9px">(cadence)</span><span>--round · kern snap value</span>
       </div>
       <input type="number" id="p-round" value="20" min="1">
     </div>
 
-    <div class="pr">
+    <div class="pr" data-light="show">
       <div class="pl" data-tip="Threshold&#10;&#10;Kerning corrections with an absolute value below this threshold are discarded and set to zero.&#10;&#10;This filters out noise: tiny corrections that are imperceptible in practice and would only bloat the kerning table.&#10;&#10;Example: threshold=5 removes all corrections in the range (−5 … +5).&#10;Set to 0 to keep all corrections including very small ones.&#10;Default: 0">
         Threshold <span style="color:var(--text3);font-style:italic;font-size:9px">(suppress noise)</span><span>--threshold · min abs correction</span>
       </div>
@@ -440,7 +462,7 @@ tr.selected:hover td{background:var(--bg4);}
       <input type="number" id="p-tracking" value="0">
     </div>
 
-    <div class="pr">
+    <div class="pr" data-light="show">
       <div class="pl" data-tip="Pair limit&#10;&#10;Maximum number of kerning pairs to generate, ranked by frequency of occurrence in real-world text (based on the Andre Fuchs kerning-pairs corpus).&#10;&#10;Only the top N most common pairs are computed and included in the output. This drastically reduces computation time for large fonts.&#10;&#10;Set to 0 to generate all pairs.&#10;Default: 0 (all)">
         Pair limit <span style="color:var(--text3);font-style:italic;font-size:9px">(top N by frequency)</span><span>--pairs · 0 = all pairs</span>
       </div>
@@ -472,6 +494,7 @@ tr.selected:hover td{background:var(--bg4);}
 
   <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
   <button class="btn-run" id="btn-run" disabled onclick="runAnalysis()">▶ Compute Kerning</button>
+  <button id="btn-light-act" disabled onclick="exportCSV()">↓ Export CSV</button>
   <div class="log-resize" id="log-resize"></div>
   <div class="logbox" id="logbox"></div>
 </div>
@@ -660,6 +683,7 @@ let showKerning=true,showMetrics=false,showBaseline=false,showXheight=false;
 let showSmallCaps=false,showOSF=false,showGlow=false;
 let glowPreviewCache={}; // 'glyphKey|blur' → HTMLCanvasElement
 let analysisWasGlow=false; // true when last completed analysis used Glow mode
+let lightMode=true; // light mode is default; toggled by double-clicking the logo
 let useRegex=false;
 let selectedPairIdx=-1;  // index into filteredData for pair-click preview
 let pairPreviewMode=false;  // true when showing a clicked pair in preview
@@ -1386,6 +1410,7 @@ async function runAnalysis(){
     updateCounterStats();
     const nzCount=kerningData.filter(d=>d.correction!==0).length;
     setStatus(`${gc} gl · ${kerningData.length.toLocaleString()} pairs · ${nzCount.toLocaleString()} kern`,'active');
+    updateLightModeButton();
   }catch(err){
     log('Error: '+err.message,'err');
     setStatus('Error','error');
@@ -1632,6 +1657,7 @@ async function runAnalysisFromGlyphsData(data){
   cadReset();
   if(currentTab==='cadence'){cadEnsureInit();renderCadence();}
   updateCounterStats();
+  updateLightModeButton();
 }
 
 // Send non-zero pairs to Python for application to the font.
@@ -1972,6 +1998,16 @@ function toggleKern(){
 }
 function toggleMetrics(){showMetrics=!showMetrics;document.getElementById('tbtn-metrics').className='tbtn'+(showMetrics?' on':'');renderPreview();}
 function toggleGlow(){showGlow=!showGlow;document.getElementById('tbtn-glow').className='tbtn'+(showGlow?' on':'');renderPreview();}
+function toggleLightMode(){
+  lightMode=!lightMode;
+  document.body.classList.toggle('light-mode',lightMode);
+  updateLightModeButton();
+  if(IS_GLYPHS){
+    if(lightMode){window.location.href='coupler://resize?w=240&h=450';}
+    else{window.location.href='coupler://resize?w=980&h=720';}
+  }
+}
+function updateLightModeButton(){const b=document.getElementById('btn-light-act');if(b)b.disabled=kerningData.length===0;}
 function toggleBaseline(){showBaseline=!showBaseline;document.getElementById('tbtn-baseline').className='tbtn'+(showBaseline?' on':'');renderPreview();}
 function toggleXheight(){showXheight=!showXheight;document.getElementById('tbtn-xheight').className='tbtn'+(showXheight?' on':'');renderPreview();}
 function toggleSmallCaps(){showSmallCaps=!showSmallCaps;document.getElementById('tbtn-sc').className='tbtn'+(showSmallCaps?' on':'');applyTextMode();renderPreview();}
@@ -2855,6 +2891,8 @@ if(IS_GLYPHS){
   // Rename Export button to Apply
   const expBtn=document.querySelector('.btn-exp');
   if(expBtn){expBtn.textContent='⊙ Apply to Font';expBtn.onclick=applyToGlyphs;}
+  const lightActBtn=document.getElementById('btn-light-act');
+  if(lightActBtn){lightActBtn.textContent='⊙ Apply to Font';lightActBtn.onclick=applyToGlyphs;}
   // Show Apply Spacing button (Glyphs mode only)
   const asBtn=document.getElementById('btn-apply-spacing');
   if(asBtn)asBtn.style.display='';

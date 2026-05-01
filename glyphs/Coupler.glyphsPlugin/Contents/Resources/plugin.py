@@ -260,6 +260,14 @@ class _NavDelegate(NSObject):
                     print('[Coupler] applyspacing parse error: %s' % pe)
                     items = []
                 dialog._apply_spacing(items)
+            elif cmd == 'resize':
+                try:
+                    params = dict(p.split('=') for p in query.split('&') if '=' in p)
+                    w = int(params.get('w', 240))
+                    h = int(params.get('h', 390))
+                    dialog._resize_window(w, h)
+                except Exception as re:
+                    print('[Coupler] resize error: %s' % re)
         except Exception:
             traceback.print_exc()
 
@@ -335,7 +343,7 @@ class CouplerDialog(object):
             'window.__IS_GLYPHS = true;', 0, True)
         uc.addUserScript_(flag_script)
 
-        rect          = NSMakeRect(0, 0, 980, 720)
+        rect          = NSMakeRect(0, 0, 240, 390)   # compact default (light mode)
         self._webview = WKWebView.alloc().initWithFrame_configuration_(rect, config)
 
         nav_delegate         = _NavDelegate.alloc().init()
@@ -354,7 +362,7 @@ class CouplerDialog(object):
             self._font.familyName or 'Untitled',
             master.name if master else 'Master'))
         win.setReleasedWhenClosed_(False)   # keep ObjC object alive; we manage lifetime
-        win.setMinSize_((760, 520))
+        win.setMinSize_((220, 300))
         win.setContentView_(self._webview)
         win.makeKeyAndOrderFront_(None)
         self._window = win
@@ -362,6 +370,21 @@ class CouplerDialog(object):
 
     def _js(self, code):
         self._webview.evaluateJavaScript_completionHandler_(code, None)
+
+    def _resize_window(self, w, h):
+        try:
+            if not self._window:
+                return
+            f = self._window.frame()
+            # Keep top-left corner fixed; macOS Y origin is bottom of screen
+            new_h = h + 22   # approximate titlebar height
+            new_origin_y = f.origin.y + f.size.height - new_h
+            from AppKit import NSMakeRect
+            self._window.setMinSize_((w, h))
+            self._window.setFrame_display_animate_(
+                NSMakeRect(f.origin.x, new_origin_y, w, new_h), True, True)
+        except Exception:
+            traceback.print_exc()
 
     def _send_identity(self):
         try:
