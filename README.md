@@ -1,68 +1,191 @@
-# Coupler – Functionality Overview
+# Coupler
 
-**Coupler** is a font analysis tool designed to support and experiment with automated kerning processes. It analyzes font files and derives spacing metrics that can be used to generate kerning values systematically.
+**Coupler** computes optical kerning corrections from the actual glyph contour geometry of TrueType and OpenType fonts. All values are derived mathematically from outline shapes — no manual pair editing required.
 
-The tool processes font files (`.ttf` and `.otf`) from a local directory and performs a detailed geometric analysis of each glyph based on its Bézier outlines.
+Available as a **Glyphs plugin** and as a **browser-based standalone tool**.
 
----
-
-## Core Features
-
-### 1. Glyph Margin Analysis
-- Each glyph is divided vertically into a configurable number of height zones based on the font’s UPM (units per em).
-- For every zone, the tool calculates:
-  - **Left margin**: distance from the glyph’s leftmost contour to the left boundary.
-  - **Right margin**: distance from the glyph’s rightmost contour to the advance width boundary.
-- If no glyph content exists in a zone, the value is set to `-1`.
-- Values are rounded to one decimal place and stored as arrays.
-- Results are exported as JSON files per font in a `/margins` directory.
-- Both raw (**unweighted**) and smoothed (**weighted**) margin values are stored.
+| | |
+|---|---|
+| **Live demo** | [jrgdrs.github.io/Coupler](https://jrgdrs.github.io/Coupler) — run directly in the browser, no installation required |
+| **Glyphs plugin** | [Download Coupler.zip](https://jrgdrs.github.io/Coupler/Coupler.zip) — unzip and double-click to install in Glyphs 3 |
 
 ---
 
-### 2. Pair Spacing Calculation
-- All glyphs are combined into pairs.
-- For each pair and each height zone:
-  - The gap is calculated as:  
-    `right margin of first glyph + left margin of second glyph`
-- Only zones where both glyphs have valid values are considered.
-- Results are stored in `/pairs` as JSON files.
+## Using Coupler
+
+### In the Browser
+
+Open [jrgdrs.github.io/Coupler](https://jrgdrs.github.io/Coupler) in any modern browser — no installation, no account, no server. The tool runs entirely client-side.
+
+1. Drop a `.ttf` or `.otf` file onto the drop zone, or click to browse.
+2. Coupler parses the font, runs a cadence scan, and computes kerning automatically.
+3. Inspect the results in the preview canvas and the Coupling Table.
+4. Export the kerning pairs as a CSV file or copy them to the clipboard for use in font editors or scripting environments.
+
+The browser version is suitable for quick evaluations, sharing a single font file without installing any software, and for users who work outside of Glyphs.
 
 ---
 
-### 3. Kerning Value Generation
-- A baseline spacing value is calculated:
-  - For lowercase: based on the pair **“o + o”**
-  - For uppercase and lining figures: based on **“O + O”**
-- For each pair:
-  - The average gap across valid zones is computed.
-  - A kerning correction is derived by comparing this average to the baseline.
-- Interpretation:
-  - **Negative values** → tighten spacing  
-  - **Positive values** → loosen spacing  
-- Optional rounding to a configurable module (e.g. multiples of 46).
+### In Glyphs 3
+
+Download [Coupler.zip](https://jrgdrs.github.io/Coupler/Coupler.zip), unzip it, and double-click `Coupler.glyphsPlugin` to install. Restart Glyphs, then open the plugin from the Script or Window menu.
+
+Coupler connects directly to the active font and master in Glyphs — no file export required:
+
+1. Open the Coupler panel. It opens in compact mode by default.
+2. Click **Load & Compute** to fetch the current font data from Glyphs and run the full analysis.
+3. Adjust parameters and click **Recompute** as needed.
+4. Click **Apply to Font** to write the kerning pairs directly into the Glyphs kerning table of the active master.
+
+Switching masters or fonts and clicking **Load & Compute** again fetches the updated data. The cadence scan re-runs and pre-fills the Round module for the new font.
 
 ---
 
-## Constraints and Refinements
+## Lightweight vs. Advanced Mode
 
-### Minimum Gap Constraint
-- Ensures spacing never falls below a defined percentage of the em size.
-- Applied per zone, based on the tightest zone of the pair.
+Coupler offers two modes suited to different workflows and user groups.
 
-### Threshold Filtering
-- Small kerning values below a defined threshold are ignored.
+### Lightweight — Compact Panel
+
+**For:** type designers in production, users who want fast automated kerning with minimal configuration.
+
+Double-click the **Coupler** logo to toggle the compact panel. The window shrinks to a narrow column showing only the essential controls:
+
+- **Load & Compute** — fetches font data from Glyphs and runs the initial analysis. The Round module is pre-filled automatically from the cadence scan of the lowercase `n`.
+- **Cadence canvas** — visual confirmation of the stem rhythm used to derive the module.
+- **Round module / Threshold / Pair limit** — the three parameters most likely to need adjustment per font.
+- **Recompute** — re-runs the analysis with the current field values. Does not overwrite the Round module, so manual adjustments are preserved across recomputations.
+- **Kerning to Clipboard** *(browser)* / **Apply to Font** *(Glyphs)* — delivers the result in one click.
+
+For most production fonts, the workflow is: Load & Compute → verify the cadence value → Apply to Font. The entire process takes under a minute.
+
+### Advanced — Full Panel
+
+**For:** researchers, type engineers, and designers who want to understand or fine-tune the kerning model.
+
+Double-click the logo again to switch back to the full panel. This exposes the complete parameter set, a live preview canvas with margin overlays, the full Coupling Table with sortable columns and a regex filter, the Spacing Corrections tab, and the Cadence tab.
+
+Key additional controls in the full panel:
+
+- **Zones, Blur, Smooth, Glow** — tune the precision and style of the margin measurement model.
+- **Preview canvas** — render any text string with kerning, margin zone overlays, baseline, x-height, and pair-by-pair inspection.
+- **Cadence tab** — inspect and adjust the stem rhythm scan interactively with a visualization of the `n` glyph and its grid.
+- **Spacing Corrections tab** — per-glyph sidebearing imbalance analysis with an advance-width histogram and direct apply to Glyphs.
+- **Testpage** — A4 landscape print layout with multilingual sample texts at 9–16 pt.
+
+Parameter presets (Serif Regular, Serif Italic, Sans Light, Slab Bold, …) provide a starting point for common font categories and can be used as a basis for further fine-tuning.
+
+---
+
+## How It Works
+
+Coupler measures the left and right ink margins of every glyph at N horizontal zones, derives a target spacing baseline from the reference pair (o+o for lowercase, O+O for uppercase), and computes a correction for every pair as:
+
+```
+correction = base − pairMean
+```
+
+Negative correction = tighten spacing. Positive = loosen.
+
+A full description of the mathematical pipeline — from input data through margin measurement, smoothing, baseline derivation, and pair correction — is documented in [MATH_en.md](MATH_en.md).
+
+---
+
+## Features
+
+### Margin Measurement
+- Each glyph is sliced into configurable horizontal **Zones** across the full em height.
+- Per zone, Bézier intersection geometry (cubic and quadratic) determines the leftmost and rightmost ink extent.
+- **Blur** sub-zones are averaged per zone to suppress staircase artifacts at oblique curve crossings.
+- **Glow mode** switches to a rasterized pixel-scan method with configurable ink spread radius, producing optically weighted margins for high-contrast and ink-trap designs.
 
 ### Smoothing
-- Margin values are smoothed across zones to avoid abrupt jumps.
-- Uses the smallest margin (maximum glyph extent) as an anchor.
+- A reciprocal step-limit pass (**Smooth**) constrains margin jumps between adjacent zones, anchoring from the zone of maximum glyph extent outward.
+- Handles diagonal strokes and open counters without manual zone overrides.
 
-### Blur (Supersampling)
-- Each zone is subdivided into finer slices.
-- Margins are averaged across these slices for higher precision.
+### Baseline & Pair Corrections
+- Baseline spacing is derived from the self-pair of the reference glyph (`o+o` for LC, `O+O` for UC), adjusted by a global **Tracking** offset.
+- Corrections violating the **Min gap** floor are capped and flagged (⚑).
+- Corrections below **Threshold** are zeroed out.
+- Final values are snapped to the nearest multiple of the **Round module**.
+
+### Cadence Scan
+- Automatically measures the stem rhythm of the lowercase `n` at the equator (half x-height).
+- Derives a natural Round module from the stem interval and configurable divider.
+- Pre-fills the Round module field on first font load.
+
+### Spacing Corrections
+- Analyzes self-pairs (A+A, n+n …) to detect sidebearing imbalances.
+- Suggests advance-width and sidebearing adjustments per glyph.
+- In Glyphs mode: applies corrections directly to the font.
+
+---
+
+## Parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| Zones | 16 | Horizontal slices across the em. More = finer detail, slower. |
+| Smooth | 50 | Reciprocal smoothing strength (0 = off, 99 = maximum). |
+| Min gap % | 9 | Minimum gap floor as % of UPM. |
+| Blur | 5 | Sub-zones per zone for margin averaging. |
+| Glow | on | Pixel-based margin measurement with ink spread. |
+| Glow Blur | 20 | Ink spread radius in font units. |
+| Round module | 20 | Snap corrections to multiples of N. Pre-filled from cadence. |
+| Threshold | 0 | Discard corrections below this absolute value. |
+| Base Glyph LC | o | Reference glyph for lowercase baseline. |
+| Base Glyph UC | O | Reference glyph for uppercase baseline. |
+| Tracking | 0 | Global offset on the effective base spacing. |
+| Pair limit | 1000 | Max pairs by text frequency. 0 = all pairs. |
+
+Preset configurations are provided for Serif, Sans, and Slab fonts across Regular, Italic, Bold, and Bold Italic styles.
 
 ---
 
 ## Output
 
-- Kerning values are exported as semicolon-separated CSV:
+- **Coupling Table** — all kerning pairs with correction, pair mean, base value, class (LC/UC/mixed), and per-zone breakdown.
+- **CSV export** — semicolon-delimited, one pair per line:
+  ```
+  Left;Right;Correction (Class zones) [cap]
+  ```
+- **Clipboard copy** — same format, for direct paste into scripting environments.
+- **Apply to Font** — writes kerning pairs directly into the active Glyphs document (Glyphs mode).
+- **Spacing corrections** — advance-width and sidebearing suggestions per glyph, with optional apply to Glyphs.
+
+---
+
+## Compact Panel
+
+Double-clicking the **Coupler** logo switches to a compact single-column panel designed for production use alongside Glyphs. It exposes:
+
+- Load & Compute (Glyphs mode)
+- Cadence canvas — stem rhythm visualization
+- Round module, Threshold, Pair limit fields
+- Recompute (uses current field values, does not overwrite Round module)
+- Kerning to Clipboard / Export CSV / Apply to Font
+
+---
+
+## Presets — Text Samples
+
+The Testpage button opens an A4 landscape print window with six text blocks at 9–16 pt using multilingual sample texts. Coupler kerning is embedded. Export as PDF via Cmd+P.
+
+---
+
+## Mathematical Documentation
+
+The full derivation of the kerning pipeline — input data, data objects, margin geometry, smoothing mathematics, baseline computation, pair correction formula, and worked examples — is documented in:
+
+- [MATH_en.md](MATH_en.md) — English
+- [MATH.md](MATH.md) — German (original)
+
+---
+
+## Links
+
+| | |
+|---|---|
+| **Live demo** | [jrgdrs.github.io/Coupler](https://jrgdrs.github.io/Coupler) |
+| **Glyphs plugin download** | [jrgdrs.github.io/Coupler/Coupler.zip](https://jrgdrs.github.io/Coupler/Coupler.zip) |
+| **Source code** | [github.com/jrgdrs/Coupler](https://github.com/jrgdrs/Coupler) |

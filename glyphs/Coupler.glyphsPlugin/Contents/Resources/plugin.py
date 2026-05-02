@@ -264,7 +264,7 @@ class _NavDelegate(NSObject):
                 try:
                     params = dict(p.split('=') for p in query.split('&') if '=' in p)
                     w = int(params.get('w', 240))
-                    h = int(params.get('h', 390))
+                    h = int(params.get('h', 675))
                     dialog._resize_window(w, h)
                 except Exception as re:
                     print('[Coupler] resize error: %s' % re)
@@ -343,7 +343,7 @@ class CouplerDialog(object):
             'window.__IS_GLYPHS = true;', 0, True)
         uc.addUserScript_(flag_script)
 
-        rect          = NSMakeRect(0, 0, 240, 390)   # compact default (light mode)
+        rect          = NSMakeRect(0, 0, 240, 675)   # compact default (light mode)
         self._webview = WKWebView.alloc().initWithFrame_configuration_(rect, config)
 
         nav_delegate         = _NavDelegate.alloc().init()
