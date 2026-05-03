@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v5.03.11 Beta</title>
+<title>Coupler — Font Kerning Analyzer - v5.03.13 Beta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 :root{
@@ -255,7 +255,7 @@ body.light-mode #btn-light-act{display:block;}
 <header>
   <div class="header-title">
     <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.03.11 Beta</span>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.03.13 Beta</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -1091,22 +1091,31 @@ function computeGlyphMargins(glyph,upm,p,yBot,yTop){
   const aw=glyph.advanceWidth??0;
   const zH=(yTop-yBot)/p.zones;
   const subs=p.zones*p.blur;
-  const subR=p.glow
-    ?glowZones(glyph,aw,p,yBot,yTop,false,upm)
-    :pathXZones(glyph.getPath(0,0,upm),subs,yBot,yTop);
-  const lR=[],rR=[];
+  const path=glyph.getPath(0,0,upm);
+  // Geometric margins (outline only, no glow) — authoritative for min-gap checks
+  const geomSubR=pathXZones(path,subs,yBot,yTop);
+  const lGeom=[],rGeom=[];
   for(let z=0;z<p.zones;z++){
     const s0=z*p.blur;let sL=0,sR=0,cnt=0;
-    for(let s=0;s<p.blur;s++){const sub=subR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
-    if(cnt===0){lR.push(null);rR.push(null);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+    for(let s=0;s<p.blur;s++){const sub=geomSubR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
+    if(cnt===0){lGeom.push(null);rGeom.push(null);}else{lGeom.push(r1(sL/cnt));rGeom.push(r1(sR/cnt));}
   }
+  // Kerning margins: glow-spread when glow is on, else reuse geometric
+  let lR,rR;
+  if(p.glow){
+    const glowSubR=glowZones(glyph,aw,p,yBot,yTop,false,upm);
+    lR=[];rR=[];
+    for(let z=0;z<p.zones;z++){
+      const s0=z*p.blur;let sL=0,sR=0,cnt=0;
+      for(let s=0;s<p.blur;s++){const sub=glowSubR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
+      if(cnt===0){lR.push(null);rR.push(null);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+    }
+  }else{lR=lGeom;rR=rGeom;}
   const leftSm=smoothMargins(lR,zH,p.smooth);
   const rightSm=smoothMargins(rR,zH,p.smooth);
-  const left=leftSm;
-  const right=rightSm;
   let unicode=null;
   if(glyph.unicodes?.length>0)unicode=glyph.unicodes[0];
-  return{left,right,leftRaw:lR,rightRaw:rR,advanceWidth:aw,unicode};
+  return{left:leftSm,right:rightSm,leftRaw:lR,rightRaw:rR,leftGeom:lGeom,rightGeom:rGeom,advanceWidth:aw,unicode};
 }
 
 // ── CLASSIFICATION ────────────────────────────────────
@@ -1377,9 +1386,9 @@ async function runAnalysis(){
       const gk=g.name??`glyph_${key}`;
       const unicode=g.unicodes?.[0]??null;
       const cl=cLbl(unicode,g.name,gk);
-      const{left,right,leftRaw,rightRaw,advanceWidth}=computeGlyphMargins(g,upm,p,yBot,yTop);
+      const{left,right,leftRaw,rightRaw,leftGeom,rightGeom,advanceWidth}=computeGlyphMargins(g,upm,p,yBot,yTop);
       const cls=classifyGlyph(unicode,gk);
-      glyphCache[gk]={left,right,leftRaw,rightRaw,charLabel:cl,unicode,glyphName:gk,cls,advanceWidth};
+      glyphCache[gk]={left,right,leftRaw,rightRaw,leftGeom,rightGeom,charLabel:cl,unicode,glyphName:gk,cls,advanceWidth};
       if(done%50===0){setProgress(done/allKeys.length*40);await new Promise(r=>setTimeout(r,0));}
     }
     setProgress(40);
@@ -1465,20 +1474,29 @@ async function runAnalysis(){
         const tag=bothUC?'UC':(gcA.cls==='UC'||gcB.cls==='UC')?'mixed':'LC';
         let corr=rtm(base-calc.mean,p.round);
         let capped=false;
-        if(minGapFU>0&&corr<0){
-          // Min-gap is measured on the raw ink margins (before smooth/glow) so that
-          // artificially pulled zones do not block valid corrections. Only zones with
-          // a positive raw gap are considered; negative sums = pre-existing overlap.
-          const rawGaps=[];
-          for(let z=0;z<gcA.rightRaw.length;z++){const a=gcA.rightRaw[z],b=gcB.leftRaw[z];if(a!==null&&b!==null){const s=a+b;if(s>0)rawGaps.push(s);}}
-          if(rawGaps.length>0){
-            const minZG=Math.min(...rawGaps);
-            const room=minZG-minGapFU;
-            const maxNeg=room>0?-(p.round>1?Math.floor(room/p.round)*p.round:Math.floor(room)):0;
-            if(corr<maxNeg){corr=maxNeg;capped=true;}
+        if(minGapFU>0){
+          // Use raw ink margins (pre-smooth/glow) so real ink boundaries determine the gap.
+          // Covers protruding parts (negative LSB/RSB) and zones that already overlap.
+          // Constraint: geomGap[z] + corr >= minGapFU  for every zone with ink in both glyphs.
+          // Uses geometric (outline-only) margins so glow/smooth cannot distort the check.
+          // => corr >= minGapFU - min(geomGap)  = -(room)
+          const rawSums=[];
+          for(let z=0;z<gcA.rightGeom.length;z++){const a=gcA.rightGeom[z],b=gcB.leftGeom[z];if(a!==null&&b!==null)rawSums.push(a+b);}
+          if(rawSums.length>0){
+            const minZG=Math.min(...rawSums);
+            const room=minZG-minGapFU;          // >0 = headroom, <0 = already too close/overlapping
+            let minCorr;
+            if(room>=0){
+              // Can tighten by at most floor(room) to guarantee minGap at tightest zone
+              minCorr=-(p.round>1?Math.floor(room/p.round)*p.round:Math.floor(room));
+            }else{
+              // Glyphs closer than minGap: require a positive correction (ceil to round up)
+              minCorr=p.round>1?Math.ceil(-room/p.round)*p.round:Math.ceil(-room);
+            }
+            if(corr<minCorr){corr=minCorr;capped=true;}
           }
         }
-        if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
+        if(p.threshold>0&&!capped&&Math.abs(corr)<p.threshold)corr=0;
         kerningData.push({left:gcA.charLabel,right:gcB.charLabel,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
       }catch(pairErr){console.warn('pair error',kA,kB,pairErr);}
       if(pi%Math.max(1,Math.floor(pairQueue.length/20))===0){setProgress(45+pi/pairQueue.length*50);await new Promise(r=>setTimeout(r,0));}
@@ -1601,18 +1619,29 @@ function receiveGlyphData(data){
 function computeMarginsFromCommands(commands, aw, p, yBot, yTop){
   const zH=(yTop-yBot)/p.zones;
   const subs=p.zones*p.blur;
-  const subR=p.glow
-    ?glowZones(commands,aw,p,yBot,yTop,true,null)
-    :pathXZones({commands},subs,yBot,yTop);
-  const lR=[],rR=[];
+  const pathObj={commands};
+  // Geometric margins (outline only, no glow) — authoritative for min-gap checks
+  const geomSubR=pathXZones(pathObj,subs,yBot,yTop);
+  const lGeom=[],rGeom=[];
   for(let z=0;z<p.zones;z++){
     const s0=z*p.blur;let sL=0,sR=0,cnt=0;
-    for(let s=0;s<p.blur;s++){const sub=subR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
-    if(cnt===0){lR.push(null);rR.push(null);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+    for(let s=0;s<p.blur;s++){const sub=geomSubR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
+    if(cnt===0){lGeom.push(null);rGeom.push(null);}else{lGeom.push(r1(sL/cnt));rGeom.push(r1(sR/cnt));}
   }
+  // Kerning margins: glow-spread when glow is on, else reuse geometric
+  let lR,rR;
+  if(p.glow){
+    const glowSubR=glowZones(commands,aw,p,yBot,yTop,true,null);
+    lR=[];rR=[];
+    for(let z=0;z<p.zones;z++){
+      const s0=z*p.blur;let sL=0,sR=0,cnt=0;
+      for(let s=0;s<p.blur;s++){const sub=glowSubR[s0+s];if(!sub)continue;sL+=sub.xMin;sR+=aw-sub.xMax;cnt++;}
+      if(cnt===0){lR.push(null);rR.push(null);}else{lR.push(r1(sL/cnt));rR.push(r1(sR/cnt));}
+    }
+  }else{lR=lGeom;rR=rGeom;}
   const leftSm=smoothMargins(lR,zH,p.smooth);
   const rightSm=smoothMargins(rR,zH,p.smooth);
-  return{left:leftSm,right:rightSm,leftRaw:lR,rightRaw:rR,advanceWidth:aw};
+  return{left:leftSm,right:rightSm,leftRaw:lR,rightRaw:rR,leftGeom:lGeom,rightGeom:rGeom,advanceWidth:aw};
 }
 
 // Build a Path2D from Glyphs-mode commands at a given canvas position + scale.
@@ -1652,9 +1681,9 @@ async function runAnalysisFromGlyphsData(data){
       done++;
       if(!g.commands||g.commands.length===0)continue;
       const cl=cLbl(g.unicode,g.name,g.name);
-      const{left,right,leftRaw,rightRaw,advanceWidth}=computeMarginsFromCommands(g.commands,g.advanceWidth,p,yBot,yTop);
+      const{left,right,leftRaw,rightRaw,leftGeom,rightGeom,advanceWidth}=computeMarginsFromCommands(g.commands,g.advanceWidth,p,yBot,yTop);
       const cls=classifyGlyph(g.unicode,g.name);
-      glyphCache[g.name]={left,right,leftRaw,rightRaw,charLabel:cl,unicode:g.unicode,glyphName:g.name,cls,advanceWidth};
+      glyphCache[g.name]={left,right,leftRaw,rightRaw,leftGeom,rightGeom,charLabel:cl,unicode:g.unicode,glyphName:g.name,cls,advanceWidth};
       if(done%50===0){
         const pct=40+Math.round(done/allGlyphs.length*20);
         setProgress(pct);
@@ -1722,17 +1751,22 @@ async function runAnalysisFromGlyphsData(data){
         const tag=bothUC?'UC':(gcA.cls==='UC'||gcB.cls==='UC')?'mixed':'LC';
         let corr=rtm(base-calc.mean,p.round);
         let capped=false;
-        if(minGapFU>0&&corr<0){
-          const rawGaps=[];
-          for(let z=0;z<gcA.rightRaw.length;z++){const a=gcA.rightRaw[z],b=gcB.leftRaw[z];if(a!==null&&b!==null){const s=a+b;if(s>0)rawGaps.push(s);}}
-          if(rawGaps.length>0){
-            const minZG=Math.min(...rawGaps);
+        if(minGapFU>0){
+          const rawSums=[];
+          for(let z=0;z<gcA.rightGeom.length;z++){const a=gcA.rightGeom[z],b=gcB.leftGeom[z];if(a!==null&&b!==null)rawSums.push(a+b);}
+          if(rawSums.length>0){
+            const minZG=Math.min(...rawSums);
             const room=minZG-minGapFU;
-            const maxNeg=room>0?-(p.round>1?Math.floor(room/p.round)*p.round:Math.floor(room)):0;
-            if(corr<maxNeg){corr=maxNeg;capped=true;}
+            let minCorr;
+            if(room>=0){
+              minCorr=-(p.round>1?Math.floor(room/p.round)*p.round:Math.floor(room));
+            }else{
+              minCorr=p.round>1?Math.ceil(-room/p.round)*p.round:Math.ceil(-room);
+            }
+            if(corr<minCorr){corr=minCorr;capped=true;}
           }
         }
-        if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
+        if(p.threshold>0&&!capped&&Math.abs(corr)<p.threshold)corr=0;
         kerningData.push({left:gcA.charLabel,right:gcB.charLabel,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
       }catch(pairErr){console.warn('pair error',kA,kB,pairErr);}
       if(pi%Math.max(1,Math.floor(pairQueue.length/20))===0){
