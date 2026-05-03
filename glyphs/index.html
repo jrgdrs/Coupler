@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v5.03.13 Beta</title>
+<title>Coupler — Font Kerning Analyzer - v5.03.20 Beta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 :root{
@@ -255,7 +255,7 @@ body.light-mode #btn-light-act{display:block;}
 <header>
   <div class="header-title">
     <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.03.13 Beta</span>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.03.20 Beta</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -465,7 +465,7 @@ body.light-mode #btn-light-act{display:block;}
       <div class="pl" data-tip="Min gap % (no touch)&#10;&#10;Minimum allowed gap floor as a % of the full em size (UPM).&#10;&#10;Prevents any kerning correction from bringing two glyphs so close that their tightest zone gap falls below this floor. Acts as a collision guard — set to 0 to disable.&#10;&#10;Example: 8% of UPM 1000 = 80 font units minimum spacing.&#10;Smaller = more aggressive kerning permitted.&#10;Default: 8">
         Min gap % <span style="color:var(--text3);font-style:italic;font-size:9px">(no touch)</span><span>--mingap · % of UPM floor</span>
       </div>
-      <input type="number" id="p-mingap" value="9" min="0" max="100" step="0.5">
+      <input type="number" id="p-mingap" value="4" min="0" max="100" step="0.5">
     </div>
 
     <div class="pr">
@@ -769,7 +769,7 @@ let currentUPM=1000,yBotGlobal=0,yTopGlobal=0,xHeightGlobal=0;
 let glyphsByName={};         // name → {commands, advanceWidth, unicode} (Glyphs mode)
 let unicodeToGlyphName={};   // codepoint → glyph name (Glyphs mode)
 
-const DEFAULTS={zones:16,smooth:50,round:20,blur:5,mingap:9,threshold:0,baselc:'o',baseuc:'O',tracking:0,pairlimit:1000,glowblur:20,glow:true};
+const DEFAULTS={zones:16,smooth:50,round:20,blur:5,mingap:4,threshold:0,baselc:'o',baseuc:'O',tracking:0,pairlimit:1000,glowblur:20,glow:true};
 
 function P(){
   const mg=parseFloat(document.getElementById('p-mingap').value);
@@ -799,7 +799,7 @@ function resetParams(){
 
 // Parameter presets for common font styles
 const PARAM_PRESETS={
-  'default':        {zones:16,  smooth:50,   mingap:9,  blur:5, round:20, threshold:0,  pairlimit:1000 },
+  'default':        {zones:16,  smooth:50,   mingap:4,  blur:5, round:20, threshold:0,  pairlimit:1000 },
   // Serif weights
   'serif-reg':      {zones:81, smooth:14,  mingap:12, blur:3,  round:1, threshold:0},
   'serif-it':       {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
