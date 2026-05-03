@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v5.02.22 Beta</title>
+<title>Coupler — Font Kerning Analyzer - v5.03.11 Beta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 :root{
@@ -255,7 +255,7 @@ body.light-mode #btn-light-act{display:block;}
 <header>
   <div class="header-title">
     <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.02.22 Beta</span>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.03.11 Beta</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -1466,10 +1466,17 @@ async function runAnalysis(){
         let corr=rtm(base-calc.mean,p.round);
         let capped=false;
         if(minGapFU>0&&corr<0){
-          const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
-          const room=minZG-minGapFU;
-          const maxNeg=room>0?-rtm(room,p.round):0;
-          if(corr<maxNeg){corr=maxNeg;capped=true;}
+          // Min-gap is measured on the raw ink margins (before smooth/glow) so that
+          // artificially pulled zones do not block valid corrections. Only zones with
+          // a positive raw gap are considered; negative sums = pre-existing overlap.
+          const rawGaps=[];
+          for(let z=0;z<gcA.rightRaw.length;z++){const a=gcA.rightRaw[z],b=gcB.leftRaw[z];if(a!==null&&b!==null){const s=a+b;if(s>0)rawGaps.push(s);}}
+          if(rawGaps.length>0){
+            const minZG=Math.min(...rawGaps);
+            const room=minZG-minGapFU;
+            const maxNeg=room>0?-(p.round>1?Math.floor(room/p.round)*p.round:Math.floor(room)):0;
+            if(corr<maxNeg){corr=maxNeg;capped=true;}
+          }
         }
         if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
         kerningData.push({left:gcA.charLabel,right:gcB.charLabel,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
@@ -1716,10 +1723,14 @@ async function runAnalysisFromGlyphsData(data){
         let corr=rtm(base-calc.mean,p.round);
         let capped=false;
         if(minGapFU>0&&corr<0){
-          const minZG=Math.min(...calc.zoneValues.map(v=>v.sum));
-          const room=minZG-minGapFU;
-          const maxNeg=room>0?-rtm(room,p.round):0;
-          if(corr<maxNeg){corr=maxNeg;capped=true;}
+          const rawGaps=[];
+          for(let z=0;z<gcA.rightRaw.length;z++){const a=gcA.rightRaw[z],b=gcB.leftRaw[z];if(a!==null&&b!==null){const s=a+b;if(s>0)rawGaps.push(s);}}
+          if(rawGaps.length>0){
+            const minZG=Math.min(...rawGaps);
+            const room=minZG-minGapFU;
+            const maxNeg=room>0?-(p.round>1?Math.floor(room/p.round)*p.round:Math.floor(room)):0;
+            if(corr<maxNeg){corr=maxNeg;capped=true;}
+          }
         }
         if(p.threshold>0&&Math.abs(corr)<p.threshold)corr=0;
         kerningData.push({left:gcA.charLabel,right:gcB.charLabel,correction:corr,mean:r1(calc.mean),base:r1(base),tag,capped,zones:calc.zoneValues.map(v=>`z${v.z}:${v.sum}`).join(','),zonesArr:calc.zoneValues});
