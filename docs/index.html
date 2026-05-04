@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v5.03.20 Beta</title>
+<title>Coupler — Font Kerning Analyzer - v5.04.21 Beta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 :root{
@@ -255,7 +255,7 @@ body.light-mode #btn-light-act{display:block;}
 <header>
   <div class="header-title">
     <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.03.20 Beta</span>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.04.21 Beta</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -297,16 +297,17 @@ body.light-mode #btn-light-act{display:block;}
       <dt>Presets &#8635;</dt><dd>Loads a named parameter set tuned for common font styles: Default, Serif Regular/Italic/Bold/Bold Italic, Sans Light/Regular/Bold, Slab Light/Regular/Bold. Overrides all parameter fields at once.</dd>
       <dt>Zones <span style="font-weight:400;color:var(--text3)">default 16 &middot; range 1&ndash;64</span></dt><dd>Number of equal-height horizontal slices across the full em (ascender to descender). More zones capture finer vertical contour detail at the cost of speed. Recommended: 9&ndash;16 for most text fonts.</dd>
       <dt>Smooth <span style="font-weight:400;color:var(--text3)">default 50 &middot; range 0&ndash;99</span></dt><dd>Reciprocal smoothing strength. 0 = disabled; 99 = maximum (step limit of 1&thinsp;% of zone height per adjacent zone). Tames diagonal strokes and open counters by constraining margin jumps between zones.</dd>
-      <dt>Min gap % <span style="font-weight:400;color:var(--text3)">default 9 &middot; range 0&ndash;100</span></dt><dd>Minimum gap between any two glyphs as a percentage of UPM. Corrections that would bring glyphs closer than this floor are reduced and marked &#9873;. Set to 0 to disable the guard.</dd>
-      <dt>Blur <span style="font-weight:400;color:var(--text3)">default 5 &middot; range 1&ndash;50</span></dt><dd>Number of sub-zones computed per zone. Zone margins are averaged across sub-zones, suppressing quantization artifacts where curves cross zone boundaries at oblique angles. Higher = smoother.</dd>
-      <dt>Glow <span style="font-weight:400;color:var(--text3)">default on</span></dt><dd>Switches margin measurement from vector Bezier intersection to a rasterized pixel-scan method. Ink is spread by <em>Glow Blur</em> before the margin edge is detected, simulating optical ink spread and producing softer, optically weighted margins.</dd>
+      <dt>Min gap % <span style="font-weight:400;color:var(--text3)">default 4 &middot; range 0&ndash;100</span></dt><dd>Minimum ink distance between adjacent glyphs as a percentage of UPM, measured on the raw geometric outline (independent of Smooth or Glow). Covers any part of a glyph that extends beyond its body — including negative sidebearings and descending strokes. Corrections that would bring actual ink closer than this floor are raised to maintain the gap, and marked &#9873;. Set to 0 to disable.</dd>
+      <dt>Blur <span style="font-weight:400;color:var(--text3)">default 1 &middot; range 1&ndash;50</span></dt><dd>Number of sub-zones computed per zone for margin averaging. Higher values suppress quantization artifacts where curves cross zone boundaries at oblique angles, at the cost of speed. 1 = single geometric sample per zone.</dd>
+      <dt>Glow <span style="font-weight:400;color:var(--text3)">default on</span></dt><dd>Switches margin measurement from vector Bezier intersection to a rasterized pixel-scan method. Ink is spread by <em>Glow Blur</em> before the margin edge is detected, simulating optical ink spread and producing softer, optically weighted margins. The Min gap check always uses the raw geometric outline regardless of this setting.</dd>
       <dt>Glow Blur <span style="font-weight:400;color:var(--text3)">default 20 &middot; range 0&ndash;200 font units</span></dt><dd>Spread radius for the Glow rasterizer. Each pixel's ink influence extends this many font units outward before the margin edge is sampled. 0 = hard pixel edges only.</dd>
-      <dt>Round module <span style="font-weight:400;color:var(--text3)">default 20 &middot; min 1</span></dt><dd>Snaps all correction values to the nearest multiple of N. Example: module 46 produces values &minus;92, &minus;46, 0, +46, +92. Use 1 for plain integer rounding. Pre-filled automatically from the Cadence scan on first font load.</dd>
-      <dt>Threshold <span style="font-weight:400;color:var(--text3)">default 0 &middot; min 0</span></dt><dd>Corrections with absolute value below this number are set to zero. Eliminates imperceptible micro-corrections that would bloat the kerning table.</dd>
+      <dt>Round module <span style="font-weight:400;color:var(--text3)">default 20 &middot; min 1</span></dt><dd>Snaps all correction values to the nearest multiple of N. Example: module 20 produces values &minus;40, &minus;20, 0, +20, +40. Use 1 for plain integer rounding. Pre-filled automatically from the Cadence scan on first font load; the raw cadence value is adjusted so it falls in the range 20&ndash;40 (halved if &gt;40, doubled if &lt;20).</dd>
+      <dt>Threshold <span style="font-weight:400;color:var(--text3)">default 0 &middot; min 0</span></dt><dd>Corrections with absolute value below this number are set to zero. Eliminates imperceptible micro-corrections that would bloat the kerning table. The threshold is not applied to corrections forced by Min gap.</dd>
+      <dt>Lazy % <span style="font-weight:400;color:var(--text3)">default 20 &middot; range 0&ndash;99</span></dt><dd>Reduces all computed corrections by this percentage before output, then re-snaps to the Round module. Produces softer, less aggressive kerning — useful when the full optical correction feels too tight in print. Example: Lazy&thinsp;=&thinsp;20, computed&thinsp;=&thinsp;110 &rarr; 110&thinsp;&times;&thinsp;0.8&thinsp;=&thinsp;88 &rarr; snapped to 80 (module 20). Min gap is enforced after the reduction.</dd>
       <dt>Base Glyph LC <span style="font-weight:400;color:var(--text3)">default o</span></dt><dd>Reference glyph for lowercase baseline spacing. The self-pair (o+o by default) is measured and its average zone gap becomes the LC target spacing. Change to 'n' for very square-sided sans-serifs.</dd>
       <dt>Base Glyph UC <span style="font-weight:400;color:var(--text3)">default O</span></dt><dd>Reference glyph for uppercase and lining-figure baseline spacing. Analogous to Base Glyph LC for the UC range.</dd>
       <dt>Tracking <span style="font-weight:400;color:var(--text3)">default 0</span></dt><dd>Constant offset added to the effective base value before corrections are computed. Negative tightens all spacing; positive loosens. Does not affect the base glyph measurement itself.</dd>
-      <dt>Pair limit <span style="font-weight:400;color:var(--text3)">default 1000 &middot; 0 = all pairs</span></dt><dd>Restricts output to the N most common pairs by real-world text frequency (Andre Fuchs corpus). Dramatically reduces computation time for large fonts. Set 0 to include every pair.</dd>
+      <dt>Pair limit <span style="font-weight:400;color:var(--text3)">default 0 (all pairs)</span></dt><dd>Restricts output to the N most common pairs by real-world text frequency (Andre Fuchs corpus). Set to 0 to include every pair in the font — this is the default. A limit such as 2000 dramatically reduces computation time for large fonts without sacrificing the most typographically relevant pairs.</dd>
     </dl>
 
     <h2 style="margin-top:20px">Results Summary</h2>
@@ -370,18 +371,18 @@ body.light-mode #btn-light-act{display:block;}
       <dt>Interval</dt><dd>Distance from the start of the first stem to the start of the second stem — one complete stem+counter cycle.</dd>
       <dt>Divider</dt><dd>Number of sub-steps per stem. Controls the resolution of the dashed divider grid overlay in the canvas. Default: 4.</dd>
       <dt>Step <span style="font-weight:400;color:var(--text3)">read-only</span></dt><dd>Interval &divide; Divider. The base grid step of the cadence.</dd>
-      <dt>Cadence <span style="font-weight:400;color:var(--text3)">read-only</span></dt><dd>Computed Round module candidate: Interval &divide; Divider, rounded. This value is pre-filled into the Round module field on first font load.</dd>
-      <dt>&#8857; Assign to Round module</dt><dd>Manually copies the current Cadence value into the <em>Round module</em> parameter field and highlights the field briefly.</dd>
+      <dt>Cadence <span style="font-weight:400;color:var(--text3)">read-only</span></dt><dd>Computed Round module candidate: Interval &divide; Divider, rounded. Pre-filled into <em>Round module</em> on first font load. The raw value is adjusted to fall in the range 20&ndash;40: if it exceeds 40 it is halved; if it is below 20 it is doubled. This keeps the rounding grid in a practical range regardless of font size or stem density.</dd>
+      <dt>&#8857; Assign to Round module</dt><dd>Manually copies the current Cadence value (with the same &gt;40/&lt;20 adjustment) into the <em>Round module</em> parameter field and highlights the field briefly.</dd>
       <dt>Canvas</dt><dd>Visualizes the 'n' glyph (28&thinsp;% opacity) with amber baseline and x-height lines, a white equator scan line, white vertical lines at stem edges, and a gray dashed divider grid. Numeric labels on the right show font-unit positions and the x-height factor relative to the cadence.</dd>
     </dl>
 
     <h2 style="margin-top:20px">Compact Panel</h2>
-    <p>Double-click the <strong>Coupler</strong> logo to toggle the compact panel. Shows only the essential controls in a narrow window — designed for production use alongside Glyphs.</p>
+    <p>Double-click the <strong>Coupler</strong> logo to toggle between compact and full panel. In <strong>Glyphs mode</strong> the compact panel is the default starting view; in the <strong>browser</strong> the full panel opens by default. The compact panel shows only the essential controls in a narrow window — designed for production use alongside Glyphs.</p>
     <dl class="help-kv">
-      <dt>Load &amp; Compute <span style="font-weight:400;color:var(--text3)">Glyphs mode</span></dt><dd>Fetches the active font from Glyphs and runs the full analysis. Always resets and pre-fills the Round module from the cadence scan.</dd>
+      <dt>Load &amp; Compute <span style="font-weight:400;color:var(--text3)">Glyphs mode</span></dt><dd>Fetches the active font from Glyphs and runs the full analysis. Always resets and pre-fills the Round module from the cadence scan (adjusted to the 20&ndash;40 range).</dd>
       <dt>n Cadence canvas</dt><dd>Compact cadence visualization — same overlay as the Cadence tab but without labels, scaled to the panel width.</dd>
       <dt>Round module</dt><dd>Pre-filled from the cadence scan on first load. Edit freely; Recompute always uses the current field value without overwriting it.</dd>
-      <dt>Threshold / Pair limit</dt><dd>As per the full panel. Affect which pairs are retained and how many are generated.</dd>
+      <dt>Threshold / Lazy % / Pair limit</dt><dd>As per the full panel. Threshold suppresses noise; Lazy % softens the overall correction magnitude; Pair limit caps the number of pairs generated.</dd>
       <dt>&#8635; Recompute</dt><dd>Re-runs the analysis with current field values. Enabled only after the first Load &amp; Compute. Does not reset Round module.</dd>
       <dt>&#8856; Kerning to Clipboard <span style="font-weight:400;color:var(--text3)">browser mode</span></dt><dd>Copies all kerning pairs to the system clipboard in the same semicolon-delimited format as the CSV export, including the parameter header lines.</dd>
       <dt>&darr; Export CSV &nbsp;/&nbsp; &#8857; Apply to Font</dt><dd>Browser mode: downloads the kerning CSV. Glyphs mode: writes kerning pairs from the last computation directly into the active Glyphs document.</dd>
@@ -472,7 +473,7 @@ body.light-mode #btn-light-act{display:block;}
       <div class="pl" data-tip="Blur (less details)&#10;&#10;Each zone is internally sub-divided into N sub-zones. Margins are computed per sub-zone and averaged back into the zone.&#10;&#10;This acts as a vertical blur pass before zone assignment, preventing staircase artifacts where curves cross zone boundaries at oblique angles.&#10;&#10;Higher = smoother edges but slower. Lower = faster but sharper step transitions.&#10;Default: 10">
         Blur <span style="color:var(--text3);font-style:italic;font-size:9px">(less details)</span><span>--blur · sub-zones per zone</span>
       </div>
-      <input type="number" id="p-blur" value="5" min="1" max="50">
+      <input type="number" id="p-blur" value="1" min="1" max="50">
     </div>
 
     <div class="pr">
@@ -505,6 +506,13 @@ body.light-mode #btn-light-act{display:block;}
       <input type="number" id="p-threshold" value="0" min="0">
     </div>
 
+    <div class="pr" data-light="show">
+      <div class="pl" data-tip="Lazy %&#10;&#10;Reduces all computed kerning corrections by this percentage before output.&#10;&#10;The reduced value is re-snapped to the Round module, so results stay on the rounding grid.&#10;&#10;Example: lazy=10, computed correction=110 → 110 × 0.9 = 99 → snapped to 100.&#10;Example: lazy=10, computed correction=55 → 55 × 0.9 = 49.5 → snapped to 50.&#10;&#10;Use to produce softer, less aggressive kerning tables. Min gap is still enforced after reduction.&#10;Set to 0 to use the full computed correction (default).&#10;Default: 0">
+        Lazy % <span style="color:var(--text3);font-style:italic;font-size:9px">(soften output)</span><span>--lazy · reduce corrections by %</span>
+      </div>
+      <input type="number" id="p-lazy" value="20" min="0" max="99" step="1">
+    </div>
+
     <div class="pr">
       <div class="pl" data-tip="Base Glyph LC&#10;&#10;The reference glyph used to compute the LC spacing baseline. The pair glyph+glyph is measured and its average gap becomes the target spacing for all LC pairs.&#10;&#10;Change this for fonts where &#x27;o&#x27; is atypical — e.g. enter &#x27;n&#x27; for a very square-sided sans.&#10;&#10;Default: o">
         Base Glyph LC <span style="color:var(--text3);font-style:italic;font-size:9px">(reference char)</span><span>--base-lc · char+char pair</span>
@@ -530,7 +538,7 @@ body.light-mode #btn-light-act{display:block;}
       <div class="pl" data-tip="Pair limit&#10;&#10;Maximum number of kerning pairs to generate, ranked by frequency of occurrence in real-world text (based on the Andre Fuchs kerning-pairs corpus).&#10;&#10;Only the top N most common pairs are computed and included in the output. This drastically reduces computation time for large fonts.&#10;&#10;Set to 0 to generate all pairs.&#10;Default: 0 (all)">
         Pair limit <span style="color:var(--text3);font-style:italic;font-size:9px">(top N by frequency)</span><span>--pairs · 0 = all pairs</span>
       </div>
-      <input type="number" id="p-pairlimit" value="1000" min="0">
+      <input type="number" id="p-pairlimit" value="0" min="0">
     </div>
 
     <div class="sec" style="margin-top:4px">Results</div>
@@ -754,7 +762,8 @@ let showKerning=true,showMetrics=false,showBaseline=false,showXheight=false;
 let showSmallCaps=false,showOSF=false,showGlow=false;
 let glowPreviewCache={}; // 'glyphKey|blur' → HTMLCanvasElement
 let analysisWasGlow=false; // true when last completed analysis used Glow mode
-let lightMode=true; // light mode is default; toggled by double-clicking the logo
+let lightMode=IS_GLYPHS; // Glyphs: compact by default; browser: advanced by default
+if(!lightMode)document.body.classList.remove('light-mode');
 let isComputing=false; // true while runAnalysis / runAnalysisFromGlyphsData is active
 let pendingAction=null; // queued action to run after current computation finishes
 let cadenceAutoFilled=false; // true after first auto-fill of p-round from cadence scan
@@ -769,7 +778,7 @@ let currentUPM=1000,yBotGlobal=0,yTopGlobal=0,xHeightGlobal=0;
 let glyphsByName={};         // name → {commands, advanceWidth, unicode} (Glyphs mode)
 let unicodeToGlyphName={};   // codepoint → glyph name (Glyphs mode)
 
-const DEFAULTS={zones:16,smooth:50,round:20,blur:5,mingap:4,threshold:0,baselc:'o',baseuc:'O',tracking:0,pairlimit:1000,glowblur:20,glow:true};
+const DEFAULTS={zones:16,smooth:50,round:20,blur:1,mingap:4,threshold:0,lazy:20,baselc:'o',baseuc:'O',tracking:0,pairlimit:0,glowblur:20,glow:true};
 
 function P(){
   const mg=parseFloat(document.getElementById('p-mingap').value);
@@ -780,6 +789,7 @@ function P(){
     blur:      parseInt(document.getElementById('p-blur').value)      ||DEFAULTS.blur,
     mingap:    (isNaN(mg)?DEFAULTS.mingap:mg)/100,
     threshold: parseFloat(document.getElementById('p-threshold').value)||0,
+    lazy:      Math.max(0,Math.min(99,parseFloat(document.getElementById('p-lazy').value)||0)),
     baselc:    (document.getElementById('p-baselc').value||DEFAULTS.baselc).trim(),
     baseuc:    (document.getElementById('p-baseuc').value||DEFAULTS.baseuc).trim(),
     tracking:  parseFloat(document.getElementById('p-tracking').value)||0,
@@ -789,7 +799,7 @@ function P(){
   };
 }
 function resetParams(){
-  ['zones','smooth','round','blur','mingap','threshold','tracking','pairlimit','glowblur'].forEach(k=>{
+  ['zones','smooth','round','blur','mingap','threshold','lazy','tracking','pairlimit','glowblur'].forEach(k=>{
     document.getElementById('p-'+k).value=DEFAULTS[k];
   });
   document.getElementById('p-baselc').value=DEFAULTS.baselc;
@@ -799,16 +809,16 @@ function resetParams(){
 
 // Parameter presets for common font styles
 const PARAM_PRESETS={
-  'default':        {zones:16,  smooth:50,   mingap:4,  blur:5, round:20, threshold:0,  pairlimit:1000 },
+  'default':        {zones:16,  smooth:50,   mingap:4,  blur:1, round:20, threshold:0,  lazy:20, pairlimit:0 },
   // Serif weights
   'serif-reg':      {zones:81, smooth:14,  mingap:12, blur:3,  round:1, threshold:0},
   'serif-it':       {zones:81, smooth:14, mingap:4,  blur:3,  round:1, threshold:0},
   'serif-bold':     {zones:81, smooth:14,   mingap:4,  blur:3,  round:1, threshold:0},
   'serif-boldit':   {zones:81, smooth:14,  mingap:12, blur:3,  round:1, threshold:0},
   // Sans-serif weights
-  'sans-light':     {zones:9,  smooth:40,   mingap:6,  blur:8,  round:1, threshold:0},
-  'sans-regular':   {zones:9,  smooth:55,   mingap:8,  blur:8,  round:1, threshold:0},
-  'sans-bold':      {zones:9,  smooth:65,   mingap:10, blur:6,  round:1, threshold:0},
+  'sans-light':     {zones:48,  smooth:66,   mingap:4,  blur:1,  round:20, threshold:0, lazy: 60 },
+  'sans-regular':   {zones:48,  smooth:50,   mingap:3,  blur:2,  round:20, threshold:0, lazy: 55},
+  'sans-bold':      {zones:48, smooth:33, mingap:2, blur:3, round:20, threshold:0, lazy:50 },
   // Slab-serif weights
   'slab-light':     {zones:40, smooth:30,   mingap:7,  blur:5,  round:1, threshold:0},
   'slab-regular':   {zones:40, smooth:35,  mingap:10, blur:5,  round:1, threshold:0},
@@ -824,6 +834,7 @@ function applyParamPreset(key){
   document.getElementById('p-blur').value     =pr.blur;
   document.getElementById('p-round').value    =pr.round;
   document.getElementById('p-threshold').value=pr.threshold;
+  if(pr.lazy!==undefined)document.getElementById('p-lazy').value=pr.lazy;
 }
 
 // ── LOG / STATUS ──────────────────────────────────────
@@ -940,7 +951,7 @@ function loadFont(file){
       cadenceAutoFilled=false;
       cadEnsureInit();
       const _lcv=document.getElementById('cad-cadence').value;
-      const _lcn=Math.round(parseFloat(_lcv));
+      const _lcn=cadToRound(parseFloat(_lcv));
       if(!isNaN(_lcn)&&_lcn>0){document.getElementById('p-round').value=_lcn;document.getElementById('light-cad-val').value=_lcn;cadenceAutoFilled=true;}
       renderLightCadCanvas();
       runAnalysis();
@@ -1140,9 +1151,11 @@ function pairMean(rA,lB){
 function rtm(v,mod){if(mod<=1)return Math.round(v);return Math.round(v/mod)*mod;}
 
 // ── CHAR LABEL ────────────────────────────────────────
-const PN={"0021":"exclam","0022":"quotedbl","0023":"numbersign","0024":"dollar","0025":"percent","0026":"ampersand","0027":"quotesingle","0028":"parenleft","0029":"parenright","002A":"asterisk","002B":"plus","002C":"comma","002D":"hyphen","002E":"period","002F":"slash","0030":"zero","0031":"one","0032":"two","0033":"three","0034":"four","0035":"five","0036":"six","0037":"seven","0038":"eight","0039":"nine","003A":"colon","003B":"semicolon","003C":"less","003D":"equal","003E":"greater","003F":"question","0040":"at","005B":"bracketleft","005C":"backslash","005D":"bracketright","005E":"asciicircum","005F":"underscore","0060":"grave","007B":"braceleft","007C":"verticalbar","007D":"braceright","007E":"asciitilde","00A1":"exclamdown","00A2":"cent","00A3":"sterling","00A5":"yen","00AB":"guillemotleft","00BB":"guillemotright","00BF":"questiondown","2013":"endash","2014":"emdash","2018":"quoteleft","2019":"quoteright","201C":"quotedblleft","201D":"quotedblright","20AC":"euro","FB00":"ff","FB01":"fi","FB02":"fl","FB03":"ffi","FB04":"ffl","F730":"zerooldstyle","F731":"oneoldstyle","F732":"twooldstyle","F733":"threeoldstyle","F734":"fouroldstyle","F735":"fiveoldstyle","F736":"sixoldstyle","F737":"sevenoldstyle","F738":"eightoldstyle","F739":"nineoldstyle"};
+// charLabel: use the actual unicode character so it matches KERNING_PAIRS entries directly.
+// Glyph-name fallback only when unicode is unavailable (unnamed/private-use glyphs).
 function cLbl(unicode,gn,gk){
-  if(unicode!==null){const h=unicode.toString(16).toUpperCase().padStart(4,'0');if(PN[h])return PN[h];if(gn&&!/^glyph\d+$/i.test(gn))return gn;try{return String.fromCodePoint(unicode);}catch(_){}}
+  if(unicode!==null){try{return String.fromCodePoint(unicode);}catch(_){}}
+  if(gn&&!/^glyph\d+$/i.test(gn))return gn;
   return gk;
 }
 
@@ -1473,6 +1486,7 @@ async function runAnalysis(){
         const base=bothUC?baseValueUC:baseValueLC;
         const tag=bothUC?'UC':(gcA.cls==='UC'||gcB.cls==='UC')?'mixed':'LC';
         let corr=rtm(base-calc.mean,p.round);
+        if(p.lazy>0)corr=rtm(corr*(1-p.lazy/100),p.round);
         let capped=false;
         if(minGapFU>0){
           // Use raw ink margins (pre-smooth/glow) so real ink boundaries determine the gap.
@@ -1606,7 +1620,7 @@ function receiveGlyphData(data){
   cadEnsureInit();
   if(_newFont){
     const _gcv=document.getElementById('cad-cadence').value;
-    const _gcn=Math.round(parseFloat(_gcv));
+    const _gcn=cadToRound(parseFloat(_gcv));
     if(!isNaN(_gcn)&&_gcn>0){document.getElementById('p-round').value=_gcn;document.getElementById('light-cad-val').value=_gcn;cadenceAutoFilled=true;}
   }
   renderLightCadCanvas();
@@ -1750,6 +1764,7 @@ async function runAnalysisFromGlyphsData(data){
         const base=bothUC?baseValueUC:baseValueLC;
         const tag=bothUC?'UC':(gcA.cls==='UC'||gcB.cls==='UC')?'mixed':'LC';
         let corr=rtm(base-calc.mean,p.round);
+        if(p.lazy>0)corr=rtm(corr*(1-p.lazy/100),p.round);
         let capped=false;
         if(minGapFU>0){
           const rawSums=[];
@@ -1808,15 +1823,29 @@ async function runAnalysisFromGlyphsData(data){
   afterCompute();
 }
 
+// Non-zero pairs to output, capped to pairlimit (0 = all), in fuchs order.
+function outputPairs(){
+  const p=P();
+  const nz=kerningData.filter(d=>d.correction!==0);
+  return p.pairlimit>0?nz.slice(0,p.pairlimit):nz;
+}
+
 // Send non-zero pairs to Python for application to the font.
 function applyToGlyphs(){
   if(isComputing){pendingAction=()=>applyToGlyphs();log('⏳ Apply queued — waiting for computation to finish','info');return;}
   if(!kerningData.length){alert('No kerning data — run Compute first.');return;}
-  const nonZero=kerningData.filter(d=>d.correction!==0);
-  if(!nonZero.length){alert('All corrections are zero — nothing to apply.');return;}
-  const pairs=nonZero.map(d=>({left:d.left,right:d.right,correction:d.correction}));
-  // Pairs go in the URL query; Python decodes them in the navigation delegate.
-  window.location.href='coupler://applykerning?'+encodeURIComponent(JSON.stringify(pairs));
+  const out=outputPairs();
+  if(!out.length){alert('All corrections are zero — nothing to apply.');return;}
+  const pairs=out.map(d=>({left:d.left,right:d.right,correction:d.correction}));
+  window._couplerKerning=pairs;
+  window.location.href='coupler://applykerning_start?n='+pairs.length;
+}
+function sendKerningChunk(idx){
+  const CHUNK=200;
+  const all=window._couplerKerning||[];
+  const slice=all.slice(idx*CHUNK,(idx+1)*CHUNK);
+  if(!slice.length){window.location.href='coupler://applykerning_done';return;}
+  window.location.href='coupler://applykerning_chunk?'+encodeURIComponent(JSON.stringify({i:idx,d:slice}));
 }
 
 // Called by Python after applying kerning.
@@ -2129,10 +2158,11 @@ function exportCSV(){
   if(IS_GLYPHS){applyToGlyphs();return;}
   if(!kerningData.length){alert('No data to export.');return;}
   const p=P();
+  const out=outputPairs();
   const lines=[
     `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% threshold=${p.threshold}`,
     `# Format: Left;Right;Correction (Class zones)`,
-    ...kerningData.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
+    ...out.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
   ];
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
@@ -2142,15 +2172,16 @@ function copyKerningToClipboard(){
   if(isComputing){pendingAction=()=>copyKerningToClipboard();log('⏳ Copy queued — waiting for computation to finish','info');return;}
   if(!kerningData.length){return;}
   const p=P();
+  const out=outputPairs();
   const lines=[
     `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% threshold=${p.threshold}`,
     `# Format: Left;Right;Correction (Class zones)`,
-    ...kerningData.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
+    ...out.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
   ];
   navigator.clipboard.writeText(lines.join('\n')).then(()=>{
     const b=document.getElementById('btn-light-clip');
     if(b){const orig=b.textContent;b.textContent='✓ Copied!';setTimeout(()=>{b.textContent=orig;},1400);}
-    log(`Copied ${lines.length} kerning pairs to clipboard`,'ok');
+    log(`Copied ${out.length.toLocaleString()} kerning pairs to clipboard`,'ok');
   }).catch(()=>log('Clipboard write failed','err'));
 }
 
@@ -2191,11 +2222,15 @@ function guardedAction(fn){
   fn();
 }
 
+// Adjust raw cadence to a suitable Round module value:
+// > 40 → halve (stem interval too coarse), < 20 → double (too fine)
+function cadToRound(raw){const n=Math.round(raw);return n>40?Math.round(n/2):n<20?Math.round(n*2):n;}
+
 function updateCadenceField(){
   try{
     cadEnsureInit();
     const cv=document.getElementById('cad-cadence').value;
-    const n=Math.round(parseFloat(cv));
+    const n=cadToRound(parseFloat(cv));
     if(!isNaN(n)&&n>0){
       document.getElementById('light-cad-val').value=n;
       if(!cadenceAutoFilled){
@@ -2673,7 +2708,7 @@ function cadInput(src){
 function cadAssignPreset(){
   const cad=parseFloat(document.getElementById('cad-cadence').value);
   if(!isNaN(cad)&&cad>0){
-    document.getElementById('p-round').value=Math.round(cad);
+    document.getElementById('p-round').value=cadToRound(cad);
     const el=document.getElementById('p-round');
     el.style.borderColor='var(--accent)';
     setTimeout(()=>el.style.borderColor='',800);

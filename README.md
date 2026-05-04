@@ -43,17 +43,17 @@ Switching masters or fonts and clicking **Load & Compute** again fetches the upd
 
 ## Lightweight vs. Advanced Mode
 
-Coupler offers two modes suited to different workflows and user groups.
+Coupler offers two modes suited to different workflows and user groups. **In the browser, the full panel opens by default.** In Glyphs, the compact panel opens by default. Toggle between them by double-clicking the **Coupler** logo.
 
 ### Lightweight — Compact Panel
 
-**For:** type designers in production, users who want fast automated kerning with minimal configuration.
+**For:** type designers in production, users who want fast automated kerning with minimal configuration. Default starting view in Glyphs.
 
-Double-click the **Coupler** logo to toggle the compact panel. The window shrinks to a narrow column showing only the essential controls:
+The window shrinks to a narrow column showing only the essential controls:
 
-- **Load & Compute** — fetches font data from Glyphs and runs the initial analysis. The Round module is pre-filled automatically from the cadence scan of the lowercase `n`.
+- **Load & Compute** — fetches font data from Glyphs and runs the initial analysis. The Round module is pre-filled from the cadence scan of the lowercase `n`, adjusted to a practical rounding range (20–40 fu).
 - **Cadence canvas** — visual confirmation of the stem rhythm used to derive the module.
-- **Round module / Threshold / Pair limit** — the three parameters most likely to need adjustment per font.
+- **Round module / Threshold / Lazy % / Pair limit** — the key parameters for per-font tuning.
 - **Recompute** — re-runs the analysis with the current field values. Does not overwrite the Round module, so manual adjustments are preserved across recomputations.
 - **Kerning to Clipboard** *(browser)* / **Apply to Font** *(Glyphs)* — delivers the result in one click.
 
@@ -61,13 +61,13 @@ For most production fonts, the workflow is: Load & Compute → verify the cadenc
 
 ### Advanced — Full Panel
 
-**For:** researchers, type engineers, and designers who want to understand or fine-tune the kerning model.
+**For:** researchers, type engineers, and designers who want to understand or fine-tune the kerning model. Default starting view in the browser.
 
-Double-click the logo again to switch back to the full panel. This exposes the complete parameter set, a live preview canvas with margin overlays, the full Coupling Table with sortable columns and a regex filter, the Spacing Corrections tab, and the Cadence tab.
+The full panel exposes the complete parameter set, a live preview canvas with margin overlays, the full Coupling Table with sortable columns and a regex filter, the Spacing Corrections tab, and the Cadence tab.
 
 Key additional controls in the full panel:
 
-- **Zones, Blur, Smooth, Glow** — tune the precision and style of the margin measurement model.
+- **Zones, Blur, Smooth, Glow, Lazy %** — tune the precision, style, and aggressiveness of the margin measurement and output model.
 - **Preview canvas** — render any text string with kerning, margin zone overlays, baseline, x-height, and pair-by-pair inspection.
 - **Cadence tab** — inspect and adjust the stem rhythm scan interactively with a visualization of the `n` glyph and its grid.
 - **Spacing Corrections tab** — per-glyph sidebearing imbalance analysis with an advance-width histogram and direct apply to Glyphs.
@@ -105,13 +105,15 @@ A full description of the mathematical pipeline — from input data through marg
 
 ### Baseline & Pair Corrections
 - Baseline spacing is derived from the self-pair of the reference glyph (`o+o` for LC, `O+O` for UC), adjusted by a global **Tracking** offset.
-- Corrections violating the **Min gap** floor are capped and flagged (⚑).
-- Corrections below **Threshold** are zeroed out.
+- **Min gap** is measured on the raw geometric outline regardless of Smooth or Glow, and covers parts of a glyph that extend beyond its advance width (negative sidebearings, descending strokes). Corrections that would bring real ink closer than this floor are raised and flagged (⚑).
+- **Lazy %** reduces all computed corrections by the given percentage and re-snaps to the Round module, producing softer kerning tables.
+- Corrections below **Threshold** are zeroed out (never overrides a Min gap enforcement).
 - Final values are snapped to the nearest multiple of the **Round module**.
 
 ### Cadence Scan
 - Automatically measures the stem rhythm of the lowercase `n` at the equator (half x-height).
 - Derives a natural Round module from the stem interval and configurable divider.
+- The raw cadence value is adjusted to a practical rounding range (20–40): halved if > 40, doubled if < 20.
 - Pre-fills the Round module field on first font load.
 
 ### Spacing Corrections
@@ -127,16 +129,17 @@ A full description of the mathematical pipeline — from input data through marg
 |---|---|---|
 | Zones | 16 | Horizontal slices across the em. More = finer detail, slower. |
 | Smooth | 50 | Reciprocal smoothing strength (0 = off, 99 = maximum). |
-| Min gap % | 9 | Minimum gap floor as % of UPM. |
-| Blur | 5 | Sub-zones per zone for margin averaging. |
+| Min gap % | 4 | Minimum ink distance as % of UPM. Measured on raw geometric outline, including protruding glyph parts. |
+| Blur | 1 | Sub-zones per zone for margin averaging. Higher = smoother but slower. |
 | Glow | on | Pixel-based margin measurement with ink spread. |
 | Glow Blur | 20 | Ink spread radius in font units. |
-| Round module | 20 | Snap corrections to multiples of N. Pre-filled from cadence. |
-| Threshold | 0 | Discard corrections below this absolute value. |
+| Round module | 20 | Snap corrections to multiples of N. Pre-filled from cadence (adjusted to 20–40 range). |
+| Threshold | 0 | Discard corrections below this absolute value. Not applied to Min gap enforcements. |
+| Lazy % | 20 | Reduce all corrections by this percentage and re-snap to Round module. 0 = full correction. |
 | Base Glyph LC | o | Reference glyph for lowercase baseline. |
 | Base Glyph UC | O | Reference glyph for uppercase baseline. |
 | Tracking | 0 | Global offset on the effective base spacing. |
-| Pair limit | 1000 | Max pairs by text frequency. 0 = all pairs. |
+| Pair limit | 0 | Max pairs by text frequency. 0 = all pairs (default). |
 
 Preset configurations are provided for Serif, Sans, and Slab fonts across Regular, Italic, Bold, and Bold Italic styles.
 

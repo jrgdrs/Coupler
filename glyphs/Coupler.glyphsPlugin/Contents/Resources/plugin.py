@@ -246,12 +246,34 @@ class _NavDelegate(NSObject):
                 dialog._send_glyph_data()
             elif cmd == 'identify':
                 dialog._send_identity()
-            elif cmd == 'applykerning':
+            elif cmd == 'applykerning_start':
+                # JS sends total count; Python asks JS for first chunk.
                 try:
-                    pairs = json.loads(urllib.parse.unquote(query)) if query else []
+                    params = dict(s.split('=') for s in query.split('&') if '=' in s)
+                    n = int(params.get('n', 0))
+                except Exception:
+                    n = 0
+                dialog._kerning_buf = []
+                if n == 0:
+                    dialog._apply_kerning([])
+                else:
+                    dialog._js('sendKerningChunk(0)')
+            elif cmd == 'applykerning_chunk':
+                # Accumulate one chunk, request the next.
+                idx = 0
+                try:
+                    data = json.loads(urllib.parse.unquote(query)) if query else {}
+                    chunk = data.get('d', [])
+                    idx   = int(data.get('i', 0))
+                    if not isinstance(getattr(dialog, '_kerning_buf', None), list):
+                        dialog._kerning_buf = []
+                    dialog._kerning_buf.extend(chunk)
                 except Exception as pe:
-                    print('[Coupler] applykerning parse error: %s' % pe)
-                    pairs = []
+                    print('[Coupler] applykerning_chunk error: %s' % pe)
+                dialog._js('sendKerningChunk(%d)' % (idx + 1))
+            elif cmd == 'applykerning_done':
+                pairs = getattr(dialog, '_kerning_buf', []) or []
+                dialog._kerning_buf = None
                 dialog._apply_kerning(pairs)
             elif cmd == 'applyspacing':
                 try:
