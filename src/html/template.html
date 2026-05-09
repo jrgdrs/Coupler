@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v5.9.15</title>
+<title>Coupler — Font Kerning Analyzer - v5.9.17b</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 %%STYLE%%
@@ -14,7 +14,7 @@
 <header>
   <div class="header-title">
     <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.9.15</span>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.9.17b</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -35,7 +35,7 @@
 
     <h2 style="margin-top:20px">What's New</h2>
     <dl class="help-kv">
-      <dt>v5.9.15</dt><dd><strong>Fix — Apply to Glyphs crash.</strong> The Glyphs app no longer crashes after "Apply to Glyphs" in advanced mode. Root cause: Python's cyclic garbage collector (<code style="font-family:var(--mono);color:var(--accent)">gc_collect_main</code>) was traversing Python dicts that held live Objective-C proxy objects during write-back, triggering <code style="font-family:var(--mono);color:var(--accent)">visit_decref</code> → SIGABRT. Fix: GC is suspended for the duration of the kerning and spacing write-back operations, matching the same guard already used during glyph data import.</dd>
+      <dt>v5.9.17b</dt><dd><strong>Fix — Apply to Glyphs crash (definitive).</strong> Diagnostic log proved the crash occurred inside <code style="font-family:var(--mono);color:var(--accent)">json.loads</code> while parsing 4.7 MB of URL-encoded JSON: this creates tens of thousands of Python objects, reliably crossing the GC generation-2 threshold (gc count (0, 3, 7) vs. thresh (700, 10, 10)). GC fires mid-parse, traverses <code style="font-family:var(--mono);color:var(--accent)">CouplerDialog.__dict__</code> (which holds live ObjC proxies), and crashes in <code style="font-family:var(--mono);color:var(--accent)">visit_decref</code>. Fix: <code style="font-family:var(--mono);color:var(--accent)">gc.disable()</code> at the start of <code style="font-family:var(--mono);color:var(--accent)">couplerDispatch_</code>, <code style="font-family:var(--mono);color:var(--accent)">gc.enable()</code> in <code style="font-family:var(--mono);color:var(--accent)">finally</code>. With a single URL (v5.9.17 IPC revert), <code style="font-family:var(--mono);color:var(--accent)">gc.enable()</code> fires exactly once after all ObjC work is complete — no window between chunk calls as in the earlier chunked protocol.</dd>
       <dt>v5.9.10–14</dt><dd><strong>AutoParam</strong> — new ⚙ AutoParam button left of the Presets dropdown. Scans all eight analysis parameters (Zones, Smooth, Blur, Glow Blur, Round, Threshold, Lazy, Min Gap) sequentially and pre-fills the fields with font-specific optimal values. Sensitivity metric: <em>Laufweite</em> (total text width = sum of advance widths + kerning corrections) for the 26-word test string. Selection algorithm: <em>lower average</em> — the candidate whose Laufweite is closest to the mean of all below-mean values, representing the converged stable state. Lite analysis processes only the ~52 glyphs and ~130 pairs in the test string (no KERNING_PAIRS lookup) — ~50–100× faster than a full analysis per scan step. Available in both browser mode and Glyphs plugin mode. During the scan the parameter panel is hidden and the log fills the full panel height. AutoParam test string added as first entry in the Preview text preset dropdown.</dd>
       <dt>v5.5</dt><dd><strong>Build system.</strong> Source code is now modular: HTML template, CSS, and 14 JS modules in <code style="font-family:var(--mono);color:var(--accent)">src/</code>. <code style="font-family:var(--mono);color:var(--accent)">build.js</code> assembles them into <code style="font-family:var(--mono);color:var(--accent)">ui.html</code> (<code style="font-family:var(--mono);color:var(--accent)">npm run build</code>). Jest unit test suite covers core margin measurement and kerning math (<code style="font-family:var(--mono);color:var(--accent)">npm test</code>). No user-visible changes to the tool.</dd>
     </dl>

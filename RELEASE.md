@@ -2,12 +2,47 @@
 
 ---
 
+## v5.9.17b — 2026-05-09
+
+**Fix — Apply to Glyphs crash (definitive).**
+
+Diagnostic logging added in v5.9.17 revealed the exact crash point: `json.loads(urllib.parse.unquote(query))` inside `couplerDispatch_` for a 4.7 MB payload. Parsing this many bytes creates tens of thousands of Python objects, pushing the GC generation-2 counter from (0, 3, 7) to threshold (700, 10, 10). GC fires mid-parse, traverses `CouplerDialog.__dict__` — which holds live ObjC proxy objects (`_font`, `_webview`, `_window`) — and crashes in `visit_decref`.
+
+Fix: `gc.disable()` at the start of `couplerDispatch_` (before any object allocation), `gc.enable()` in `finally`. The v5.9.17 IPC revert (single URL, one dispatch call) makes this safe: `gc.enable()` fires exactly once, after all ObjC work is complete. There is no window between chunk calls as in the earlier chunked protocol, which was why the identical guard in v5.9.16 failed.
+
+- **Python** — `gc.disable()` / `gc.enable()` bracket all of `couplerDispatch_`. `_send_glyph_data` retains its own guard.
+- **Diagnostic logging** — `_dbg()` calls remain in place; crash log at `/tmp/coupler_debug.txt`.
+
+---
+
+## v5.9.17 — 2026-05-09
+
+**Fix — Apply to Glyphs crash (stable, reverts to v5.3.21 IPC pattern).**
+
+The chunked `applykerning_start / chunk / done` protocol introduced after v5.3.21 was the root cause of the instability. Each chunk dispatch invoked `json.loads` inside an ObjC callback (`couplerDispatch_`), incrementally pushing the Python GC allocation counter upward across multiple runloop cycles. No single `gc.disable()` placement could reliably contain this because the threshold could be crossed on any of the N chunk calls — before or between any guard.
+
+Fix: revert to the architecture proven stable in v5.3.21.
+
+- **JS** — `applyToGlyphs()` sends a single `coupler://applykerning?<urlencoded_json>` URL. `sendKerningChunk` removed.
+- **Python** — `couplerDispatch_` handles `applykerning` with a single `json.loads` call and immediately calls `_apply_kerning`. No chunk accumulation, no `_kerning_buf`, no gc guards in the dispatch loop.
+- **GC** — `gc.disable()/gc.enable()` retained only in `_send_glyph_data`, exactly as in v5.3.21.
+
+---
+
+## v5.9.16 — 2026-05-09 *(superseded)*
+
+**Fix — Apply to Glyphs crash (correct fix).**
+
+v5.9.15 placed the `gc.disable()` guard on `_apply_kerning` / `_apply_spacing`, but the crash happened earlier: during `applykerning_chunk` processing inside `couplerDispatch_`, where `json.loads(urllib.parse.unquote(query))` creates thousands of Python objects and pushes the GC allocation threshold while the ObjC runtime is still on the call stack. The individual guards also called `gc.enable()` while `couplerDispatch_` had not yet returned, re-exposing the risk for any code that ran afterwards.
+
+Fix: `gc.disable()` / `gc.enable()` now bracket the entire `couplerDispatch_` method (the outermost try/finally). This covers chunk accumulation, JSON parsing, and all downstream calls including `_apply_kerning`, `_apply_spacing`, and `_send_glyph_data`. The redundant individual wrappers on `_apply_kerning` and `_apply_spacing` are removed; `_send_glyph_data` retains its own guard as belt-and-suspenders.
+
+---
+
 ## v5.9.15 — 2026-05-09
 
-**Fix — Apply to Glyphs crash.**
-The Glyphs app no longer crashes after "Apply to Glyphs" in advanced mode.
-Root cause: Python's cyclic garbage collector (`gc_collect_main`) was traversing Python dicts that held live Objective-C proxy objects during write-back, triggering `visit_decref` → SIGABRT.
-Fix: GC is suspended for the duration of the kerning and spacing write-back operations (`_apply_kerning`, `_apply_spacing`), matching the same guard already used during glyph data import.
+**Fix — Apply to Glyphs crash (superseded by v5.9.16).**
+Added `gc.disable()` / `gc.enable()` wrappers to `_apply_kerning` and `_apply_spacing`. Did not cover the IPC chunk-accumulation phase; crash persisted.
 
 ---
 

@@ -12,15 +12,7 @@ function applyToGlyphs(){
   const out=outputPairs();
   if(!out.length){alert('All corrections are zero — nothing to apply.');return;}
   const pairs=out.map(d=>({left:d.left,right:d.right,correction:d.correction}));
-  window._couplerKerning=pairs;
-  window.location.href='coupler://applykerning_start?n='+pairs.length;
-}
-function sendKerningChunk(idx){
-  const CHUNK=200;
-  const all=window._couplerKerning||[];
-  const slice=all.slice(idx*CHUNK,(idx+1)*CHUNK);
-  if(!slice.length){window.location.href='coupler://applykerning_done';return;}
-  window.location.href='coupler://applykerning_chunk?'+encodeURIComponent(JSON.stringify({i:idx,d:slice}));
+  window.location.href='coupler://applykerning?'+encodeURIComponent(JSON.stringify(pairs));
 }
 
 // Called by Python after applying kerning.
@@ -101,4 +93,4 @@ function copyKerningToClipboard(){
   }).catch(()=>log('Clipboard write failed','err'));
 }
 
-if(typeof module!=='undefined')module.exports={outputPairs,applyToGlyphs,sendKerningChunk,showApplyResult,applySpacingToGlyphs,showSpacingApplyResult,exportCSV,copyKerningToClipboard};
+if(typeof module!=='undefined')module.exports={outputPairs,applyToGlyphs,showApplyResult,applySpacingToGlyphs,showSpacingApplyResult,exportCSV,copyKerningToClipboard};

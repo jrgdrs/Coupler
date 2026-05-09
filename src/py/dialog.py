@@ -5,7 +5,23 @@ from __future__ import print_function
 import gc
 import json
 import os
+import time
 import traceback
+
+_DBG_PATH = '/tmp/coupler_debug.txt'
+
+def _dbg(label):
+    try:
+        enabled = gc.isenabled()
+        count   = gc.get_count()
+        thresh  = gc.get_threshold()
+        msg = '[Coupler-DBG %s] gc=%s count=%s thresh=%s :: %s\n' % (
+            time.strftime('%H:%M:%S'), enabled, count, thresh, label)
+        print(msg, end='')
+        with open(_DBG_PATH, 'a') as f:
+            f.write(msg)
+    except Exception:
+        pass
 
 from GlyphsApp import Glyphs, Message
 from AppKit import NSMakeRect, NSObject, NSWindow, NSURL
@@ -226,18 +242,12 @@ class CouplerDialog(object):
             self._js('dbg("Python ERROR in _send_glyph_data — check Glyphs console")')
 
     def _apply_kerning(self, pairs):
-        # Disable cyclic GC during ObjC proxy access to prevent gc_collect_main crash.
-        gc.disable()
         try:
-            self._apply_kerning_inner(pairs)
-        finally:
-            gc.enable()
-
-    def _apply_kerning_inner(self, pairs):
-        try:
+            _dbg('_apply_kerning entry — pairs=%d' % len(pairs))
             if not pairs:
                 return
             from AppKit import NSAlert, NSAlertFirstButtonReturn
+            _dbg('_apply_kerning — building NSAlert')
             alert = NSAlert.alloc().init()
             alert.setMessageText_('Apply Kerning — %s' % self._master.name)
             alert.setInformativeText_(
@@ -246,9 +256,12 @@ class CouplerDialog(object):
                     len(pairs), self._master.name))
             alert.addButtonWithTitle_('Apply')
             alert.addButtonWithTitle_('Cancel')
+            _dbg('_apply_kerning — calling runModal')
             if alert.runModal() != NSAlertFirstButtonReturn:
+                _dbg('_apply_kerning — user cancelled')
                 return
 
+            _dbg('_apply_kerning — user confirmed, starting font write')
             master_id = self._master.id
             font      = self._font
             ok        = 0
@@ -257,6 +270,7 @@ class CouplerDialog(object):
             try:
                 try:    del font.kerning[master_id]
                 except (KeyError, Exception): pass
+                _dbg('_apply_kerning — kerning dict cleared, writing %d pairs' % len(pairs))
                 for pair in pairs:
                     try:
                         font.setKerningForPair(
@@ -270,23 +284,17 @@ class CouplerDialog(object):
                 except AttributeError: pass
 
             summary = 'Applied %d pairs → master "%s".' % (ok, self._master.name)
+            _dbg('_apply_kerning — done: ' + summary)
             print('[Coupler] ' + summary)
             self._webview.evaluateJavaScript_completionHandler_(
                 'showApplyResult && showApplyResult(%s)' % json.dumps({'ok': ok, 'msg': summary}),
                 None)
             Message(summary, 'Coupler — Done')
         except Exception:
+            _dbg('_apply_kerning — EXCEPTION (see traceback below)')
             traceback.print_exc()
 
     def _apply_spacing(self, items):
-        # Disable cyclic GC during ObjC proxy access to prevent gc_collect_main crash.
-        gc.disable()
-        try:
-            self._apply_spacing_inner(items)
-        finally:
-            gc.enable()
-
-    def _apply_spacing_inner(self, items):
         try:
             if not items:
                 return

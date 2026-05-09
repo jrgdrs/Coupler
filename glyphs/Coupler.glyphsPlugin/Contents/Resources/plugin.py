@@ -11,8 +11,28 @@ import gc
 import json
 import objc
 import os
+import time
 import traceback
 import urllib.parse
+
+# ── Crash-diagnostic logger ────────────────────────────────────────────────────
+# Writes to /tmp/coupler_debug.txt so the log survives a hard Glyphs crash.
+# Each line: timestamp  gc_enabled  gc_count  label
+_DBG_PATH = '/tmp/coupler_debug.txt'
+
+def _dbg(label):
+    try:
+        enabled  = gc.isenabled()
+        count    = gc.get_count()
+        thresh   = gc.get_threshold()
+        msg = '[Coupler-DBG %s] gc=%s count=%s thresh=%s :: %s\n' % (
+            time.strftime('%H:%M:%S'), enabled, count, thresh, label)
+        print(msg, end='')
+        with open(_DBG_PATH, 'a') as f:
+            f.write(msg)
+    except Exception:
+        pass
+# ──────────────────────────────────────────────────────────────────────────────
 
 from GlyphsApp import Glyphs, Message
 try:
@@ -220,6 +240,8 @@ class _NavDelegate(NSObject):
                 self._pending_cmd   = (url.host() or '').lower()
                 self._pending_query = url.query() or ''
                 print('[Coupler] IPC cmd=%r (deferred)' % self._pending_cmd)
+                if self._pending_cmd == 'applykerning':
+                    _dbg('IPC:applykerning received in webView_handler — about to schedule couplerDispatch_')
                 # Cancel any still-queued dispatch before scheduling a new one.
                 # Rapid IPC calls (e.g. double-click Load) must not stack
                 # multiple _send_glyph_data calls on the runloop.
@@ -232,66 +254,58 @@ class _NavDelegate(NSObject):
         handler(1)  # allow normal (non-coupler) navigations
 
     def couplerDispatch_(self, _):
-        """Runs in the next runloop cycle — main thread is free, XPC is healthy."""
-        cmd    = self._pending_cmd
-        query  = self._pending_query
-        dialog = self._dialog
-        if not dialog:
-            return
-        # Guard against a stale dispatch firing after _cleanup() has run.
-        if not getattr(dialog, '_webview', None):
-            return
+        """Runs in the next runloop cycle — main thread is free, XPC is healthy.
+
+        gc.disable() guards the entire method: json.loads on large payloads creates
+        tens of thousands of Python objects and reliably crosses the GC threshold.
+        When GC fires inside an ObjC callback, visit_decref traverses CouplerDialog.__dict__
+        (which holds live ObjC proxies) and crashes. Single-URL dispatch means
+        gc.enable() in finally fires exactly once, after all ObjC work is complete.
+        """
+        gc.disable()
         try:
-            if cmd == 'requestdata':
-                dialog._send_glyph_data()
-            elif cmd == 'identify':
-                dialog._send_identity()
-            elif cmd == 'applykerning_start':
-                # JS sends total count; Python asks JS for first chunk.
-                try:
-                    params = dict(s.split('=') for s in query.split('&') if '=' in s)
-                    n = int(params.get('n', 0))
-                except Exception:
-                    n = 0
-                dialog._kerning_buf = []
-                if n == 0:
-                    dialog._apply_kerning([])
-                else:
-                    dialog._js('sendKerningChunk(0)')
-            elif cmd == 'applykerning_chunk':
-                # Accumulate one chunk, request the next.
-                idx = 0
-                try:
-                    data = json.loads(urllib.parse.unquote(query)) if query else {}
-                    chunk = data.get('d', [])
-                    idx   = int(data.get('i', 0))
-                    if not isinstance(getattr(dialog, '_kerning_buf', None), list):
-                        dialog._kerning_buf = []
-                    dialog._kerning_buf.extend(chunk)
-                except Exception as pe:
-                    print('[Coupler] applykerning_chunk error: %s' % pe)
-                dialog._js('sendKerningChunk(%d)' % (idx + 1))
-            elif cmd == 'applykerning_done':
-                pairs = getattr(dialog, '_kerning_buf', []) or []
-                dialog._kerning_buf = None
-                dialog._apply_kerning(pairs)
-            elif cmd == 'applyspacing':
-                try:
-                    items = json.loads(urllib.parse.unquote(query)) if query else []
-                except Exception as pe:
-                    print('[Coupler] applyspacing parse error: %s' % pe)
-                    items = []
-                dialog._apply_spacing(items)
-            elif cmd == 'resize':
-                try:
-                    params = dict(p.split('=') for p in query.split('&') if '=' in p)
-                    w = int(params.get('w', 240))
-                    h = int(params.get('h', 675))
-                    dialog._resize_window(w, h)
-                except Exception as re:
-                    print('[Coupler] resize error: %s' % re)
-        except Exception:
-            traceback.print_exc()
+            cmd    = self._pending_cmd
+            query  = self._pending_query
+            dialog = self._dialog
+            if not dialog:
+                return
+            # Guard against a stale dispatch firing after _cleanup() has run.
+            if not getattr(dialog, '_webview', None):
+                return
+            try:
+                if cmd == 'requestdata':
+                    dialog._send_glyph_data()
+                elif cmd == 'identify':
+                    dialog._send_identity()
+                elif cmd == 'applykerning':
+                    _dbg('couplerDispatch_:applykerning entry — query_len=%d' % len(query))
+                    try:
+                        pairs = json.loads(urllib.parse.unquote(query)) if query else []
+                    except Exception as pe:
+                        print('[Coupler] applykerning parse error: %s' % pe)
+                        pairs = []
+                    _dbg('couplerDispatch_:applykerning json.loads done — pairs=%d' % len(pairs))
+                    dialog._apply_kerning(pairs)
+                    _dbg('couplerDispatch_:applykerning _apply_kerning returned')
+                elif cmd == 'applyspacing':
+                    try:
+                        items = json.loads(urllib.parse.unquote(query)) if query else []
+                    except Exception as pe:
+                        print('[Coupler] applyspacing parse error: %s' % pe)
+                        items = []
+                    dialog._apply_spacing(items)
+                elif cmd == 'resize':
+                    try:
+                        params = dict(p.split('=') for p in query.split('&') if '=' in p)
+                        w = int(params.get('w', 240))
+                        h = int(params.get('h', 675))
+                        dialog._resize_window(w, h)
+                    except Exception as re:
+                        print('[Coupler] resize error: %s' % re)
+            except Exception:
+                traceback.print_exc()
+        finally:
+            gc.enable()
 
 
 # ── Dialog ────────────────────────────────────────────────────────────────────
@@ -528,18 +542,12 @@ class CouplerDialog(object):
             self._js('dbg("Python ERROR in _send_glyph_data — check Glyphs console")')
 
     def _apply_kerning(self, pairs):
-        # Disable cyclic GC during ObjC proxy access to prevent gc_collect_main crash.
-        gc.disable()
         try:
-            self._apply_kerning_inner(pairs)
-        finally:
-            gc.enable()
-
-    def _apply_kerning_inner(self, pairs):
-        try:
+            _dbg('_apply_kerning entry — pairs=%d' % len(pairs))
             if not pairs:
                 return
             from AppKit import NSAlert, NSAlertFirstButtonReturn
+            _dbg('_apply_kerning — building NSAlert')
             alert = NSAlert.alloc().init()
             alert.setMessageText_('Apply Kerning — %s' % self._master.name)
             alert.setInformativeText_(
@@ -548,9 +556,12 @@ class CouplerDialog(object):
                     len(pairs), self._master.name))
             alert.addButtonWithTitle_('Apply')
             alert.addButtonWithTitle_('Cancel')
+            _dbg('_apply_kerning — calling runModal')
             if alert.runModal() != NSAlertFirstButtonReturn:
+                _dbg('_apply_kerning — user cancelled')
                 return
 
+            _dbg('_apply_kerning — user confirmed, starting font write')
             master_id = self._master.id
             font      = self._font
             ok        = 0
@@ -559,6 +570,7 @@ class CouplerDialog(object):
             try:
                 try:    del font.kerning[master_id]
                 except (KeyError, Exception): pass
+                _dbg('_apply_kerning — kerning dict cleared, writing %d pairs' % len(pairs))
                 for pair in pairs:
                     try:
                         font.setKerningForPair(
@@ -572,23 +584,17 @@ class CouplerDialog(object):
                 except AttributeError: pass
 
             summary = 'Applied %d pairs → master "%s".' % (ok, self._master.name)
+            _dbg('_apply_kerning — done: ' + summary)
             print('[Coupler] ' + summary)
             self._webview.evaluateJavaScript_completionHandler_(
                 'showApplyResult && showApplyResult(%s)' % json.dumps({'ok': ok, 'msg': summary}),
                 None)
             Message(summary, 'Coupler — Done')
         except Exception:
+            _dbg('_apply_kerning — EXCEPTION (see traceback below)')
             traceback.print_exc()
 
     def _apply_spacing(self, items):
-        # Disable cyclic GC during ObjC proxy access to prevent gc_collect_main crash.
-        gc.disable()
-        try:
-            self._apply_spacing_inner(items)
-        finally:
-            gc.enable()
-
-    def _apply_spacing_inner(self, items):
         try:
             if not items:
                 return

@@ -10,11 +10,28 @@
 # WebKit calling the freed block causes SIGSEGV at 0x0.
 # Only call _js(code) which passes None as handler (proven safe).
 
+import gc
 import json
+import time
 import traceback
 import urllib.parse
 
 from AppKit import NSObject
+
+_DBG_PATH = '/tmp/coupler_debug.txt'
+
+def _dbg(label):
+    try:
+        enabled = gc.isenabled()
+        count   = gc.get_count()
+        thresh  = gc.get_threshold()
+        msg = '[Coupler-DBG %s] gc=%s count=%s thresh=%s :: %s\n' % (
+            time.strftime('%H:%M:%S'), enabled, count, thresh, label)
+        print(msg, end='')
+        with open(_DBG_PATH, 'a') as f:
+            f.write(msg)
+    except Exception:
+        pass
 
 
 class _NavDelegate(NSObject):
@@ -37,6 +54,8 @@ class _NavDelegate(NSObject):
                 self._pending_cmd   = (url.host() or '').lower()
                 self._pending_query = url.query() or ''
                 print('[Coupler] IPC cmd=%r (deferred)' % self._pending_cmd)
+                if self._pending_cmd == 'applykerning':
+                    _dbg('IPC:applykerning received in webView_handler — about to schedule couplerDispatch_')
                 NSObject.cancelPreviousPerformRequestsWithTarget_(self)
                 self.performSelector_withObject_afterDelay_(
                     'couplerDispatch:', None, 0.0)
@@ -46,60 +65,54 @@ class _NavDelegate(NSObject):
         handler(1)  # allow normal navigations
 
     def couplerDispatch_(self, _):
-        """Runs in the next runloop cycle — main thread free, XPC healthy."""
-        cmd    = self._pending_cmd
-        query  = self._pending_query
-        dialog = self._dialog
-        if not dialog:
-            return
-        if not getattr(dialog, '_webview', None):
-            return
+        """Runs in the next runloop cycle — main thread free, XPC healthy.
+
+        gc.disable() guards the entire method: json.loads on large payloads creates
+        tens of thousands of Python objects and reliably crosses the GC threshold.
+        When GC fires inside an ObjC callback, visit_decref traverses CouplerDialog.__dict__
+        (which holds live ObjC proxies) and crashes. Single-URL dispatch means
+        gc.enable() in finally fires exactly once, after all ObjC work is complete.
+        """
+        gc.disable()
         try:
-            if cmd == 'requestdata':
-                dialog._send_glyph_data()
-            elif cmd == 'identify':
-                dialog._send_identity()
-            elif cmd == 'applykerning_start':
-                try:
-                    params = dict(s.split('=') for s in query.split('&') if '=' in s)
-                    n = int(params.get('n', 0))
-                except Exception:
-                    n = 0
-                dialog._kerning_buf = []
-                if n == 0:
-                    dialog._apply_kerning([])
-                else:
-                    dialog._js('sendKerningChunk(0)')
-            elif cmd == 'applykerning_chunk':
-                idx = 0
-                try:
-                    data = json.loads(urllib.parse.unquote(query)) if query else {}
-                    chunk = data.get('d', [])
-                    idx   = int(data.get('i', 0))
-                    if not isinstance(getattr(dialog, '_kerning_buf', None), list):
-                        dialog._kerning_buf = []
-                    dialog._kerning_buf.extend(chunk)
-                except Exception as pe:
-                    print('[Coupler] applykerning_chunk error: %s' % pe)
-                dialog._js('sendKerningChunk(%d)' % (idx + 1))
-            elif cmd == 'applykerning_done':
-                pairs = getattr(dialog, '_kerning_buf', []) or []
-                dialog._kerning_buf = None
-                dialog._apply_kerning(pairs)
-            elif cmd == 'applyspacing':
-                try:
-                    items = json.loads(urllib.parse.unquote(query)) if query else []
-                except Exception as pe:
-                    print('[Coupler] applyspacing parse error: %s' % pe)
-                    items = []
-                dialog._apply_spacing(items)
-            elif cmd == 'resize':
-                try:
-                    params = dict(p.split('=') for p in query.split('&') if '=' in p)
-                    w = int(params.get('w', 240))
-                    h = int(params.get('h', 675))
-                    dialog._resize_window(w, h)
-                except Exception as re:
-                    print('[Coupler] resize error: %s' % re)
-        except Exception:
-            traceback.print_exc()
+            cmd    = self._pending_cmd
+            query  = self._pending_query
+            dialog = self._dialog
+            if not dialog:
+                return
+            if not getattr(dialog, '_webview', None):
+                return
+            try:
+                if cmd == 'requestdata':
+                    dialog._send_glyph_data()
+                elif cmd == 'identify':
+                    dialog._send_identity()
+                elif cmd == 'applykerning':
+                    _dbg('couplerDispatch_:applykerning entry — query_len=%d' % len(query))
+                    try:
+                        pairs = json.loads(urllib.parse.unquote(query)) if query else []
+                    except Exception as pe:
+                        print('[Coupler] applykerning parse error: %s' % pe)
+                        pairs = []
+                    _dbg('couplerDispatch_:applykerning json.loads done — pairs=%d' % len(pairs))
+                    dialog._apply_kerning(pairs)
+                    _dbg('couplerDispatch_:applykerning _apply_kerning returned')
+                elif cmd == 'applyspacing':
+                    try:
+                        items = json.loads(urllib.parse.unquote(query)) if query else []
+                    except Exception as pe:
+                        print('[Coupler] applyspacing parse error: %s' % pe)
+                        items = []
+                    dialog._apply_spacing(items)
+                elif cmd == 'resize':
+                    try:
+                        params = dict(p.split('=') for p in query.split('&') if '=' in p)
+                        w = int(params.get('w', 240))
+                        h = int(params.get('h', 675))
+                        dialog._resize_window(w, h)
+                    except Exception as re:
+                        print('[Coupler] resize error: %s' % re)
+            except Exception:
+                traceback.print_exc()
+        finally:
+            gc.enable()
