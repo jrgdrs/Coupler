@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coupler — Font Kerning Analyzer - v5.9.15</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
+<style>
+%%STYLE%%
+</style>
+</head>
+<body class="light-mode">
+
+<header>
+  <div class="header-title">
+    <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.9.15</span>
+  </div>
+  <div class="header-sep"></div>
+  <div class="header-font-info" id="header-font-info">No font loaded</div>
+  <div class="header-actions">
+    <div id="global-status">—</div>
+    <button class="btn-hdr testpage" onclick="openTestPage()" title="Open A4 landscape test print">Testpage</button>
+    <button class="btn-hdr accent" onclick="document.querySelector('.help-overlay').classList.add('show')" title="Help">? Help</button>
+  </div>
+</header>
+
+<!-- ── Help overlay ── -->
+<div class="help-overlay" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="help-box">
+    <button class="help-close" onclick="document.querySelector('.help-overlay').classList.remove('show')">×</button>
+    <h2>Coupler — Reference</h2>
+    <p>Coupler computes optical kerning corrections from the actual glyph contour geometry of TrueType and OpenType fonts. No manual pair editing — all values are derived mathematically from outline shapes. Available as a browser tool and as a native Glyphs plugin.</p>
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text3)">Source &amp; documentation: <a href="https://github.com/jrgdrs/Coupler" target="_blank" style="color:var(--accent);text-decoration:none">github.com/jrgdrs/Coupler</a></p>
+
+    <h2 style="margin-top:20px">What's New</h2>
+    <dl class="help-kv">
+      <dt>v5.9.15</dt><dd><strong>Fix — Apply to Glyphs crash.</strong> The Glyphs app no longer crashes after "Apply to Glyphs" in advanced mode. Root cause: Python's cyclic garbage collector (<code style="font-family:var(--mono);color:var(--accent)">gc_collect_main</code>) was traversing Python dicts that held live Objective-C proxy objects during write-back, triggering <code style="font-family:var(--mono);color:var(--accent)">visit_decref</code> → SIGABRT. Fix: GC is suspended for the duration of the kerning and spacing write-back operations, matching the same guard already used during glyph data import.</dd>
+      <dt>v5.9.10–14</dt><dd><strong>AutoParam</strong> — new ⚙ AutoParam button left of the Presets dropdown. Scans all eight analysis parameters (Zones, Smooth, Blur, Glow Blur, Round, Threshold, Lazy, Min Gap) sequentially and pre-fills the fields with font-specific optimal values. Sensitivity metric: <em>Laufweite</em> (total text width = sum of advance widths + kerning corrections) for the 26-word test string. Selection algorithm: <em>lower average</em> — the candidate whose Laufweite is closest to the mean of all below-mean values, representing the converged stable state. Lite analysis processes only the ~52 glyphs and ~130 pairs in the test string (no KERNING_PAIRS lookup) — ~50–100× faster than a full analysis per scan step. Available in both browser mode and Glyphs plugin mode. During the scan the parameter panel is hidden and the log fills the full panel height. AutoParam test string added as first entry in the Preview text preset dropdown.</dd>
+      <dt>v5.5</dt><dd><strong>Build system.</strong> Source code is now modular: HTML template, CSS, and 14 JS modules in <code style="font-family:var(--mono);color:var(--accent)">src/</code>. <code style="font-family:var(--mono);color:var(--accent)">build.js</code> assembles them into <code style="font-family:var(--mono);color:var(--accent)">ui.html</code> (<code style="font-family:var(--mono);color:var(--accent)">npm run build</code>). Jest unit test suite covers core margin measurement and kerning math (<code style="font-family:var(--mono);color:var(--accent)">npm test</code>). No user-visible changes to the tool.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Workflow</h2>
+    <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:1.8">
+      <li><strong>Load font</strong> — Drop a TTF or OTF file onto the drop zone, or click to browse. In Glyphs mode, click <em>Load &amp; Compute</em> to pull the active font directly from Glyphs.</li>
+      <li><strong>Set parameters</strong> — Adjust Zones, Blur, Smooth, Round module, and other settings. Use a preset as a starting point.</li>
+      <li><strong>Compute</strong> — Click <em>&#9658; Compute Kerning</em>. The cadence scan pre-fills Round module automatically on first load.</li>
+      <li><strong>Review</strong> — Inspect pairs in the Preview canvas and the Coupling Table. Use Margins toggle to check zone coverage.</li>
+      <li><strong>Export / Apply</strong> — Download as CSV, copy to clipboard, or apply directly to the font in Glyphs.</li>
+    </ol>
+
+    <h2 style="margin-top:20px">Computation Pipeline</h2>
+    <p>Formula: <code style="font-family:var(--mono);color:var(--accent)">correction = base &minus; pairMean</code>. Negative = tighten; positive = loosen.</p>
+    <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:1.8">
+      <li><strong>Margin measurement</strong> — Each glyph is sliced into <em>Zones</em> equal horizontal bands. Per band, Bezier intersection (cubic + quadratic) finds left and right ink extents. Each margin is averaged over <em>Blur</em> sub-zones to suppress staircase artifacts at oblique curve crossings. In <em>Glow</em> mode, margins are measured from a rasterized pixel map instead of vector intersections, with ink spread controlled by <em>Glow Blur</em>.</li>
+      <li><strong>Smoothing</strong> — A reciprocal step-limit pass (<em>Smooth</em>) constrains jumps between adjacent zone margins, anchoring from the zone of maximum glyph extent outward. Diagonal strokes and open counters converge toward the dominant margin profile.</li>
+      <li><strong>Baseline</strong> — The self-pair of <em>Base Glyph LC</em> (default o+o) and <em>Base Glyph UC</em> (default O+O) sets the target spacing. <em>Tracking</em> offsets this baseline globally.</li>
+      <li><strong>Pair corrections</strong> — For every pair, the mean of all valid zone gaps is compared to the baseline. Corrections violating <em>Min gap</em> are capped (&ensp;&#9873;). Corrections below <em>Threshold</em> are zeroed. The result is snapped to the nearest multiple of <em>Round module</em>.</li>
+    </ol>
+
+    <h2 style="margin-top:20px">Parameters</h2>
+    <dl class="help-kv">
+      <dt>Presets &#8635;</dt><dd>Loads a named parameter set tuned for common font styles: Default, Serif Regular/Italic/Bold/Bold Italic, Sans Light/Regular/Bold, Slab Light/Regular/Bold. Overrides all parameter fields at once.</dd>
+      <dt>Zones <span style="font-weight:400;color:var(--text3)">default 16 &middot; range 1&ndash;64</span></dt><dd>Number of equal-height horizontal slices across the full em (ascender to descender). More zones capture finer vertical contour detail at the cost of speed. Recommended: 9&ndash;16 for most text fonts.</dd>
+      <dt>Smooth <span style="font-weight:400;color:var(--text3)">default 50 &middot; range 0&ndash;99</span></dt><dd>Reciprocal smoothing strength. 0 = disabled; 99 = maximum (step limit of 1&thinsp;% of zone height per adjacent zone). Tames diagonal strokes and open counters by constraining margin jumps between zones.</dd>
+      <dt>Min gap % <span style="font-weight:400;color:var(--text3)">default 4 &middot; range 0&ndash;100</span></dt><dd>Minimum ink distance between adjacent glyphs as a percentage of UPM, measured on the raw geometric outline (independent of Smooth or Glow). Covers any part of a glyph that extends beyond its body — including negative sidebearings and descending strokes. Corrections that would bring actual ink closer than this floor are raised to maintain the gap, and marked &#9873;. Set to 0 to disable.</dd>
+      <dt>Blur <span style="font-weight:400;color:var(--text3)">default 1 &middot; range 1&ndash;50</span></dt><dd>Number of sub-zones computed per zone for margin averaging. Higher values suppress quantization artifacts where curves cross zone boundaries at oblique angles, at the cost of speed. 1 = single geometric sample per zone.</dd>
+      <dt>Glow <span style="font-weight:400;color:var(--text3)">default on</span></dt><dd>Switches margin measurement from vector Bezier intersection to a rasterized pixel-scan method. Ink is spread by <em>Glow Blur</em> before the margin edge is detected, simulating optical ink spread and producing softer, optically weighted margins. The Min gap check always uses the raw geometric outline regardless of this setting.</dd>
+      <dt>Glow Blur <span style="font-weight:400;color:var(--text3)">default 20 &middot; range 0&ndash;200 font units</span></dt><dd>Spread radius for the Glow rasterizer. Each pixel's ink influence extends this many font units outward before the margin edge is sampled. 0 = hard pixel edges only.</dd>
+      <dt>Round module <span style="font-weight:400;color:var(--text3)">default 20 &middot; min 1</span></dt><dd>Snaps all correction values to the nearest multiple of N. Example: module 20 produces values &minus;40, &minus;20, 0, +20, +40. Use 1 for plain integer rounding. Pre-filled automatically from the Cadence scan on first font load; the raw cadence value is adjusted so it falls in the range 20&ndash;40 (halved if &gt;40, doubled if &lt;20).</dd>
+      <dt>Threshold <span style="font-weight:400;color:var(--text3)">default 0 &middot; min 0</span></dt><dd>Corrections with absolute value below this number are set to zero. Eliminates imperceptible micro-corrections that would bloat the kerning table. The threshold is not applied to corrections forced by Min gap.</dd>
+      <dt>Lazy % <span style="font-weight:400;color:var(--text3)">default 20 &middot; range 0&ndash;99</span></dt><dd>Reduces all computed corrections by this percentage before output, then re-snaps to the Round module. Produces softer, less aggressive kerning — useful when the full optical correction feels too tight in print. Example: Lazy&thinsp;=&thinsp;20, computed&thinsp;=&thinsp;110 &rarr; 110&thinsp;&times;&thinsp;0.8&thinsp;=&thinsp;88 &rarr; snapped to 80 (module 20). Min gap is enforced after the reduction.</dd>
+      <dt>Base Glyph LC <span style="font-weight:400;color:var(--text3)">default o</span></dt><dd>Reference glyph for lowercase baseline spacing. The self-pair (o+o by default) is measured and its average zone gap becomes the LC target spacing. Change to 'n' for very square-sided sans-serifs.</dd>
+      <dt>Base Glyph UC <span style="font-weight:400;color:var(--text3)">default O</span></dt><dd>Reference glyph for uppercase and lining-figure baseline spacing. Analogous to Base Glyph LC for the UC range.</dd>
+      <dt>Tracking <span style="font-weight:400;color:var(--text3)">default 0</span></dt><dd>Constant offset added to the effective base value before corrections are computed. Negative tightens all spacing; positive loosens. Does not affect the base glyph measurement itself.</dd>
+      <dt>Pair limit <span style="font-weight:400;color:var(--text3)">default 0 (all pairs)</span></dt><dd>Restricts output to the N most common pairs by real-world text frequency (Andre Fuchs corpus). Set to 0 to include every pair in the font — this is the default. A limit such as 2000 dramatically reduces computation time for large fonts without sacrificing the most typographically relevant pairs.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Results Summary</h2>
+    <p>Displayed in the left panel after each computation.</p>
+    <dl class="help-kv">
+      <dt>Glyphs / Pairs</dt><dd>Total glyphs analyzed and kerning pairs produced.</dd>
+      <dt>Base LC / Base UC</dt><dd>Measured mean gap of the LC and UC reference self-pairs in font units. All corrections are relative to these values.</dd>
+      <dt>Total LC / UC (zones)</dt><dd>Summed zone-margin area across all LC or UC glyphs. Useful for comparing fonts with different proportions at the same UPM.</dd>
+      <dt>Margin / Counter / Print LC &middot; UC %</dt><dd>Each glyph's zone area is classified as <em>Margin</em> (side whitespace), <em>Counter</em> (enclosed voids), or <em>Print</em> (ink coverage). These percentages describe the spatial character of the font. All three sum to 100&thinsp;%.</dd>
+      <dt>n / O / o inner fu&sup2;</dt><dd>Measured counter area of the three reference glyphs in font units squared. Captures the openness of each counter space.</dd>
+      <dt>n / O / o ctr/marg</dt><dd>Counter area divided by (base margin &times; glyph height). A dimensionless ratio describing counter size relative to margin width — useful for comparing fonts across different UPM values.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Preview Panel</h2>
+    <p>Renders text on a canvas at any size. Kerning corrections are applied as advance-width offsets per pair.</p>
+    <dl class="help-kv">
+      <dt>Size slider / number field</dt><dd>Font size in pixels (20&ndash;600 px). Both controls are linked and update the canvas immediately.</dd>
+      <dt>Text field</dt><dd>Type any string to preview. The preset dropdown offers ready-made test strings: cap pairs, diagonal stress, full LC/UC, Small Caps, Oldstyle Figures, and more.</dd>
+      <dt>&#8596; Kerning ON/OFF</dt><dd>Toggles Coupler kerning on and off. When off, glyphs render in dim blue so the difference is immediately visible.</dd>
+      <dt>Margins</dt><dd>Overlays the computed left (amber) and right (green) margin zone bands on each glyph. Zone boundaries are marked with faint white lines, enabling direct inspection of zone coverage and smoothing quality.</dd>
+      <dt>Glow</dt><dd>When the last analysis used Glow mode, this overlay adds an amber luminous halo representing the ink spread zone around each glyph's outline. Only active when Glow analysis was used.</dd>
+      <dt>Baseline</dt><dd>Shows the typographic baseline as an amber line with label.</dd>
+      <dt>x-Height</dt><dd>Shows the x-height as a blue line with label. Requires the font to carry the sxHeight metric in the OS/2 table.</dd>
+      <dt>Small Caps</dt><dd>Switches the preview text to the .sc / .smcp glyph variants where the font provides them.</dd>
+      <dt>OSF</dt><dd>Switches digit characters to Oldstyle Figure variants (.osf or PUA U+F730&ndash;F739) where available.</dd>
+      <dt>&#8857; Pair</dt><dd>Activates Pair Preview mode. The selected table row is rendered as <em>oLRo&ensp;nLRn&ensp;OLRo&ensp;HLRH</em> — the pair in four representative spacing contexts. Navigate rows with &uarr;&darr; keys. Press Escape or click &#8857; Pair again to exit.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Coupling Table</h2>
+    <p>Lists all computed kerning pairs. Click any column header to sort. Click any row to enter Pair Preview mode.</p>
+    <dl class="help-kv">
+      <dt>Left / Right</dt><dd>Glyph names forming the pair.</dd>
+      <dt>Correction</dt><dd>Final kerning value in font units after rounding and threshold filtering. Negative = tighten spacing; positive = loosen.</dd>
+      <dt>Pair Mean</dt><dd>Average of (right margin of left glyph + left margin of right glyph) across all zones where both glyphs have ink.</dd>
+      <dt>Base</dt><dd>The target spacing used for this pair — the LC or UC base value adjusted by Tracking.</dd>
+      <dt>Class</dt><dd>Pair classification: <em>LC</em> (both lowercase), <em>UC</em> (both uppercase or lining figures), <em>mixed</em> (one of each, uses LC base). Determines which baseline applies.</dd>
+      <dt>Zones</dt><dd>Per-zone gap values shown abbreviated in the cell. Hover the cell for the full zone breakdown. Capped pairs are marked &#9873;.</dd>
+      <dt>Filter field</dt><dd>Filters the table by glyph name. Single term = exact match on either side. Two space-separated terms = exact left+right pair match. Toggle <em>.*</em> to use a full JavaScript regular expression against glyph names.</dd>
+      <dt>&darr; Export</dt><dd>Downloads all pairs as a semicolon-delimited CSV including a parameter header. Format per line: <code style="font-family:var(--mono);color:var(--accent)">Left;Right;Correction (Class zones) [cap]</code></dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Spacing Corrections Tab</h2>
+    <p>Analyzes self-pairs (A+A, n+n&hellip;) to detect sidebearing imbalances and suggests advance-width and sidebearing corrections that would bring each self-kern to zero.</p>
+    <dl class="help-kv">
+      <dt>Histogram</dt><dd>Groups glyphs by their proposed new advance width. Bar width represents relative group count. The bar label shows the glyphs in that group; hover the row for the complete list. The number on the left is the advance width in font units; the number on the right is the group count.</dd>
+      <dt>Glyph / Cls</dt><dd>Glyph name and classification (LC or UC).</dd>
+      <dt>Old AW</dt><dd>Current advance width in the source font.</dd>
+      <dt>New AW</dt><dd>Proposed advance width rounded to the Round module that would make the self-kern approach zero.</dd>
+      <dt>&Delta; AW</dt><dd>Net advance-width change (New AW &minus; Old AW). Red = tighten; green = widen.</dd>
+      <dt>&Delta; Left / &Delta; Right</dt><dd>Suggested sidebearing adjustments — how much to shift the left or right margin to re-balance the glyph symmetrically within its bounding box.</dd>
+      <dt>New L / New R</dt><dd>Resulting left and right margin values after the suggested adjustment is applied.</dd>
+      <dt>&#8857; Apply Spacing <span style="font-weight:400;color:var(--text3)">Glyphs mode only</span></dt><dd>Writes the suggested advance-width and sidebearing corrections directly into the active Glyphs document.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Cadence Tab</h2>
+    <p>Measures the stem rhythm of the lowercase 'n' to derive a natural Round module. The scan runs automatically on font load and pre-fills the <em>Round module</em> field.</p>
+    <dl class="help-kv">
+      <dt>Equator</dt><dd>The y-coordinate (font units) at which 'n' is scanned for ink runs. Default: half x-height. Editing this value re-triggers the full cadence scan.</dd>
+      <dt>Left / Right <span style="font-weight:400;color:var(--text3)">read-only</span></dt><dd>Detected x-positions of the left and right ink-run edges at the equator scan line.</dd>
+      <dt>Stem</dt><dd>Width of the first stem in font units (right edge minus left edge of the first ink run). Editable for manual override.</dd>
+      <dt>Interval</dt><dd>Distance from the start of the first stem to the start of the second stem — one complete stem+counter cycle.</dd>
+      <dt>Divider</dt><dd>Number of sub-steps per stem. Controls the resolution of the dashed divider grid overlay in the canvas. Default: 4.</dd>
+      <dt>Step <span style="font-weight:400;color:var(--text3)">read-only</span></dt><dd>Interval &divide; Divider. The base grid step of the cadence.</dd>
+      <dt>Cadence <span style="font-weight:400;color:var(--text3)">read-only</span></dt><dd>Computed Round module candidate: Interval &divide; Divider, rounded. Pre-filled into <em>Round module</em> on first font load. The raw value is adjusted to fall in the range 20&ndash;40: if it exceeds 40 it is halved; if it is below 20 it is doubled. This keeps the rounding grid in a practical range regardless of font size or stem density.</dd>
+      <dt>&#8857; Assign to Round module</dt><dd>Manually copies the current Cadence value (with the same &gt;40/&lt;20 adjustment) into the <em>Round module</em> parameter field and highlights the field briefly.</dd>
+      <dt>Canvas</dt><dd>Visualizes the 'n' glyph (28&thinsp;% opacity) with amber baseline and x-height lines, a white equator scan line, white vertical lines at stem edges, and a gray dashed divider grid. Numeric labels on the right show font-unit positions and the x-height factor relative to the cadence.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Compact Panel</h2>
+    <p>Double-click the <strong>Coupler</strong> logo to toggle between compact and full panel. In <strong>Glyphs mode</strong> the compact panel is the default starting view; in the <strong>browser</strong> the full panel opens by default. The compact panel shows only the essential controls in a narrow window — designed for production use alongside Glyphs.</p>
+    <dl class="help-kv">
+      <dt>Load &amp; Compute <span style="font-weight:400;color:var(--text3)">Glyphs mode</span></dt><dd>Fetches the active font from Glyphs and runs the full analysis. Always resets and pre-fills the Round module from the cadence scan (adjusted to the 20&ndash;40 range).</dd>
+      <dt>n Cadence canvas</dt><dd>Compact cadence visualization — same overlay as the Cadence tab but without labels, scaled to the panel width.</dd>
+      <dt>Round module</dt><dd>Pre-filled from the cadence scan on first load. Edit freely; Recompute always uses the current field value without overwriting it.</dd>
+      <dt>Threshold / Lazy % / Pair limit</dt><dd>As per the full panel. Threshold suppresses noise; Lazy % softens the overall correction magnitude; Pair limit caps the number of pairs generated.</dd>
+      <dt>&#8635; Recompute</dt><dd>Re-runs the analysis with current field values. Enabled only after the first Load &amp; Compute. Does not reset Round module.</dd>
+      <dt>&#8856; Kerning to Clipboard <span style="font-weight:400;color:var(--text3)">browser mode</span></dt><dd>Copies all kerning pairs to the system clipboard in the same semicolon-delimited format as the CSV export, including the parameter header lines.</dd>
+      <dt>&darr; Export CSV &nbsp;/&nbsp; &#8857; Apply to Font</dt><dd>Browser mode: downloads the kerning CSV. Glyphs mode: writes kerning pairs from the last computation directly into the active Glyphs document.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">Testpage</h2>
+    <p>Opens an A4 landscape print window with six text blocks at sizes 9&ndash;16&thinsp;pt, using European-language sample texts. Coupler kerning is embedded. Use Cmd+P / Ctrl+P to print or export as PDF.</p>
+
+    <h2 style="margin-top:20px">Log</h2>
+    <p>The log box at the bottom of the left panel records computation steps, timing, and errors in real time. Green = success, amber = info, red = error. The divider above it can be dragged to resize the log area.</p>
+
+    <h2 style="margin-top:20px">Glossary</h2>
+    <dl class="help-kv">
+      <dt>UPM</dt><dd><em>Units Per Em</em> — the internal coordinate grid of a font. All distances (margins, corrections, gap floors) are in UPM units.</dd>
+      <dt>Advance Width</dt><dd>Total horizontal cursor advance after placing a glyph, including both sidebearings.</dd>
+      <dt>Margin</dt><dd>Gap between the outermost ink edge and the advance-width boundary, measured per zone on the left and right side.</dd>
+      <dt>Zone</dt><dd>One equal-height horizontal slice of the em. More zones = finer vertical detail; higher computation cost.</dd>
+      <dt>Pair Mean</dt><dd>Average of (right margin of left glyph + left margin of right glyph) across all zones where both glyphs have ink.</dd>
+      <dt>Base Value</dt><dd>Target pair mean from the reference glyph self-pair. All corrections are measured relative to this.</dd>
+      <dt>LC / UC / Mixed</dt><dd>Pair classification. LC = both lowercase; UC = both uppercase or lining figures; Mixed = one of each (LC base applies).</dd>
+      <dt>Capped &#9873;</dt><dd>Correction was reduced to avoid violating the Min Gap floor. The cell in the table is marked with &#9873;.</dd>
+      <dt>Self-Kern</dt><dd>Kerning correction of a glyph paired with itself (A+A). Non-zero indicates sidebearing imbalance in the source font.</dd>
+      <dt>Counter</dt><dd>Enclosed interior void of a glyph (e.g. the hole in 'o' or 'p'). Measured by pixel scan on an off-screen canvas.</dd>
+      <dt>Print Area</dt><dd>Total ink coverage of a glyph in font-unit&sup2; (sum of ink-covered pixels in the zone raster).</dd>
+      <dt>Cadence</dt><dd>The natural stem-rhythm interval of the 'n', used as the Round module grid. Derived as Interval &divide; Divider.</dd>
+      <dt>Glow mode</dt><dd>Pixel-based margin computation with configurable ink spread radius. Produces optically weighted margins for high-contrast and ink-trap designs.</dd>
+      <dt>Small Caps (SC)</dt><dd>Glyph variants with names ending in <code style="font-family:var(--mono);color:var(--accent)">.sc</code> or <code style="font-family:var(--mono);color:var(--accent)">.smcp</code>.</dd>
+      <dt>OSF</dt><dd><em>Oldstyle Figures</em> — non-lining numerals with names ending in <code style="font-family:var(--mono);color:var(--accent)">.osf</code> or PUA code points U+F730&ndash;U+F739.</dd>
+      <dt>Pair Limit</dt><dd>Maximum pairs to compute, ranked by real-world text frequency (Andre Fuchs corpus). Set 0 for all pairs.</dd>
+      <dt>Laufweite</dt><dd>Running width — the total horizontal extent of a text string: sum of all glyph advance widths plus all kerning corrections for consecutive pairs. Used by AutoParam as the sensitivity metric: a parameter change that shifts Laufweite by &ge;10 font units is considered significant.</dd>
+      <dt>Lower average (Laufweite)</dt><dd>The mean of all Laufweite values (across AutoParam candidates) that are at or below the overall mean. This represents the converged stable state of accurate kerning — free from the over-loosening caused by too-coarse parameter values. AutoParam selects the candidate whose Laufweite is closest to this value.</dd>
+      <dt>Parameter variance</dt><dd>Spread of Laufweite values measured across AutoParam candidates for a single parameter. High variance indicates the parameter has a strong effect on kerning quality for this font; low variance indicates the parameter is less critical. The lower average identifies the stable low-Laufweite region of the distribution.</dd>
+    </dl>
+
+    <h2 style="margin-top:20px">AutoParam</h2>
+    <p>AutoParam automatically detects font-specific optimal values for all eight analysis parameters. It measures how each parameter affects the <em>Laufweite</em> (running width) of a standard test string and pre-fills the parameter fields with the found values.</p>
+    <p style="margin-top:8px">Available in both browser mode and Glyphs mode (requires font data loaded via Load &amp; Compute). Click <strong>⚙ AutoParam</strong> left of the Presets dropdown. During the scan the parameter panel is hidden and the log fills the left panel; parameters are restored when the scan completes.</p>
+    <dl class="help-kv">
+      <dt>Test string</dt><dd><em>Arrowroot Barley Chervil Dumpling Endive Flaxseed Garbanzo Hijiki Ishtu Jicama Kale Lychee Marjoram Nectarine Oxtail Pizza Quinoa Roquefort Squash Tofu Uppuma Vanilla Wheat Xergis Yogurt Zweiback</em> — 26 words covering all uppercase initials, mixed lowercase, and a broad range of letter shapes (round, diagonal, straight, narrow, wide).</dd>
+      <dt>Algorithm</dt><dd>Each parameter is scanned independently across a set of candidates (e.g. Zones: 3, 9, 18, 36, 48, 96). For each candidate the full kerning analysis is run with all other parameters at their current or accumulated optimal values. All Laufweite values are collected; the <em>lower average</em> (mean of values at or below the overall mean) is computed. The optimal candidate is the one whose Laufweite is closest to this lower average — the converged stable state that characterises accurate kerning for the given font.</dd>
+      <dt>Parameter scan order</dt><dd>Zones → Smooth → Blur → Glow Blur → Round → Threshold → Lazy → Min gap. Each scan uses the optimal values already found for earlier parameters, so later scans reflect realistic combined conditions.</dd>
+      <dt>Result</dt><dd>All eight parameters are pre-filled with the detected optimal values and a final analysis is run automatically. The result represents a font-specific starting point — further manual adjustment is always possible.</dd>
+      <dt>Duration</dt><dd>Each scan step uses a lightweight analysis that processes only the ~52 glyphs and ~130 pairs needed for the test string — no KERNING_PAIRS lookup, no UI updates. Total: up to 6+5+5+6+5+5+5+6 = 43 lite passes, plus one full analysis at the end. Typical runtime: a few seconds for most fonts.</dd>
+    </dl>
+
+    <p style="margin-top:20px;font-family:var(--mono);font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:14px">Source code &amp; documentation: <a href="https://github.com/jrgdrs/Coupler" target="_blank" style="color:var(--accent);text-decoration:none">github.com/jrgdrs/Coupler</a></p>
+  </div>
+
+</div>
+
+<div class="layout">
+
+<!-- ══ LEFT ══ -->
+<div class="left-panel">
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('fi').click()">
+    <div class="drop-icon">⊕</div>
+    <div class="drop-label">Drop TTF / OTF font here<br>or click to browse</div>
+    <div class="drop-fname" id="drop-fname"></div>
+    <input type="file" id="fi" accept=".ttf,.otf" style="display:none">
+  </div>
+
+  <div class="params-section">
+    <div class="sec">Parameters
+      <button id="btn-autoparam" class="sec-action" onclick="autoParam()" title="Auto-detect optimal parameters for the loaded font by scanning Laufweite variance">⚙ AutoParam</button>
+      <select id="preset-params" class="sec-action" onchange="applyParamPreset(this.value)" style="cursor:pointer;padding:2px 5px;font-size:9px;margin-left:0">
+        <option value="">↺ Presets</option>
+        <option value="default">Default</option>
+        <option value="serif-reg">Serif Regular</option>
+        <option value="serif-it">Serif Italic</option>
+        <option value="serif-bold">Serif Bold</option>
+        <option value="serif-boldit">Serif Bold Italic</option>
+        <option value="sans-light">Sans Light</option>
+        <option value="sans-regular">Sans Regular</option>
+        <option value="sans-bold">Sans Bold</option>
+        <option value="slab-light">Slab Light</option>
+        <option value="slab-regular">Slab Regular</option>
+        <option value="slab-bold">Slab Bold</option>
+      </select>
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Zones (subtlety)&#10;&#10;Number of equal-height slices spanning the full em height (ascender to descender).&#10;&#10;More zones = finer vertical detail captured from the glyph contours, but computation time grows quadratically.&#10;Fewer zones = faster but coarser — subtle diagonal shapes may be averaged away.&#10;&#10;Recommended: 9–16 for most text fonts.&#10;Default: 9">
+        Zones <span style="color:var(--text3);font-style:italic;font-size:9px">(subtlety)</span><span>--zones · height divisions</span>
+      </div>
+      <input type="number" id="p-zones" value="16" min="1" max="64">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Smooth (diagonals and counter)&#10;&#10;Controls how aggressively adjacent zone margins are smoothed. Uses a reciprocal scale: 0 = no smoothing (off), higher values = more smoothing.&#10;&#10;99 = maximum smoothing (tight step limit of 1% of zone height between neighbors).&#10;60 = moderate smoothing (step limit of 40% of zone height).&#10;0 = disabled entirely.&#10;&#10;Anchors at the zone with maximum glyph extent. Diagonal strokes and open counters are smoothed toward that anchor.&#10;Default: 60">
+        Smooth <span style="color:var(--text3);font-style:italic;font-size:9px">(diagonals and counter)</span><span>--smooth · 0=off, 99=max smooth</span>
+      </div>
+      <input type="number" id="p-smooth" value="50" min="0" max="99">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Min gap % (no touch)&#10;&#10;Minimum allowed gap floor as a % of the full em size (UPM).&#10;&#10;Prevents any kerning correction from bringing two glyphs so close that their tightest zone gap falls below this floor. Acts as a collision guard — set to 0 to disable.&#10;&#10;Example: 8% of UPM 1000 = 80 font units minimum spacing.&#10;Smaller = more aggressive kerning permitted.&#10;Default: 8">
+        Min gap % <span style="color:var(--text3);font-style:italic;font-size:9px">(no touch)</span><span>--mingap · % of UPM floor</span>
+      </div>
+      <input type="number" id="p-mingap" value="4" min="0" max="100" step="0.5">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Blur (less details)&#10;&#10;Each zone is internally sub-divided into N sub-zones. Margins are computed per sub-zone and averaged back into the zone.&#10;&#10;This acts as a vertical blur pass before zone assignment, preventing staircase artifacts where curves cross zone boundaries at oblique angles.&#10;&#10;Higher = smoother edges but slower. Lower = faster but sharper step transitions.&#10;Default: 10">
+        Blur <span style="color:var(--text3);font-style:italic;font-size:9px">(less details)</span><span>--blur · sub-zones per zone</span>
+      </div>
+      <input type="number" id="p-blur" value="1" min="1" max="50">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Glow margin mode&#10;&#10;When enabled, computes margins by rasterizing each glyph to a pixel grid and measuring opacity-weighted boundaries instead of geometric contour intersections.&#10;&#10;Pairs with Glow Blur to spread ink influence into whitespace, simulating optical margin spread.&#10;&#10;Default: off">
+        Glow <span style="color:var(--text3);font-style:italic;font-size:9px">(pixel-based)</span><span>--glow · rasterized margins</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;padding-top:4px;">
+        <label class="toggle-sw"><input type="checkbox" id="p-glow" checked><span class="toggle-knob"></span></label>
+      </div>
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Glow Blur radius (font units)&#10;&#10;Spreads ink opacity to neighboring pixels before margin detection. A radius of R means each pixel's influence extends R font units outward.&#10;&#10;Higher = softer ink spread → optically wider margins.&#10;0 = no blur (uses hard pixel edges only).&#10;Default: 2">
+        Glow Blur <span style="color:var(--text3);font-style:italic;font-size:9px">(ink spread)</span><span>--glowblur · radius in font units</span>
+      </div>
+      <input type="number" id="p-glowblur" value="20" min="0" max="200">
+    </div>
+
+    <div class="pr" data-light="show">
+      <div class="pl" data-tip="Round module (cadence)&#10;&#10;Snaps kerning correction values to the nearest multiple of N.&#10;&#10;Useful for font production systems that prefer a regular cadence of kerning values. Example: 46 produces values like −92, −46, 0, 46, 92.&#10;&#10;Use 1 for plain integer rounding with no module snap.&#10;Default: 1">
+        Round module <span style="color:var(--text3);font-style:italic;font-size:9px">(cadence)</span><span>--round · kern snap value</span>
+      </div>
+      <input type="number" id="p-round" value="20" min="1">
+    </div>
+
+    <div class="pr" data-light="show">
+      <div class="pl" data-tip="Threshold&#10;&#10;Kerning corrections with an absolute value below this threshold are discarded and set to zero.&#10;&#10;This filters out noise: tiny corrections that are imperceptible in practice and would only bloat the kerning table.&#10;&#10;Example: threshold=5 removes all corrections in the range (−5 … +5).&#10;Set to 0 to keep all corrections including very small ones.&#10;Default: 0">
+        Threshold <span style="color:var(--text3);font-style:italic;font-size:9px">(suppress noise)</span><span>--threshold · min abs correction</span>
+      </div>
+      <input type="number" id="p-threshold" value="0" min="0">
+    </div>
+
+    <div class="pr" data-light="show">
+      <div class="pl" data-tip="Lazy %&#10;&#10;Reduces all computed kerning corrections by this percentage before output.&#10;&#10;The reduced value is re-snapped to the Round module, so results stay on the rounding grid.&#10;&#10;Example: lazy=10, computed correction=110 → 110 × 0.9 = 99 → snapped to 100.&#10;Example: lazy=10, computed correction=55 → 55 × 0.9 = 49.5 → snapped to 50.&#10;&#10;Use to produce softer, less aggressive kerning tables. Min gap is still enforced after reduction.&#10;Set to 0 to use the full computed correction (default).&#10;Default: 0">
+        Lazy % <span style="color:var(--text3);font-style:italic;font-size:9px">(soften output)</span><span>--lazy · reduce corrections by %</span>
+      </div>
+      <input type="number" id="p-lazy" value="20" min="0" max="99" step="1">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Base Glyph LC&#10;&#10;The reference glyph used to compute the LC spacing baseline. The pair glyph+glyph is measured and its average gap becomes the target spacing for all LC pairs.&#10;&#10;Change this for fonts where &#x27;o&#x27; is atypical — e.g. enter &#x27;n&#x27; for a very square-sided sans.&#10;&#10;Default: o">
+        Base Glyph LC <span style="color:var(--text3);font-style:italic;font-size:9px">(reference char)</span><span>--base-lc · char+char pair</span>
+      </div>
+      <input type="text" id="p-baselc" value="o" maxlength="4" style="font-family:var(--mono);font-size:13px;text-align:center;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:4px 6px;outline:none;" oninput="this.style.borderColor='var(--accent)'">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Base Glyph UC&#10;&#10;The reference glyph for the UC spacing baseline. The pair glyph+glyph is measured and its average gap becomes the target for all UC pairs (uppercase + lining figures).&#10;&#10;Change this for fonts where &#x27;O&#x27; is atypical.&#10;&#10;Default: O">
+        Base Glyph UC <span style="color:var(--text3);font-style:italic;font-size:9px">(reference char)</span><span>--base-uc · char+char pair</span>
+      </div>
+      <input type="text" id="p-baseuc" value="O" maxlength="4" style="font-family:var(--mono);font-size:13px;text-align:center;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:4px 6px;outline:none;" oninput="this.style.borderColor='var(--accent)'">
+    </div>
+
+    <div class="pr">
+      <div class="pl" data-tip="Tracking&#10;&#10;Global spacing offset applied to the effective base values before computing kerning corrections.&#10;&#10;A negative value tightens all spacing: e.g. if Base LC = 180 and Tracking = -10, the effective base used for all LC corrections is 170.&#10;&#10;A positive value loosens all spacing.&#10;Set to 0 for no tracking offset.&#10;Default: 0">
+        Tracking <span style="color:var(--text3);font-style:italic;font-size:9px">(global offset)</span><span>--tracking · offset on base values</span>
+      </div>
+      <input type="number" id="p-tracking" value="0">
+    </div>
+
+    <div class="pr" data-light="show">
+      <div class="pl" data-tip="Pair limit&#10;&#10;Maximum number of kerning pairs to generate, ranked by frequency of occurrence in real-world text (based on the Andre Fuchs kerning-pairs corpus).&#10;&#10;Only the top N most common pairs are computed and included in the output. This drastically reduces computation time for large fonts.&#10;&#10;Set to 0 to generate all pairs.&#10;Default: 0 (all)">
+        Pair limit <span style="color:var(--text3);font-style:italic;font-size:9px">(top N by frequency)</span><span>--pairs · 0 = all pairs</span>
+      </div>
+      <input type="number" id="p-pairlimit" value="0" min="0">
+    </div>
+
+    <div class="sec" style="margin-top:4px">Results</div>
+    <div class="stats">
+      <div class="sb"><div class="sv" id="s-glyphs">—</div><div class="sk">Glyphs</div></div>
+      <div class="sb"><div class="sv" id="s-pairs">—</div><div class="sk">Pairs</div></div>
+      <div class="sb"><div class="sv" id="s-baseLc">—</div><div class="sk" id="sk-baseLc">Base LC</div></div>
+      <div class="sb"><div class="sv" id="s-baseUc">—</div><div class="sk" id="sk-baseUc">Base UC</div></div>
+      <div class="sb"><div class="sv" id="s-totlc">—</div><div class="sk">Total LC (zones)</div></div>
+      <div class="sb"><div class="sv" id="s-totuc">—</div><div class="sk">Total UC (zones)</div></div>
+      <div class="sb" title="Margin LC: % of total zone area"><div class="sv" id="s-pct-marg-lc">—</div><div class="sk">Margin LC %</div></div>
+      <div class="sb" title="Counter LC: % of total zone area"><div class="sv" id="s-pct-cnt-lc">—</div><div class="sk">Counter LC %</div></div>
+      <div class="sb" title="Print LC: % of total zone area"><div class="sv" id="s-pct-prt-lc">—</div><div class="sk">Print LC %</div></div>
+      <div class="sb" title="Margin UC: % of total zone area"><div class="sv" id="s-pct-marg-uc">—</div><div class="sk">Margin UC %</div></div>
+      <div class="sb" title="Counter UC: % of total zone area"><div class="sv" id="s-pct-cnt-uc">—</div><div class="sk">Counter UC %</div></div>
+      <div class="sb" title="Print UC: % of total zone area"><div class="sv" id="s-pct-prt-uc">—</div><div class="sk">Print UC %</div></div>
+      <div class="sb" title="Inner counter area of 'n' in font units²"><div class="sv" id="s-cnt-n">—</div><div class="sk">n inner fu²</div></div>
+      <div class="sb" title="n counter ÷ (base LC margin × n height) — counter relative to margin run"><div class="sv" id="s-cnt-n-r">—</div><div class="sk">n ctr/marg</div></div>
+      <div class="sb" title="Inner counter area of 'O' in font units²"><div class="sv" id="s-cnt-O">—</div><div class="sk">O inner fu²</div></div>
+      <div class="sb" title="O counter ÷ (base UC margin × O height) — counter relative to margin run"><div class="sv" id="s-cnt-O-r">—</div><div class="sk">O ctr/marg</div></div>
+      <div class="sb" title="Inner counter area of 'o' in font units²"><div class="sv" id="s-cnt-o">—</div><div class="sk">o inner fu²</div></div>
+      <div class="sb" title="o counter ÷ (base LC margin × o height) — counter relative to margin run"><div class="sv" id="s-cnt-o-r">—</div><div class="sk">o ctr/marg</div></div>
+    </div>
+  </div>
+
+  <div id="light-cadence-row">
+    <canvas id="light-cad-canvas"></canvas>
+    <div id="light-cad-label" style="font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-top:5px;">n Cadence</div>
+    <input type="number" id="light-cad-val" min="1" readonly style="display:none;" placeholder="—">
+  </div>
+  <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
+  <button class="btn-run" id="btn-run" disabled onclick="runAnalysis()">▶ Compute Kerning</button>
+  <button id="btn-light-recompute" disabled onclick="guardedAction(runAnalysis)">↺ Recompute</button>
+  <button id="btn-light-clip" disabled onclick="copyKerningToClipboard()">⎘ Kerning to Clipboard</button>
+  <button id="btn-light-act" disabled onclick="exportCSV()">↓ Export CSV</button>
+  <div class="log-resize" id="log-resize"></div>
+  <div class="logbox" id="logbox"></div>
+</div>
+
+<!-- ══ PREVIEW ══ -->
+<div class="preview-panel" id="preview-panel">
+  <div class="ph">
+    <div class="sec">Preview</div>
+    <div class="pcontrols">
+      <label>Size</label>
+      <input type="range" id="psize" min="20" max="300" value="72" oninput="syncSize(this.value);renderPreview()">
+      <input type="number" id="psize-n" value="72" min="10" max="600" style="width:50px" oninput="syncSize(this.value);renderPreview()">
+      <label>px</label>
+    </div>
+  </div>
+
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="preview-canvas"></canvas>
+  </div>
+
+  <div class="ptextrow">
+    <label>Text</label>
+    <input type="text" id="preview-text" value="AVATAWAVE Coupling" oninput="document.getElementById('preset-select').value='';renderPreview()">
+    <select id="preset-select" onchange="applyPreset(this.value)">
+      <option value="">— presets —</option>
+      <option value="Arrowroot Barley Chervil Dumpling Endive Flaxseed Garbanzo Hijiki Ishtu Jicama Kale Lychee Marjoram Nectarine Oxtail Pizza Quinoa Roquefort Squash Tofu Uppuma Vanilla Wheat Xergis Yogurt Zweiback">AutoParam test string</option>
+      <option value="AVATAWAVE Coupling">Caps pairs · AVATAWAVE</option>
+      <option value="ToVaYouWhXeLyKaRoArDuNeOx">Mix</option>
+      <option value="vrvocpallholbofbofto">UC pairs</option>
+      <option value="DXC+ ComFamToTy ocaleam">Counter paits</option>
+      <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">Full uppercase</option>
+      <option value="abcdefghijklmnopqrstuvwxyz">Full lowercase</option>
+      <option value="0123456789">Digits</option>
+      <option value="OHamburgefonstiv">Pangram sample</option>
+      <option value="A man, a plan, a canal: Panama">Sentence test</option>
+      <option value="WAV AV VA AT TA AW WA AY YA FA TF">Diagonal stress</option>
+      <option value="Tight Spacing: fluff cliff staff">Lowercase diagonals</option>
+      <optgroup label="Small Caps">
+        <option value="sc:ABCDEFGHIJKLMNOPQRSTUVWXYZ">SC · Full uppercase</option>
+        <option value="sc:abcdefghijklmnopqrstuvwxyz">SC · Full lowercase</option>
+        <option value="sc:Hamburgefonstiv">SC · Pangram</option>
+        <option value="sc:The Quick Brown Fox">SC · Mixed test</option>
+      </optgroup>
+      <optgroup label="Oldstyle Figures">
+        <option value="osf:0123456789">OSF · All digits</option>
+        <option value="osf:1234 5678 90">OSF · Number groups</option>
+        <option value="osf:Price: 1.234,56 — Year: 2024">OSF · In context</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <div class="trow">
+    <button class="tbtn on-green" id="tbtn-kern" onclick="toggleKern()">⟷ Kerning ON</button>
+    <button class="tbtn" id="tbtn-metrics" onclick="toggleMetrics()">Margins</button>
+    <button class="tbtn" id="tbtn-glow" onclick="toggleGlow()" title="Glow — shows ink spread zone used for Glow margin computation">Glow</button>
+    <button class="tbtn" id="tbtn-baseline" onclick="toggleBaseline()">Baseline</button>
+    <button class="tbtn" id="tbtn-xheight" onclick="toggleXheight()">x-Height</button>
+    <button class="tbtn" id="tbtn-sc" onclick="toggleSmallCaps()" title="Show Small Capitals glyphs">Small Caps</button>
+    <button class="tbtn" id="tbtn-osf" onclick="toggleOSF()" title="Show Oldstyle Figures">OSF</button>
+  </div>
+</div>
+
+<!-- ══ TABLE + SPACING CORRECTIONS ══ -->
+<div class="results-panel">
+  <div class="rh">
+    <div class="tab-btns">
+      <button class="tab-btn active" id="tab-kern" onclick="switchTab('kern')">Coupling Table</button>
+      <button class="tab-btn" id="tab-spacing" onclick="switchTab('spacing')">Spacing Corrections</button>
+      <button class="tab-btn" id="tab-cadence" onclick="switchTab('cadence')">Cadence</button>
+    </div>
+    <div class="filter-group" id="kern-filter-group">
+      <span class="rx-err" id="rx-err"></span>
+      <input type="text" class="search-box" id="search-box" placeholder="Filter… (exact, A B = pair, .* regex)" oninput="filterTable()">
+      <button class="filter-mode" id="rx-btn" onclick="toggleRegex()" title="Toggle regex mode">.*</button>
+      <button id="pair-preview-btn" class="tbtn" onclick="togglePairPreview()" title="Toggle pair preview mode (also: Esc)">⊙ Pair</button>
+      <button class="btn-exp" onclick="exportCSV()">↓ Export</button>
+    </div>
+    <div class="filter-group" id="spacing-filter-group" style="display:none">
+      <button class="btn-exp" id="btn-apply-spacing" onclick="applySpacingToGlyphs()" style="display:none">⊙ Apply Spacing</button>
+    </div>
+    <div class="filter-group" id="cadence-filter-group" style="display:none"></div>
+  </div>
+  <div class="tbl-wrap" id="kern-panel">
+    <div class="empty" id="empty-state">
+      <div class="eico">⊘</div>
+      <div>Load a font to get started</div>
+    </div>
+    <table id="results-table" style="display:none">
+      <thead><tr>
+        <th onclick="sortBy('left')">Left</th>
+        <th onclick="sortBy('right')">Right</th>
+        <th onclick="sortBy('correction')">Correction</th>
+        <th onclick="sortBy('mean')">Pair Mean</th>
+        <th onclick="sortBy('base')">Base</th>
+        <th>Class</th>
+        <th title="Zone values — hover row for details">Zones</th>
+      </tr></thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+  </div>
+  <div class="tbl-wrap" id="spacing-panel" style="display:none;flex-direction:column">
+    <div class="empty" id="spacing-empty">
+      <div class="eico">⊙</div>
+      <div>Compute kerning to see spacing corrections</div>
+    </div>
+    <div id="spacing-content" style="display:none;flex:1;min-height:0;flex-direction:row;gap:0;overflow:hidden">
+      <div id="spacing-histogram" style="width:280px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);padding:0 8px"></div>
+      <div style="flex:1;min-width:0;overflow:auto">
+        <table id="spacing-table">
+          <thead><tr>
+            <th>Glyph</th>
+            <th>Cls</th>
+            <th title="Current advance width">Old AW</th>
+            <th title="New advance width rounded to module">New AW</th>
+            <th title="Net advance width change">Δ AW</th>
+            <th title="Left margin correction vs base glyph">Δ Left</th>
+            <th title="Right margin correction vs base glyph">Δ Right</th>
+            <th title="New computed left margin">New L</th>
+            <th title="New computed right margin">New R</th>
+          </tr></thead>
+          <tbody id="spacing-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- ── Cadence panel ── -->
+  <div id="cadence-panel" style="display:none;flex:1;min-height:0;flex-direction:row">
+    <div id="cadence-ctrl">
+      <div class="cad-field">
+        <span class="cad-lbl">Äquator</span>
+        <input class="cad-val" id="cad-equator" type="number" step="1" oninput="cadInput('eq')">
+      </div>
+      <div class="cad-field">
+        <span class="cad-lbl">Left</span>
+        <input class="cad-val ro" id="cad-left" type="number" readonly tabindex="-1">
+      </div>
+      <div class="cad-field">
+        <span class="cad-lbl">Right</span>
+        <input class="cad-val ro" id="cad-right" type="number" readonly tabindex="-1">
+      </div>
+      <div class="cad-field">
+        <span class="cad-lbl">Stem</span>
+        <input class="cad-val" id="cad-stem" type="number" step="1" oninput="cadInput('stem')">
+      </div>
+      <div class="cad-field">
+        <span class="cad-lbl">Interval</span>
+        <input class="cad-val" id="cad-interval" type="number" step="1" oninput="cadInput('interval')">
+      </div>
+      <div class="cad-field">
+        <span class="cad-lbl">Divider</span>
+        <input class="cad-val" id="cad-divider" type="number" step="1" min="1" value="4" oninput="cadInput('div')">
+      </div>
+      <div class="cad-field">
+        <span class="cad-lbl">Step</span>
+        <input class="cad-val" id="cad-step" type="number" step="1" oninput="cadInput('step')">
+      </div>
+      <div class="cad-field">
+        <span class="cad-lbl">Cadence</span>
+        <input class="cad-val ro" id="cad-cadence" type="number" readonly tabindex="-1">
+      </div>
+      <button class="btn-hdr accent" style="margin-top:6px;width:100%;font-size:9px;padding:5px 4px" onclick="cadAssignPreset()">⊙ Assign to Preset</button>
+    </div>
+    <div id="cadence-wrap" style="flex:1;min-width:0;position:relative;overflow:hidden">
+      <canvas id="cadence-canvas" style="position:absolute;top:0;left:0"></canvas>
+    </div>
+  </div>
+</div>
+
+</div><!-- /layout -->
+
+<script src="fuchs.js"></script>
+<script>
+%%SCRIPTS%%
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v5.04.21 Beta</title>
+<title>Coupler — Font Kerning Analyzer - v5.9.15</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 :root{
@@ -53,6 +53,7 @@ header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:
 .sec{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:9px 0 5px;border-bottom:1px solid var(--border);margin-bottom:7px;display:flex;align-items:center;gap:6px;}
 .sec-action{margin-left:auto;font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--border2);border-radius:10px;background:transparent;color:var(--text3);cursor:pointer;transition:all .15s;letter-spacing:.05em;}
 .sec-action:hover{border-color:var(--accent);color:var(--accent);}
+.sec-action:disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
 
 .pr{display:grid;grid-template-columns:1fr 72px;gap:4px;align-items:start;margin-bottom:7px;}
 .pl{font-size:11.5px;color:var(--text2);padding-top:5px;cursor:help;position:relative;}
@@ -89,6 +90,19 @@ input[type=number]::-webkit-inner-spin-button{opacity:.4;}
 .logbox{padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--text3);border-top:1px solid var(--border);height:52px;overflow-y:auto;flex-shrink:0;}
 .logbox .ll{line-height:1.55;}
 .ll.ok{color:var(--green);}.ll.err{color:var(--red);}.ll.info{color:var(--accent);}
+
+/* ── AutoParam running: hide params, expand log ── */
+body.ap-running .drop-zone,
+body.ap-running .params-section,
+body.ap-running #light-cadence-row,
+body.ap-running .prog,
+body.ap-running #btn-run,
+body.ap-running #btn-light-recompute,
+body.ap-running #btn-light-clip,
+body.ap-running #btn-light-act,
+body.ap-running .stats,
+body.ap-running .log-resize{display:none;}
+body.ap-running .logbox{flex:1;height:auto;border-top:none;}
 
 /* ── Preview panel ── */
 .preview-panel{border-bottom:1px solid var(--border);background:var(--bg);padding:12px 16px;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
@@ -248,6 +262,7 @@ body.light-mode #btn-light-act{display:block;}
 #btn-light-recompute:hover{background:#f0b030;}
 #btn-light-recompute:active{transform:scale(.98);}
 #btn-light-recompute:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;}
+
 </style>
 </head>
 <body class="light-mode">
@@ -255,7 +270,7 @@ body.light-mode #btn-light-act{display:block;}
 <header>
   <div class="header-title">
     <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.04.21 Beta</span>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.9.15</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -273,6 +288,13 @@ body.light-mode #btn-light-act{display:block;}
     <h2>Coupler — Reference</h2>
     <p>Coupler computes optical kerning corrections from the actual glyph contour geometry of TrueType and OpenType fonts. No manual pair editing — all values are derived mathematically from outline shapes. Available as a browser tool and as a native Glyphs plugin.</p>
     <p style="font-family:var(--mono);font-size:11px;color:var(--text3)">Source &amp; documentation: <a href="https://github.com/jrgdrs/Coupler" target="_blank" style="color:var(--accent);text-decoration:none">github.com/jrgdrs/Coupler</a></p>
+
+    <h2 style="margin-top:20px">What's New</h2>
+    <dl class="help-kv">
+      <dt>v5.9.15</dt><dd><strong>Fix — Apply to Glyphs crash.</strong> The Glyphs app no longer crashes after "Apply to Glyphs" in advanced mode. Root cause: Python's cyclic garbage collector (<code style="font-family:var(--mono);color:var(--accent)">gc_collect_main</code>) was traversing Python dicts that held live Objective-C proxy objects during write-back, triggering <code style="font-family:var(--mono);color:var(--accent)">visit_decref</code> → SIGABRT. Fix: GC is suspended for the duration of the kerning and spacing write-back operations, matching the same guard already used during glyph data import.</dd>
+      <dt>v5.9.10–14</dt><dd><strong>AutoParam</strong> — new ⚙ AutoParam button left of the Presets dropdown. Scans all eight analysis parameters (Zones, Smooth, Blur, Glow Blur, Round, Threshold, Lazy, Min Gap) sequentially and pre-fills the fields with font-specific optimal values. Sensitivity metric: <em>Laufweite</em> (total text width = sum of advance widths + kerning corrections) for the 26-word test string. Selection algorithm: <em>lower average</em> — the candidate whose Laufweite is closest to the mean of all below-mean values, representing the converged stable state. Lite analysis processes only the ~52 glyphs and ~130 pairs in the test string (no KERNING_PAIRS lookup) — ~50–100× faster than a full analysis per scan step. Available in both browser mode and Glyphs plugin mode. During the scan the parameter panel is hidden and the log fills the full panel height. AutoParam test string added as first entry in the Preview text preset dropdown.</dd>
+      <dt>v5.5</dt><dd><strong>Build system.</strong> Source code is now modular: HTML template, CSS, and 14 JS modules in <code style="font-family:var(--mono);color:var(--accent)">src/</code>. <code style="font-family:var(--mono);color:var(--accent)">build.js</code> assembles them into <code style="font-family:var(--mono);color:var(--accent)">ui.html</code> (<code style="font-family:var(--mono);color:var(--accent)">npm run build</code>). Jest unit test suite covers core margin measurement and kerning math (<code style="font-family:var(--mono);color:var(--accent)">npm test</code>). No user-visible changes to the tool.</dd>
+    </dl>
 
     <h2 style="margin-top:20px">Workflow</h2>
     <ol style="padding-left:18px;color:var(--text2);font-size:13px;line-height:1.8">
@@ -412,7 +434,22 @@ body.light-mode #btn-light-act{display:block;}
       <dt>Small Caps (SC)</dt><dd>Glyph variants with names ending in <code style="font-family:var(--mono);color:var(--accent)">.sc</code> or <code style="font-family:var(--mono);color:var(--accent)">.smcp</code>.</dd>
       <dt>OSF</dt><dd><em>Oldstyle Figures</em> — non-lining numerals with names ending in <code style="font-family:var(--mono);color:var(--accent)">.osf</code> or PUA code points U+F730&ndash;U+F739.</dd>
       <dt>Pair Limit</dt><dd>Maximum pairs to compute, ranked by real-world text frequency (Andre Fuchs corpus). Set 0 for all pairs.</dd>
+      <dt>Laufweite</dt><dd>Running width — the total horizontal extent of a text string: sum of all glyph advance widths plus all kerning corrections for consecutive pairs. Used by AutoParam as the sensitivity metric: a parameter change that shifts Laufweite by &ge;10 font units is considered significant.</dd>
+      <dt>Lower average (Laufweite)</dt><dd>The mean of all Laufweite values (across AutoParam candidates) that are at or below the overall mean. This represents the converged stable state of accurate kerning — free from the over-loosening caused by too-coarse parameter values. AutoParam selects the candidate whose Laufweite is closest to this value.</dd>
+      <dt>Parameter variance</dt><dd>Spread of Laufweite values measured across AutoParam candidates for a single parameter. High variance indicates the parameter has a strong effect on kerning quality for this font; low variance indicates the parameter is less critical. The lower average identifies the stable low-Laufweite region of the distribution.</dd>
     </dl>
+
+    <h2 style="margin-top:20px">AutoParam</h2>
+    <p>AutoParam automatically detects font-specific optimal values for all eight analysis parameters. It measures how each parameter affects the <em>Laufweite</em> (running width) of a standard test string and pre-fills the parameter fields with the found values.</p>
+    <p style="margin-top:8px">Available in both browser mode and Glyphs mode (requires font data loaded via Load &amp; Compute). Click <strong>⚙ AutoParam</strong> left of the Presets dropdown. During the scan the parameter panel is hidden and the log fills the left panel; parameters are restored when the scan completes.</p>
+    <dl class="help-kv">
+      <dt>Test string</dt><dd><em>Arrowroot Barley Chervil Dumpling Endive Flaxseed Garbanzo Hijiki Ishtu Jicama Kale Lychee Marjoram Nectarine Oxtail Pizza Quinoa Roquefort Squash Tofu Uppuma Vanilla Wheat Xergis Yogurt Zweiback</em> — 26 words covering all uppercase initials, mixed lowercase, and a broad range of letter shapes (round, diagonal, straight, narrow, wide).</dd>
+      <dt>Algorithm</dt><dd>Each parameter is scanned independently across a set of candidates (e.g. Zones: 3, 9, 18, 36, 48, 96). For each candidate the full kerning analysis is run with all other parameters at their current or accumulated optimal values. All Laufweite values are collected; the <em>lower average</em> (mean of values at or below the overall mean) is computed. The optimal candidate is the one whose Laufweite is closest to this lower average — the converged stable state that characterises accurate kerning for the given font.</dd>
+      <dt>Parameter scan order</dt><dd>Zones → Smooth → Blur → Glow Blur → Round → Threshold → Lazy → Min gap. Each scan uses the optimal values already found for earlier parameters, so later scans reflect realistic combined conditions.</dd>
+      <dt>Result</dt><dd>All eight parameters are pre-filled with the detected optimal values and a final analysis is run automatically. The result represents a font-specific starting point — further manual adjustment is always possible.</dd>
+      <dt>Duration</dt><dd>Each scan step uses a lightweight analysis that processes only the ~52 glyphs and ~130 pairs needed for the test string — no KERNING_PAIRS lookup, no UI updates. Total: up to 6+5+5+6+5+5+5+6 = 43 lite passes, plus one full analysis at the end. Typical runtime: a few seconds for most fonts.</dd>
+    </dl>
+
     <p style="margin-top:20px;font-family:var(--mono);font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:14px">Source code &amp; documentation: <a href="https://github.com/jrgdrs/Coupler" target="_blank" style="color:var(--accent);text-decoration:none">github.com/jrgdrs/Coupler</a></p>
   </div>
 
@@ -432,7 +469,8 @@ body.light-mode #btn-light-act{display:block;}
 
   <div class="params-section">
     <div class="sec">Parameters
-      <select id="preset-params" class="sec-action" onchange="applyParamPreset(this.value)" style="cursor:pointer;padding:2px 5px;font-size:9px;">
+      <button id="btn-autoparam" class="sec-action" onclick="autoParam()" title="Auto-detect optimal parameters for the loaded font by scanning Laufweite variance">⚙ AutoParam</button>
+      <select id="preset-params" class="sec-action" onchange="applyParamPreset(this.value)" style="cursor:pointer;padding:2px 5px;font-size:9px;margin-left:0">
         <option value="">↺ Presets</option>
         <option value="default">Default</option>
         <option value="serif-reg">Serif Regular</option>
@@ -599,6 +637,7 @@ body.light-mode #btn-light-act{display:block;}
     <input type="text" id="preview-text" value="AVATAWAVE Coupling" oninput="document.getElementById('preset-select').value='';renderPreview()">
     <select id="preset-select" onchange="applyPreset(this.value)">
       <option value="">— presets —</option>
+      <option value="Arrowroot Barley Chervil Dumpling Endive Flaxseed Garbanzo Hijiki Ishtu Jicama Kale Lychee Marjoram Nectarine Oxtail Pizza Quinoa Roquefort Squash Tofu Uppuma Vanilla Wheat Xergis Yogurt Zweiback">AutoParam test string</option>
       <option value="AVATAWAVE Coupling">Caps pairs · AVATAWAVE</option>
       <option value="ToVaYouWhXeLyKaRoArDuNeOx">Mix</option>
       <option value="vrvocpallholbofbofto">UC pairs</option>
@@ -746,7 +785,7 @@ body.light-mode #btn-light-act{display:block;}
 <script src="fuchs.js"></script>
 <script>
 // ══════════════════════════════════════════════════════
-// STATE
+// STATE & GLOBALS
 // ══════════════════════════════════════════════════════
 // ── Runtime detection ─────────────────────────────────────────────────────────
 // IS_GLYPHS is true when running inside Glyphs.app via WKWebView.
@@ -866,98 +905,6 @@ function setProgress(p){document.getElementById('prog-fill').style.width=p+'%';}
     document.addEventListener('mouseup',onUp);
     e.preventDefault();
   });
-}
-
-// ── STEM CADENCE ───────────────────────────────────────
-function measureStemCadence(){
-  if(!fontObj)return;
-  const upm=fontObj.unitsPerEm;
-  // x-height from OS/2; fall back to bounding-box top of glyph 'x'
-  let xh=fontObj.tables?.os2?.sxHeight||0;
-  if(!xh){
-    const xg=fontObj.charToGlyph('x');
-    if(xg&&xg.path&&xg.path.commands.length>0){const bb=xg.getBoundingBox();xh=Math.round(bb.y2);}
-  }
-  if(!xh){log('n cadence: no x-height available — skipped','info');return;}
-  const nGlyph=fontObj.charToGlyph('n');
-  if(!nGlyph||!nGlyph.path||nGlyph.path.commands.length===0){
-    log('n cadence: glyph "n" not found','info');return;
-  }
-  try{
-    // Derive vertical bounds directly from font (runAnalysis not yet called)
-    let yTop=upm*0.8,yBot=-(upm*0.2);
-    if(fontObj.tables?.os2){const o=fontObj.tables.os2;if(o.sTypoAscender)yTop=o.sTypoAscender;if(o.sTypoDescender!==undefined)yBot=o.sTypoDescender;}
-    else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.ascender)yTop=fontObj.tables.hhea.ascender;if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;}
-    const aw=nGlyph.advanceWidth||upm;
-    const scanYfu=xh/2;
-    const scale=4; // 4 px per font unit
-    const fontSize=scale*upm;
-    const topPad=4;
-    const baseline=topPad+Math.ceil(yTop*scale);
-    const W=Math.ceil(aw*scale);
-    const H=baseline+Math.ceil(Math.abs(yBot)*scale)+4;
-    const off=document.createElement('canvas');
-    off.width=W;off.height=H;
-    const ctx=off.getContext('2d');
-    ctx.fillStyle='#000';
-    ctx.fill(new Path2D(nGlyph.getPath(0,baseline,fontSize).toPathData(2)));
-    const scanRow=Math.round(baseline-scanYfu*scale);
-    if(scanRow<0||scanRow>=H){log(`n cadence: scan row ${scanRow} out of bounds (H=${H})`,'info');return;}
-    const px=ctx.getImageData(0,scanRow,W,1).data;
-    const runs=[];let inRun=false,rs=0;
-    for(let x=0;x<W;x++){
-      const ink=px[x*4+3]>127;
-      if(ink&&!inRun){inRun=true;rs=x;}
-      else if(!ink&&inRun){inRun=false;runs.push([rs,x-1]);}
-    }
-    if(inRun)runs.push([rs,W-1]);
-    if(runs.length<2){log(`n cadence: ${runs.length} ink run(s) at y=${Math.round(scanYfu)} fu — stems not distinct`,'info');return;}
-    const stemW=(runs[0][1]-runs[0][0]+1)/scale;
-    const interval=(runs[1][0]-runs[0][0])/scale;
-    const n=Math.max(1,Math.round(interval*4/stemW));
-    const cadence=interval/n;
-    log(`n cadence: y=${Math.round(scanYfu)} fu (½·x-height ${xh}) · stem ${Math.round(stemW)} fu · L→R ${Math.round(interval)} fu ÷ ${n} → cadence ${Math.round(cadence)} fu`,'info');
-  }catch(e){log('n cadence error: '+e.message,'err');}
-}
-
-// ── FONT LOAD ─────────────────────────────────────────
-const dz=document.getElementById('drop-zone');
-dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
-dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
-dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');const f=e.dataTransfer.files[0];if(f)loadFont(f);});
-document.getElementById('fi').addEventListener('change',e=>{if(e.target.files[0])loadFont(e.target.files[0]);});
-
-function loadFont(file){
-  const reader=new FileReader();
-  reader.onload=async ev=>{
-    try{
-      fontBuffer=ev.target.result;
-      // store as data URL for testpage embedding
-      const b64=btoa(String.fromCharCode(...new Uint8Array(fontBuffer)));
-      const ext=file.name.split('.').pop().toLowerCase();
-      fontDataUrl=`data:font/${ext};base64,${b64}`;
-      fontObj=opentype.parse(fontBuffer);
-      fontName=file.name;
-      currentUPM=fontObj.unitsPerEm;
-      dz.classList.add('loaded');
-      document.getElementById('drop-fname').textContent=file.name;
-      const fn=fontObj.names.fullName?.en||file.name;
-      document.getElementById('header-font-info').innerHTML=`<strong>${fn}</strong>&nbsp; UPM:${currentUPM}`;
-      document.getElementById('btn-run').disabled=false;
-      setStatus('Loaded','active');
-      log(`Loaded: ${fn} — ${Object.keys(fontObj.glyphs.glyphs).length} glyphs`,'ok');
-      measureStemCadence();
-      cadReset();
-      cadenceAutoFilled=false;
-      cadEnsureInit();
-      const _lcv=document.getElementById('cad-cadence').value;
-      const _lcn=cadToRound(parseFloat(_lcv));
-      if(!isNaN(_lcn)&&_lcn>0){document.getElementById('p-round').value=_lcn;document.getElementById('light-cad-val').value=_lcn;cadenceAutoFilled=true;}
-      renderLightCadCanvas();
-      runAnalysis();
-    }catch(err){setStatus('Load error','error');log('Error: '+err.message,'err');}
-  };
-  reader.readAsArrayBuffer(file);
 }
 
 // ── BEZIER / GEOMETRY ─────────────────────────────────
@@ -1347,9 +1294,100 @@ function addSpacePairs(gks, gc, p, bvLC, bvUC){
   }
 }
 
+// ── STEM CADENCE (browser-mode scan) ──────────────────
+function measureStemCadence(){
+  if(!fontObj)return;
+  const upm=fontObj.unitsPerEm;
+  // x-height from OS/2; fall back to bounding-box top of glyph 'x'
+  let xh=fontObj.tables?.os2?.sxHeight||0;
+  if(!xh){
+    const xg=fontObj.charToGlyph('x');
+    if(xg&&xg.path&&xg.path.commands.length>0){const bb=xg.getBoundingBox();xh=Math.round(bb.y2);}
+  }
+  if(!xh){log('n cadence: no x-height available — skipped','info');return;}
+  const nGlyph=fontObj.charToGlyph('n');
+  if(!nGlyph||!nGlyph.path||nGlyph.path.commands.length===0){
+    log('n cadence: glyph "n" not found','info');return;
+  }
+  try{
+    // Derive vertical bounds directly from font (runAnalysis not yet called)
+    let yTop=upm*0.8,yBot=-(upm*0.2);
+    if(fontObj.tables?.os2){const o=fontObj.tables.os2;if(o.sTypoAscender)yTop=o.sTypoAscender;if(o.sTypoDescender!==undefined)yBot=o.sTypoDescender;}
+    else if(fontObj.tables?.hhea){if(fontObj.tables.hhea.ascender)yTop=fontObj.tables.hhea.ascender;if(fontObj.tables.hhea.descender!==undefined)yBot=fontObj.tables.hhea.descender;}
+    const aw=nGlyph.advanceWidth||upm;
+    const scanYfu=xh/2;
+    const scale=4; // 4 px per font unit
+    const fontSize=scale*upm;
+    const topPad=4;
+    const baseline=topPad+Math.ceil(yTop*scale);
+    const W=Math.ceil(aw*scale);
+    const H=baseline+Math.ceil(Math.abs(yBot)*scale)+4;
+    const off=document.createElement('canvas');
+    off.width=W;off.height=H;
+    const ctx=off.getContext('2d');
+    ctx.fillStyle='#000';
+    ctx.fill(new Path2D(nGlyph.getPath(0,baseline,fontSize).toPathData(2)));
+    const scanRow=Math.round(baseline-scanYfu*scale);
+    if(scanRow<0||scanRow>=H){log(`n cadence: scan row ${scanRow} out of bounds (H=${H})`,'info');return;}
+    const px=ctx.getImageData(0,scanRow,W,1).data;
+    const runs=[];let inRun=false,rs=0;
+    for(let x=0;x<W;x++){
+      const ink=px[x*4+3]>127;
+      if(ink&&!inRun){inRun=true;rs=x;}
+      else if(!ink&&inRun){inRun=false;runs.push([rs,x-1]);}
+    }
+    if(inRun)runs.push([rs,W-1]);
+    if(runs.length<2){log(`n cadence: ${runs.length} ink run(s) at y=${Math.round(scanYfu)} fu — stems not distinct`,'info');return;}
+    const stemW=(runs[0][1]-runs[0][0]+1)/scale;
+    const interval=(runs[1][0]-runs[0][0])/scale;
+    const n=Math.max(1,Math.round(interval*4/stemW));
+    const cadence=interval/n;
+    log(`n cadence: y=${Math.round(scanYfu)} fu (½·x-height ${xh}) · stem ${Math.round(stemW)} fu · L→R ${Math.round(interval)} fu ÷ ${n} → cadence ${Math.round(cadence)} fu`,'info');
+  }catch(e){log('n cadence error: '+e.message,'err');}
+}
+
+// ── FONT LOAD ─────────────────────────────────────────
+const dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');const f=e.dataTransfer.files[0];if(f)loadFont(f);});
+document.getElementById('fi').addEventListener('change',e=>{if(e.target.files[0])loadFont(e.target.files[0]);});
+
+function loadFont(file){
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      fontBuffer=ev.target.result;
+      // store as data URL for testpage embedding
+      const b64=btoa(String.fromCharCode(...new Uint8Array(fontBuffer)));
+      const ext=file.name.split('.').pop().toLowerCase();
+      fontDataUrl=`data:font/${ext};base64,${b64}`;
+      fontObj=opentype.parse(fontBuffer);
+      fontName=file.name;
+      currentUPM=fontObj.unitsPerEm;
+      dz.classList.add('loaded');
+      document.getElementById('drop-fname').textContent=file.name;
+      const fn=fontObj.names.fullName?.en||file.name;
+      document.getElementById('header-font-info').innerHTML=`<strong>${fn}</strong>&nbsp; UPM:${currentUPM}`;
+      document.getElementById('btn-run').disabled=false;
+      setStatus('Loaded','active');
+      log(`Loaded: ${fn} — ${Object.keys(fontObj.glyphs.glyphs).length} glyphs`,'ok');
+      measureStemCadence();
+      cadReset();
+      cadenceAutoFilled=false;
+      cadEnsureInit();
+      const _lcv=document.getElementById('cad-cadence').value;
+      const _lcn=cadToRound(parseFloat(_lcv));
+      if(!isNaN(_lcn)&&_lcn>0){document.getElementById('p-round').value=_lcn;document.getElementById('light-cad-val').value=_lcn;cadenceAutoFilled=true;}
+      renderLightCadCanvas();
+      runAnalysis();
+    }catch(err){setStatus('Load error','error');log('Error: '+err.message,'err');}
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 // ══════════════════════════════════════════════════════
-// MAIN ANALYSIS
+// MAIN ANALYSIS (browser mode)
 // ══════════════════════════════════════════════════════
 function initLoadAndCompute(){lastFontKey='';runAnalysis();}
 async function runAnalysis(){
@@ -1893,6 +1931,39 @@ function showSpacingApplyResult(result){
   setStatus(result.msg, result.ok>0?'active':'error');
 }
 
+// ── EXPORT ────────────────────────────────────────────
+function exportCSV(){
+  if(isComputing){pendingAction=()=>exportCSV();log('⏳ Export queued — waiting for computation to finish','info');return;}
+  if(IS_GLYPHS){applyToGlyphs();return;}
+  if(!kerningData.length){alert('No data to export.');return;}
+  const p=P();
+  const out=outputPairs();
+  const lines=[
+    `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% threshold=${p.threshold}`,
+    `# Format: Left;Right;Correction (Class zones)`,
+    ...out.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
+  ];
+  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=fontName.replace(/\.[^.]+$/,'')+'.csv';a.click();
+}
+function copyKerningToClipboard(){
+  if(isComputing){pendingAction=()=>copyKerningToClipboard();log('⏳ Copy queued — waiting for computation to finish','info');return;}
+  if(!kerningData.length){return;}
+  const p=P();
+  const out=outputPairs();
+  const lines=[
+    `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% threshold=${p.threshold}`,
+    `# Format: Left;Right;Correction (Class zones)`,
+    ...out.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
+  ];
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+    const b=document.getElementById('btn-light-clip');
+    if(b){const orig=b.textContent;b.textContent='✓ Copied!';setTimeout(()=>{b.textContent=orig;},1400);}
+    log(`Copied ${out.length.toLocaleString()} kerning pairs to clipboard`,'ok');
+  }).catch(()=>log('Clipboard write failed','err'));
+}
+
 // ── TABLE ─────────────────────────────────────────────
 function sortBy(col){if(sortCol===col)sortAsc=!sortAsc;else{sortCol=col;sortAsc=col!=='correction';}sortAndRender();}
 function sortAndRender(){
@@ -1997,6 +2068,47 @@ function togglePairPreview(){
   }
 }
 
+function selectPairRow(idx){
+  selectedPairIdx=idx;
+  pairPreviewMode=true;
+  document.getElementById('pair-preview-btn').className='tbtn on';
+  renderTable();
+  renderPreview();
+  // Scroll selected row into view
+  const sel=document.querySelector('#results-tbody tr.selected');
+  if(sel)sel.scrollIntoView({block:'nearest'});
+}
+
+// Keyboard navigation for table pair selection and text preset cycling
+document.addEventListener('keydown',e=>{
+  const tag=document.activeElement.tagName;
+  // Don't hijack when typing in input/select
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+
+  if(e.key==='ArrowDown'&&pairPreviewMode){
+    e.preventDefault();
+    if(selectedPairIdx<filteredData.length-1)selectPairRow(selectedPairIdx+1);
+  } else if(e.key==='ArrowUp'&&pairPreviewMode){
+    e.preventDefault();
+    if(selectedPairIdx>0)selectPairRow(selectedPairIdx-1);
+  } else if(e.key==='Escape'){
+    pairPreviewMode=false;
+    selectedPairIdx=-1;
+    document.getElementById('pair-preview-btn').className='tbtn';
+    renderTable();
+    renderPreview();
+  } else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+    // Cycle through text presets
+    const sel=document.getElementById('preset-select');
+    const opts=Array.from(sel.options).filter(o=>o.value&&!o.disabled);
+    if(opts.length===0)return;
+    const cur=opts.findIndex(o=>o.value===document.getElementById('preview-text').value)||0;
+    let next=e.key==='ArrowRight'?cur+1:cur-1;
+    next=Math.max(0,Math.min(opts.length-1,next));
+    if(opts[next]){e.preventDefault();sel.value=opts[next].value;applyPreset(opts[next].value);}
+  }
+});
+
 // ── SPACING CORRECTIONS TABLE ──────────────────────────
 /**
  * For each glyph, find its self-pair correction (A+A, n+n, etc.)
@@ -2086,7 +2198,7 @@ function renderSpacingTable(){
   let histHtml='<div style="display:flex;flex-direction:column;gap:2px;padding:8px 0">';
   for(const[aw,items] of sortedAW){
     const pct=Math.max(6,Math.round(items.length/maxCount*100));
-    const chars=items.map(r=>r.gc.charLabel).join(' ');
+    const chars=items.map(r=>r.gc.charLabel).join(' ');
     const tooltip=items.map(r=>r.gc.charLabel).join(' ');
     histHtml+=`<div title="${esc(tooltip)}" style="display:flex;align-items:center;gap:6px">`;
     histHtml+=`<span style="font-size:10px;color:var(--text2);width:44px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums">${aw}</span>`;
@@ -2111,78 +2223,386 @@ function renderSpacingTable(){
   showSpacingContent(true);
 }
 
-function selectPairRow(idx){
-  selectedPairIdx=idx;
-  pairPreviewMode=true;
-  document.getElementById('pair-preview-btn').className='tbtn on';
-  renderTable();
-  renderPreview();
-  // Scroll selected row into view
-  const sel=document.querySelector('#results-tbody tr.selected');
-  if(sel)sel.scrollIntoView({block:'nearest'});
+// ══════════════════════════════════════════════════════
+// CADENCE TAB
+// ══════════════════════════════════════════════════════
+function cadReset(){
+  ['cad-equator','cad-left','cad-right','cad-stem','cad-interval','cad-step','cad-cadence'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
 }
 
-// Keyboard navigation for table pair selection and text preset cycling
-document.addEventListener('keydown',e=>{
-  const tag=document.activeElement.tagName;
-  // Don't hijack when typing in input/select
-  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
-
-  if(e.key==='ArrowDown'&&pairPreviewMode){
-    e.preventDefault();
-    if(selectedPairIdx<filteredData.length-1)selectPairRow(selectedPairIdx+1);
-  } else if(e.key==='ArrowUp'&&pairPreviewMode){
-    e.preventDefault();
-    if(selectedPairIdx>0)selectPairRow(selectedPairIdx-1);
-  } else if(e.key==='Escape'){
-    pairPreviewMode=false;
-    selectedPairIdx=-1;
-    document.getElementById('pair-preview-btn').className='tbtn';
-    renderTable();
-    renderPreview();
-  } else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
-    // Cycle through text presets
-    const sel=document.getElementById('preset-select');
-    const opts=Array.from(sel.options).filter(o=>o.value&&!o.disabled);
-    if(opts.length===0)return;
-    const cur=opts.findIndex(o=>o.value===document.getElementById('preview-text').value)||0;
-    let next=e.key==='ArrowRight'?cur+1:cur-1;
-    next=Math.max(0,Math.min(opts.length-1,next));
-    if(opts[next]){e.preventDefault();sel.value=opts[next].value;applyPreset(opts[next].value);}
+function cadXHeight(){
+  const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm||1000;
+  if(!IS_GLYPHS&&fontObj){
+    const xg=fontObj.charToGlyph('x');
+    if(xg&&xg.path&&xg.path.commands.length>0)return Math.round(xg.getBoundingBox().y2);
+  } else if(IS_GLYPHS&&glyphsByName?.['x']?.commands){
+    // Y is negated in Glyphs commands (font-Y → screen-Y), so topmost point is most negative
+    let yMin=Infinity;
+    for(const c of glyphsByName['x'].commands)
+      for(const k of['y','y1','y2'])if(c[k]!==undefined)yMin=Math.min(yMin,c[k]);
+    if(yMin<0)return Math.round(-yMin);
   }
-});
-
-// ── EXPORT ────────────────────────────────────────────
-function exportCSV(){
-  if(isComputing){pendingAction=()=>exportCSV();log('⏳ Export queued — waiting for computation to finish','info');return;}
-  if(IS_GLYPHS){applyToGlyphs();return;}
-  if(!kerningData.length){alert('No data to export.');return;}
-  const p=P();
-  const out=outputPairs();
-  const lines=[
-    `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% threshold=${p.threshold}`,
-    `# Format: Left;Right;Correction (Class zones)`,
-    ...out.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
-  ];
-  const blob=new Blob([lines.join('\n')],{type:'text/plain'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=fontName.replace(/\.[^.]+$/,'')+'.csv';a.click();
+  return Math.round(upm*0.5);
 }
-function copyKerningToClipboard(){
-  if(isComputing){pendingAction=()=>copyKerningToClipboard();log('⏳ Copy queued — waiting for computation to finish','info');return;}
-  if(!kerningData.length){return;}
-  const p=P();
-  const out=outputPairs();
-  const lines=[
-    `# Coupler — Font Kerning | ${fontName} | zones=${p.zones} smooth=${Math.round(p.smooth*100)}% blur=${p.blur} round=${p.round} mingap=${Math.round(p.mingap*100)}% threshold=${p.threshold}`,
-    `# Format: Left;Right;Correction (Class zones)`,
-    ...out.map(d=>`${d.left};${d.right};${d.correction} (${d.tag} ${d.zones})${d.capped?' [cap]':''}`)
-  ];
-  navigator.clipboard.writeText(lines.join('\n')).then(()=>{
-    const b=document.getElementById('btn-light-clip');
-    if(b){const orig=b.textContent;b.textContent='✓ Copied!';setTimeout(()=>{b.textContent=orig;},1400);}
-    log(`Copied ${out.length.toLocaleString()} kerning pairs to clipboard`,'ok');
-  }).catch(()=>log('Clipboard write failed','err'));
+function cadEnsureInit(){
+  if(document.getElementById('cad-equator').value!=='')return;
+  if(IS_GLYPHS&&Object.keys(glyphsByName||{}).length===0)return;
+  const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm;
+  if(!upm)return;
+  const xh=cadXHeight();
+  const eq=Math.round(xh/2);
+  document.getElementById('cad-equator').value=eq;
+  const runs=cadScan(eq);
+  if(runs){
+    const left=runs[0][0],stem=runs[0][1]-runs[0][0],interval=runs[1][0]-runs[0][0];
+    document.getElementById('cad-left').value=Math.round(left);
+    document.getElementById('cad-stem').value=Math.round(stem);
+    document.getElementById('cad-interval').value=Math.round(interval);
+    cadCalcStep();
+  }
+}
+
+function cadScan(equFU){
+  // Renders 'n' to off-screen canvas, returns ink-run edge pairs in font units, or null
+  const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm;
+  if(!upm)return null;
+  const SC=4; // px per font unit
+  const yT=yTopGlobal||upm*0.8, yB=yBotGlobal||-(upm*0.2);
+  const bY=4+Math.ceil(yT*SC);
+  const H2=bY+Math.ceil(Math.abs(yB)*SC)+4;
+  let AW=upm;
+  const off=document.createElement('canvas');
+  const octx=off.getContext('2d');
+  octx.fillStyle='#000';
+  if(!IS_GLYPHS){
+    if(!fontObj)return null;
+    const g=fontObj.charToGlyph('n');
+    if(!g||!g.path||!g.path.commands.length)return null;
+    AW=g.advanceWidth||upm;
+    off.width=Math.ceil(AW*SC);off.height=H2;
+    octx.fill(new Path2D(g.getPath(0,bY,SC*upm).toPathData(2)));
+  } else {
+    const gd=glyphsByName?.['n'];
+    if(!gd||!gd.commands||!gd.commands.length)return null;
+    AW=gd.advanceWidth||upm;
+    off.width=Math.ceil(AW*SC);off.height=H2;
+    const p2d=commandsToPath2D(gd.commands,0,bY,SC);
+    if(p2d)octx.fill(p2d);
+  }
+  const row=Math.round(bY-equFU*SC);
+  if(row<0||row>=H2)return null;
+  const px=octx.getImageData(0,row,off.width,1).data;
+  const runs=[];let inR=false,rs=0;
+  for(let x=0;x<off.width;x++){
+    const ink=px[x*4+3]>127;
+    if(ink&&!inR){inR=true;rs=x;}
+    else if(!ink&&inR){inR=false;runs.push([rs/SC,(x-1)/SC]);}
+  }
+  if(inR)runs.push([rs/SC,(off.width-1)/SC]);
+  return runs.length>=2?runs:null;
+}
+
+function cadGetAW(){
+  if(!IS_GLYPHS&&fontObj){const g=fontObj.charToGlyph('n');if(g)return g.advanceWidth||(fontObj.unitsPerEm||1000);}
+  if(IS_GLYPHS){const gd=glyphsByName?.['n'];if(gd)return gd.advanceWidth||(currentUPM||1000);}
+  return IS_GLYPHS?currentUPM||1000:fontObj?.unitsPerEm||1000;
+}
+function cadUpdateRight(){
+  const l=parseFloat(document.getElementById('cad-left').value);
+  const iv=parseFloat(document.getElementById('cad-interval').value);
+  const st=parseFloat(document.getElementById('cad-stem').value);
+  const el=document.getElementById('cad-right');
+  if(!isNaN(l)&&!isNaN(iv)&&!isNaN(st))
+    el.value=Math.round(cadGetAW()-(l+iv+st));
+  else
+    el.value='';
+}
+function cadCalcStep(){
+  const iv=parseFloat(document.getElementById('cad-interval').value);
+  const st=parseFloat(document.getElementById('cad-stem').value);
+  const dv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
+  if(!isNaN(iv)&&!isNaN(st)&&st>0){
+    const step=Math.max(1,Math.round(iv*dv/st));
+    document.getElementById('cad-step').value=step;
+    document.getElementById('cad-cadence').value=r1(iv/step);
+  } else {
+    document.getElementById('cad-step').value='';
+    document.getElementById('cad-cadence').value='';
+  }
+  cadUpdateRight();
+}
+function cadInput(src){
+  const dv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
+  if(src==='eq'){
+    const eq=parseFloat(document.getElementById('cad-equator').value);
+    if(!isNaN(eq)){
+      const runs=cadScan(eq);
+      if(runs){
+        const left=runs[0][0],stem=runs[0][1]-runs[0][0],interval=runs[1][0]-runs[0][0];
+        document.getElementById('cad-left').value=Math.round(left);
+        document.getElementById('cad-stem').value=Math.round(stem);
+        document.getElementById('cad-interval').value=Math.round(interval);
+        cadCalcStep();
+      }
+    }
+  } else if(src==='interval'||src==='stem'||src==='div'){
+    cadCalcStep();
+  } else if(src==='step'){
+    const step=Math.max(1,parseInt(document.getElementById('cad-step').value)||1);
+    const st=parseFloat(document.getElementById('cad-stem').value);
+    if(!isNaN(st)&&st>0){
+      const iv=Math.round(step*st/dv);
+      document.getElementById('cad-interval').value=iv;
+      document.getElementById('cad-cadence').value=r1(iv/step);
+      cadUpdateRight();
+    }
+  }
+  renderCadence();
+}
+function cadAssignPreset(){
+  const cad=parseFloat(document.getElementById('cad-cadence').value);
+  if(!isNaN(cad)&&cad>0){
+    document.getElementById('p-round').value=cadToRound(cad);
+    const el=document.getElementById('p-round');
+    el.style.borderColor='var(--accent)';
+    setTimeout(()=>el.style.borderColor='',800);
+  }
+}
+
+// Adjust raw cadence to a suitable Round module value:
+// > 40 → halve (stem interval too coarse), < 20 → double (too fine)
+function cadToRound(raw){const n=Math.round(raw);return n>40?Math.round(n/2):n<20?Math.round(n*2):n;}
+
+function updateCadenceField(){
+  try{
+    cadEnsureInit();
+    const cv=document.getElementById('cad-cadence').value;
+    const n=cadToRound(parseFloat(cv));
+    if(!isNaN(n)&&n>0){
+      document.getElementById('light-cad-val').value=n;
+      if(!cadenceAutoFilled){
+        document.getElementById('p-round').value=n;
+        cadenceAutoFilled=true;
+      }
+    }
+    renderLightCadCanvas();
+  }catch(_){}
+}
+
+function renderCadence(){
+  const canvas=document.getElementById('cadence-canvas');
+  const wrap=document.getElementById('cadence-wrap');
+  if(!canvas||!wrap)return;
+  const W=wrap.offsetWidth,H=wrap.offsetHeight;
+  if(W<10||H<10)return;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.fillStyle='#141618';ctx.fillRect(0,0,W,H);
+
+  const hasFont=IS_GLYPHS?Object.keys(glyphsByName||{}).length>0:!!fontObj;
+  if(!hasFont){
+    ctx.fillStyle='#3d4450';ctx.font='12px monospace';ctx.textAlign='left';
+    ctx.fillText('Load a font to use Cadence',20,H/2);return;
+  }
+
+  const upm=IS_GLYPHS?currentUPM:fontObj.unitsPerEm;
+  const xh=cadXHeight();
+
+  // Glyph 'n' data
+  let AW=upm,bbx1=0,bbx2=upm*0.5;
+  if(!IS_GLYPHS&&fontObj){
+    const g=fontObj.charToGlyph('n');
+    if(g){AW=g.advanceWidth||upm;if(g.path&&g.path.commands.length>0){const bb=g.getBoundingBox();bbx1=bb.x1;bbx2=bb.x2;}}
+  } else if(IS_GLYPHS){
+    const gd=glyphsByName?.['n'];
+    if(gd){AW=gd.advanceWidth||upm;if(gd.commands){let mn=Infinity,mx=-Infinity;for(const c of gd.commands){for(const k of['x','x1','x2'])if(c[k]!==undefined){mn=Math.min(mn,c[k]);mx=Math.max(mx,c[k]);}}if(mn<Infinity){bbx1=mn;bbx2=mx;}}}
+  }
+
+  // Layout
+  const rPad=60,bPad=22,drawW=W-rPad,drawH=H-bPad;
+  const scale=drawH*0.66/xh;
+  const topM=drawH*0.17; // top margin above glyph
+  const baseY=topM+xh*scale; // canvas y of baseline
+
+  // FU → canvas
+  const fx=fu=>20+(fu*(drawW-40)/AW); // map 0..AW to 20..drawW-20
+  const fy=fu=>baseY-fu*scale;
+
+  // Actually better to center glyph advance width in drawW
+  const awPx=AW*scale;
+  const xOff=Math.max(16,(drawW-awPx)/2);
+  const fxA=fu=>xOff+fu*scale; // font-unit x → canvas x (absolute)
+
+  // ── Dimmed glyph ──
+  ctx.save();ctx.globalAlpha=0.28;ctx.fillStyle='#d4d8de';
+  if(!IS_GLYPHS&&fontObj){
+    const g=fontObj.charToGlyph('n');
+    if(g&&g.path&&g.path.commands.length>0)ctx.fill(new Path2D(g.getPath(xOff,baseY,scale*upm).toPathData(2)));
+  } else if(IS_GLYPHS){
+    const gd=glyphsByName?.['n'];
+    if(gd&&gd.commands){const p2d=commandsToPath2D(gd.commands,xOff,baseY,scale);if(p2d)ctx.fill(p2d);}
+  }
+  ctx.restore();
+
+  // ── Yellow baseline & x-height ──
+  ctx.setLineDash([]);
+  [[0,'0'],[xh,String(xh)]].forEach(([yFU,lbl])=>{
+    ctx.strokeStyle='rgba(232,160,32,.7)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(0,fy(yFU));ctx.lineTo(drawW,fy(yFU));ctx.stroke();
+    ctx.fillStyle='rgba(232,160,32,.85)';ctx.font='bold 9px monospace';ctx.textAlign='left';
+    ctx.fillText(lbl,drawW+4,fy(yFU)+4);
+  });
+  // Factor: how many Cadence units fit in x-height (below x-height label)
+  const cadCadVal=parseFloat(document.getElementById('cad-cadence').value);
+  if(!isNaN(cadCadVal)&&cadCadVal>0){
+    const factor=Math.round(xh/cadCadVal*10)/10;
+    ctx.fillStyle='rgba(232,160,32,.55)';ctx.font='9px monospace';ctx.textAlign='left';
+    ctx.fillText('×'+factor,drawW+4,fy(xh)+15);
+  }
+
+  // ── Equator ──
+  let equFU=parseFloat(document.getElementById('cad-equator').value);
+  if(isNaN(equFU))equFU=Math.round(xh/2);
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(0,fy(equFU));ctx.lineTo(drawW,fy(equFU));ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.65)';ctx.font='bold 9px monospace';ctx.textAlign='left';
+  ctx.fillText(String(Math.round(equFU)),drawW+4,fy(equFU)+4);
+
+
+  // ── Cadence overlay lines ──
+  const cadL=parseFloat(document.getElementById('cad-left').value);
+  const cadSt=parseFloat(document.getElementById('cad-stem').value);
+  const cadIv=parseFloat(document.getElementById('cad-interval').value);
+  const cadDiv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
+  const glyphTop=fy(xh),glyphBot=fy(0);
+
+  function vline(xFU,color,lw,dash,y0,y1){
+    const cx=fxA(xFU);
+    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash);
+    ctx.beginPath();ctx.moveTo(cx,y0);ctx.lineTo(cx,y1);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ── White solid: x=0 and advance width boundaries (full height) ──
+  vline(0,'rgba(255,255,255,.55)',1,[],0,drawH);
+  vline(AW,'rgba(255,255,255,.55)',1,[],0,drawH);
+  ctx.fillStyle='rgba(255,255,255,.5)';ctx.font='9px monospace';ctx.textAlign='center';
+  ctx.fillText('0',fxA(0),drawH+15);
+  ctx.fillText(String(Math.round(AW)),fxA(AW),drawH+15);
+
+  if(!isNaN(cadL)&&!isNaN(cadSt)&&cadSt>0){
+    // ── Gray dashed divider grid (radiates from cadL at Stem/Divider spacing) ──
+    const divStep=cadSt/cadDiv;
+    // Compute range of n such that cadL + n*divStep ∈ [0, AW]
+    const nMin=Math.ceil((0-cadL)/divStep);
+    const nMax=Math.floor((AW-cadL)/divStep);
+    for(let n=nMin;n<=nMax;n++){
+      if(n===0||n===cadDiv)continue; // white lines at those positions
+      vline(cadL+n*divStep,'rgba(160,160,160,.38)',0.6,[3,3],glyphTop,glyphBot);
+    }
+    // ── White stem lines at Left and Left+Stem ──
+    vline(cadL,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
+    vline(cadL+cadSt,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
+
+    if(!isNaN(cadIv)){
+      // Interval line (start of right stem)
+      vline(cadL+cadIv,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
+      // Additional line at interval + stem (end of right stem)
+      vline(cadL+cadIv+cadSt,'rgba(255,255,255,.4)',0.8,[],glyphTop,glyphBot);
+    }
+  }
+}
+
+// Wire cadence resize observer
+new ResizeObserver(()=>{if(currentTab==='cadence')renderCadence();}).observe(document.getElementById('cadence-wrap'));
+
+function renderLightCadCanvas(){
+  const canvas=document.getElementById('light-cad-canvas');
+  if(!canvas)return;
+  const W=canvas.offsetWidth||200,H=canvas.offsetHeight||110;
+  if(W<10||H<10)return;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.fillStyle='#141618';ctx.fillRect(0,0,W,H);
+
+  const hasFont=IS_GLYPHS?Object.keys(glyphsByName||{}).length>0:!!fontObj;
+  if(!hasFont)return;
+
+  const upm=IS_GLYPHS?currentUPM:fontObj.unitsPerEm;
+  const xh=cadXHeight();
+  let AW=upm;
+  if(!IS_GLYPHS&&fontObj){const g=fontObj.charToGlyph('n');if(g)AW=g.advanceWidth||upm;}
+  else if(IS_GLYPHS){const gd=glyphsByName?.['n'];if(gd)AW=gd.advanceWidth||upm;}
+
+  const drawW=W,drawH=H;
+  const scale=drawH*0.66/xh;
+  const topM=drawH*0.17;
+  const baseY=topM+xh*scale;
+  const awPx=AW*scale;
+  const xOff=Math.max(8,(drawW-awPx)/2);
+  const fxA=fu=>xOff+fu*scale;
+  const fy=fu=>baseY-fu*scale;
+
+  // Dimmed glyph
+  ctx.save();ctx.globalAlpha=0.28;ctx.fillStyle='#d4d8de';
+  if(!IS_GLYPHS&&fontObj){
+    const g=fontObj.charToGlyph('n');
+    if(g&&g.path&&g.path.commands.length>0)ctx.fill(new Path2D(g.getPath(xOff,baseY,scale*upm).toPathData(2)));
+  } else if(IS_GLYPHS){
+    const gd=glyphsByName?.['n'];
+    if(gd&&gd.commands){const p2d=commandsToPath2D(gd.commands,xOff,baseY,scale);if(p2d)ctx.fill(p2d);}
+  }
+  ctx.restore();
+
+  // Amber baseline & x-height
+  ctx.setLineDash([]);
+  [0,xh].forEach(yFU=>{
+    ctx.strokeStyle='rgba(232,160,32,.7)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(0,fy(yFU));ctx.lineTo(drawW,fy(yFU));ctx.stroke();
+  });
+
+  // White equator
+  let equFU=parseFloat(document.getElementById('cad-equator').value);
+  if(isNaN(equFU))equFU=Math.round(xh/2);
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(0,fy(equFU));ctx.lineTo(drawW,fy(equFU));ctx.stroke();
+
+  // Cadence vertical lines
+  const cadL=parseFloat(document.getElementById('cad-left').value);
+  const cadSt=parseFloat(document.getElementById('cad-stem').value);
+  const cadIv=parseFloat(document.getElementById('cad-interval').value);
+  const cadDiv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
+  const glyphTop=fy(xh),glyphBot=fy(0);
+
+  function vline(xFU,color,lw,dash,y0,y1){
+    const cx=fxA(xFU);
+    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash);
+    ctx.beginPath();ctx.moveTo(cx,y0);ctx.lineTo(cx,y1);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if(!isNaN(cadL)&&!isNaN(cadSt)&&cadSt>0){
+    const divStep=cadSt/cadDiv;
+    const nMin=Math.ceil((0-cadL)/divStep),nMax=Math.floor((AW-cadL)/divStep);
+    for(let n=nMin;n<=nMax;n++){
+      if(n===0||n===cadDiv)continue;
+      vline(cadL+n*divStep,'rgba(160,160,160,.38)',0.6,[3,3],glyphTop,glyphBot);
+    }
+    vline(cadL,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
+    vline(cadL+cadSt,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
+    if(!isNaN(cadIv)){
+      vline(cadL+cadIv,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
+      vline(cadL+cadIv+cadSt,'rgba(255,255,255,.4)',0.8,[],glyphTop,glyphBot);
+    }
+  }
 }
 
 // ── PREVIEW ───────────────────────────────────────────
@@ -2222,25 +2642,6 @@ function guardedAction(fn){
   fn();
 }
 
-// Adjust raw cadence to a suitable Round module value:
-// > 40 → halve (stem interval too coarse), < 20 → double (too fine)
-function cadToRound(raw){const n=Math.round(raw);return n>40?Math.round(n/2):n<20?Math.round(n*2):n;}
-
-function updateCadenceField(){
-  try{
-    cadEnsureInit();
-    const cv=document.getElementById('cad-cadence').value;
-    const n=cadToRound(parseFloat(cv));
-    if(!isNaN(n)&&n>0){
-      document.getElementById('light-cad-val').value=n;
-      if(!cadenceAutoFilled){
-        document.getElementById('p-round').value=n;
-        cadenceAutoFilled=true;
-      }
-    }
-    renderLightCadCanvas();
-  }catch(_){}
-}
 function toggleBaseline(){showBaseline=!showBaseline;document.getElementById('tbtn-baseline').className='tbtn'+(showBaseline?' on':'');renderPreview();}
 function toggleXheight(){showXheight=!showXheight;document.getElementById('tbtn-xheight').className='tbtn'+(showXheight?' on':'');renderPreview();}
 function toggleSmallCaps(){showSmallCaps=!showSmallCaps;document.getElementById('tbtn-sc').className='tbtn'+(showSmallCaps?' on':'');applyTextMode();renderPreview();}
@@ -2568,368 +2969,6 @@ ro.observe(document.getElementById('canvas-wrap'));
 renderPreview();
 
 // ══════════════════════════════════════════════════════
-// CADENCE TAB
-// ══════════════════════════════════════════════════════
-function cadReset(){
-  ['cad-equator','cad-left','cad-right','cad-stem','cad-interval','cad-step','cad-cadence'].forEach(id=>{
-    document.getElementById(id).value='';
-  });
-}
-
-function cadXHeight(){
-  const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm||1000;
-  if(!IS_GLYPHS&&fontObj){
-    const xg=fontObj.charToGlyph('x');
-    if(xg&&xg.path&&xg.path.commands.length>0)return Math.round(xg.getBoundingBox().y2);
-  } else if(IS_GLYPHS&&glyphsByName?.['x']?.commands){
-    // Y is negated in Glyphs commands (font-Y → screen-Y), so topmost point is most negative
-    let yMin=Infinity;
-    for(const c of glyphsByName['x'].commands)
-      for(const k of['y','y1','y2'])if(c[k]!==undefined)yMin=Math.min(yMin,c[k]);
-    if(yMin<0)return Math.round(-yMin);
-  }
-  return Math.round(upm*0.5);
-}
-function cadEnsureInit(){
-  if(document.getElementById('cad-equator').value!=='')return;
-  if(IS_GLYPHS&&Object.keys(glyphsByName||{}).length===0)return;
-  const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm;
-  if(!upm)return;
-  const xh=cadXHeight();
-  const eq=Math.round(xh/2);
-  document.getElementById('cad-equator').value=eq;
-  const runs=cadScan(eq);
-  if(runs){
-    const left=runs[0][0],stem=runs[0][1]-runs[0][0],interval=runs[1][0]-runs[0][0];
-    document.getElementById('cad-left').value=Math.round(left);
-    document.getElementById('cad-stem').value=Math.round(stem);
-    document.getElementById('cad-interval').value=Math.round(interval);
-    cadCalcStep();
-  }
-}
-
-function cadScan(equFU){
-  // Renders 'n' to off-screen canvas, returns ink-run edge pairs in font units, or null
-  const upm=IS_GLYPHS?currentUPM:fontObj?.unitsPerEm;
-  if(!upm)return null;
-  const SC=4; // px per font unit
-  const yT=yTopGlobal||upm*0.8, yB=yBotGlobal||-(upm*0.2);
-  const bY=4+Math.ceil(yT*SC);
-  const H2=bY+Math.ceil(Math.abs(yB)*SC)+4;
-  let AW=upm;
-  const off=document.createElement('canvas');
-  const octx=off.getContext('2d');
-  octx.fillStyle='#000';
-  if(!IS_GLYPHS){
-    if(!fontObj)return null;
-    const g=fontObj.charToGlyph('n');
-    if(!g||!g.path||!g.path.commands.length)return null;
-    AW=g.advanceWidth||upm;
-    off.width=Math.ceil(AW*SC);off.height=H2;
-    octx.fill(new Path2D(g.getPath(0,bY,SC*upm).toPathData(2)));
-  } else {
-    const gd=glyphsByName?.['n'];
-    if(!gd||!gd.commands||!gd.commands.length)return null;
-    AW=gd.advanceWidth||upm;
-    off.width=Math.ceil(AW*SC);off.height=H2;
-    const p2d=commandsToPath2D(gd.commands,0,bY,SC);
-    if(p2d)octx.fill(p2d);
-  }
-  const row=Math.round(bY-equFU*SC);
-  if(row<0||row>=H2)return null;
-  const px=octx.getImageData(0,row,off.width,1).data;
-  const runs=[];let inR=false,rs=0;
-  for(let x=0;x<off.width;x++){
-    const ink=px[x*4+3]>127;
-    if(ink&&!inR){inR=true;rs=x;}
-    else if(!ink&&inR){inR=false;runs.push([rs/SC,(x-1)/SC]);}
-  }
-  if(inR)runs.push([rs/SC,(off.width-1)/SC]);
-  return runs.length>=2?runs:null;
-}
-
-function cadGetAW(){
-  if(!IS_GLYPHS&&fontObj){const g=fontObj.charToGlyph('n');if(g)return g.advanceWidth||(fontObj.unitsPerEm||1000);}
-  if(IS_GLYPHS){const gd=glyphsByName?.['n'];if(gd)return gd.advanceWidth||(currentUPM||1000);}
-  return IS_GLYPHS?currentUPM||1000:fontObj?.unitsPerEm||1000;
-}
-function cadUpdateRight(){
-  const l=parseFloat(document.getElementById('cad-left').value);
-  const iv=parseFloat(document.getElementById('cad-interval').value);
-  const st=parseFloat(document.getElementById('cad-stem').value);
-  const el=document.getElementById('cad-right');
-  if(!isNaN(l)&&!isNaN(iv)&&!isNaN(st))
-    el.value=Math.round(cadGetAW()-(l+iv+st));
-  else
-    el.value='';
-}
-function cadCalcStep(){
-  const iv=parseFloat(document.getElementById('cad-interval').value);
-  const st=parseFloat(document.getElementById('cad-stem').value);
-  const dv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
-  if(!isNaN(iv)&&!isNaN(st)&&st>0){
-    const step=Math.max(1,Math.round(iv*dv/st));
-    document.getElementById('cad-step').value=step;
-    document.getElementById('cad-cadence').value=r1(iv/step);
-  } else {
-    document.getElementById('cad-step').value='';
-    document.getElementById('cad-cadence').value='';
-  }
-  cadUpdateRight();
-}
-function cadInput(src){
-  const dv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
-  if(src==='eq'){
-    const eq=parseFloat(document.getElementById('cad-equator').value);
-    if(!isNaN(eq)){
-      const runs=cadScan(eq);
-      if(runs){
-        const left=runs[0][0],stem=runs[0][1]-runs[0][0],interval=runs[1][0]-runs[0][0];
-        document.getElementById('cad-left').value=Math.round(left);
-        document.getElementById('cad-stem').value=Math.round(stem);
-        document.getElementById('cad-interval').value=Math.round(interval);
-        cadCalcStep();
-      }
-    }
-  } else if(src==='interval'||src==='stem'||src==='div'){
-    cadCalcStep();
-  } else if(src==='step'){
-    const step=Math.max(1,parseInt(document.getElementById('cad-step').value)||1);
-    const st=parseFloat(document.getElementById('cad-stem').value);
-    if(!isNaN(st)&&st>0){
-      const iv=Math.round(step*st/dv);
-      document.getElementById('cad-interval').value=iv;
-      document.getElementById('cad-cadence').value=r1(iv/step);
-      cadUpdateRight();
-    }
-  }
-  renderCadence();
-}
-function cadAssignPreset(){
-  const cad=parseFloat(document.getElementById('cad-cadence').value);
-  if(!isNaN(cad)&&cad>0){
-    document.getElementById('p-round').value=cadToRound(cad);
-    const el=document.getElementById('p-round');
-    el.style.borderColor='var(--accent)';
-    setTimeout(()=>el.style.borderColor='',800);
-  }
-}
-
-function renderCadence(){
-  const canvas=document.getElementById('cadence-canvas');
-  const wrap=document.getElementById('cadence-wrap');
-  if(!canvas||!wrap)return;
-  const W=wrap.offsetWidth,H=wrap.offsetHeight;
-  if(W<10||H<10)return;
-  const dpr=window.devicePixelRatio||1;
-  canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.width=W+'px';canvas.style.height=H+'px';
-  const ctx=canvas.getContext('2d');
-  ctx.scale(dpr,dpr);
-  ctx.fillStyle='#141618';ctx.fillRect(0,0,W,H);
-
-  const hasFont=IS_GLYPHS?Object.keys(glyphsByName||{}).length>0:!!fontObj;
-  if(!hasFont){
-    ctx.fillStyle='#3d4450';ctx.font='12px monospace';ctx.textAlign='left';
-    ctx.fillText('Load a font to use Cadence',20,H/2);return;
-  }
-
-  const upm=IS_GLYPHS?currentUPM:fontObj.unitsPerEm;
-  const xh=cadXHeight();
-
-  // Glyph 'n' data
-  let AW=upm,bbx1=0,bbx2=upm*0.5;
-  if(!IS_GLYPHS&&fontObj){
-    const g=fontObj.charToGlyph('n');
-    if(g){AW=g.advanceWidth||upm;if(g.path&&g.path.commands.length>0){const bb=g.getBoundingBox();bbx1=bb.x1;bbx2=bb.x2;}}
-  } else if(IS_GLYPHS){
-    const gd=glyphsByName?.['n'];
-    if(gd){AW=gd.advanceWidth||upm;if(gd.commands){let mn=Infinity,mx=-Infinity;for(const c of gd.commands){for(const k of['x','x1','x2'])if(c[k]!==undefined){mn=Math.min(mn,c[k]);mx=Math.max(mx,c[k]);}}if(mn<Infinity){bbx1=mn;bbx2=mx;}}}
-  }
-
-  // Layout
-  const rPad=60,bPad=22,drawW=W-rPad,drawH=H-bPad;
-  const scale=drawH*0.66/xh;
-  const topM=drawH*0.17; // top margin above glyph
-  const baseY=topM+xh*scale; // canvas y of baseline
-
-  // FU → canvas
-  const fx=fu=>20+(fu*(drawW-40)/AW); // map 0..AW to 20..drawW-20
-  const fy=fu=>baseY-fu*scale;
-
-  // Actually better to center glyph advance width in drawW
-  const awPx=AW*scale;
-  const xOff=Math.max(16,(drawW-awPx)/2);
-  const fxA=fu=>xOff+fu*scale; // font-unit x → canvas x (absolute)
-
-  // ── Dimmed glyph ──
-  ctx.save();ctx.globalAlpha=0.28;ctx.fillStyle='#d4d8de';
-  if(!IS_GLYPHS&&fontObj){
-    const g=fontObj.charToGlyph('n');
-    if(g&&g.path&&g.path.commands.length>0)ctx.fill(new Path2D(g.getPath(xOff,baseY,scale*upm).toPathData(2)));
-  } else if(IS_GLYPHS){
-    const gd=glyphsByName?.['n'];
-    if(gd&&gd.commands){const p2d=commandsToPath2D(gd.commands,xOff,baseY,scale);if(p2d)ctx.fill(p2d);}
-  }
-  ctx.restore();
-
-  // ── Yellow baseline & x-height ──
-  ctx.setLineDash([]);
-  [[0,'0'],[xh,String(xh)]].forEach(([yFU,lbl])=>{
-    ctx.strokeStyle='rgba(232,160,32,.7)';ctx.lineWidth=0.8;
-    ctx.beginPath();ctx.moveTo(0,fy(yFU));ctx.lineTo(drawW,fy(yFU));ctx.stroke();
-    ctx.fillStyle='rgba(232,160,32,.85)';ctx.font='bold 9px monospace';ctx.textAlign='left';
-    ctx.fillText(lbl,drawW+4,fy(yFU)+4);
-  });
-  // Factor: how many Cadence units fit in x-height (below x-height label)
-  const cadCadVal=parseFloat(document.getElementById('cad-cadence').value);
-  if(!isNaN(cadCadVal)&&cadCadVal>0){
-    const factor=Math.round(xh/cadCadVal*10)/10;
-    ctx.fillStyle='rgba(232,160,32,.55)';ctx.font='9px monospace';ctx.textAlign='left';
-    ctx.fillText('×'+factor,drawW+4,fy(xh)+15);
-  }
-
-  // ── Equator ──
-  let equFU=parseFloat(document.getElementById('cad-equator').value);
-  if(isNaN(equFU))equFU=Math.round(xh/2);
-  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=0.8;
-  ctx.beginPath();ctx.moveTo(0,fy(equFU));ctx.lineTo(drawW,fy(equFU));ctx.stroke();
-  ctx.fillStyle='rgba(255,255,255,.65)';ctx.font='bold 9px monospace';ctx.textAlign='left';
-  ctx.fillText(String(Math.round(equFU)),drawW+4,fy(equFU)+4);
-
-
-  // ── Cadence overlay lines ──
-  const cadL=parseFloat(document.getElementById('cad-left').value);
-  const cadSt=parseFloat(document.getElementById('cad-stem').value);
-  const cadIv=parseFloat(document.getElementById('cad-interval').value);
-  const cadDiv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
-  const glyphTop=fy(xh),glyphBot=fy(0);
-
-  function vline(xFU,color,lw,dash,y0,y1){
-    const cx=fxA(xFU);
-    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash);
-    ctx.beginPath();ctx.moveTo(cx,y0);ctx.lineTo(cx,y1);ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // ── White solid: x=0 and advance width boundaries (full height) ──
-  vline(0,'rgba(255,255,255,.55)',1,[],0,drawH);
-  vline(AW,'rgba(255,255,255,.55)',1,[],0,drawH);
-  ctx.fillStyle='rgba(255,255,255,.5)';ctx.font='9px monospace';ctx.textAlign='center';
-  ctx.fillText('0',fxA(0),drawH+15);
-  ctx.fillText(String(Math.round(AW)),fxA(AW),drawH+15);
-
-  if(!isNaN(cadL)&&!isNaN(cadSt)&&cadSt>0){
-    // ── Gray dashed divider grid (radiates from cadL at Stem/Divider spacing) ──
-    const divStep=cadSt/cadDiv;
-    // Compute range of n such that cadL + n*divStep ∈ [0, AW]
-    const nMin=Math.ceil((0-cadL)/divStep);
-    const nMax=Math.floor((AW-cadL)/divStep);
-    for(let n=nMin;n<=nMax;n++){
-      if(n===0||n===cadDiv)continue; // white lines at those positions
-      vline(cadL+n*divStep,'rgba(160,160,160,.38)',0.6,[3,3],glyphTop,glyphBot);
-    }
-    // ── White stem lines at Left and Left+Stem ──
-    vline(cadL,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
-    vline(cadL+cadSt,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
-
-    if(!isNaN(cadIv)){
-      // Interval line (start of right stem)
-      vline(cadL+cadIv,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
-      // Additional line at interval + stem (end of right stem)
-      vline(cadL+cadIv+cadSt,'rgba(255,255,255,.4)',0.8,[],glyphTop,glyphBot);
-    }
-  }
-}
-
-// Wire cadence resize observer
-new ResizeObserver(()=>{if(currentTab==='cadence')renderCadence();}).observe(document.getElementById('cadence-wrap'));
-
-function renderLightCadCanvas(){
-  const canvas=document.getElementById('light-cad-canvas');
-  if(!canvas)return;
-  const W=canvas.offsetWidth||200,H=canvas.offsetHeight||110;
-  if(W<10||H<10)return;
-  const dpr=window.devicePixelRatio||1;
-  canvas.width=W*dpr;canvas.height=H*dpr;
-  canvas.style.width=W+'px';canvas.style.height=H+'px';
-  const ctx=canvas.getContext('2d');
-  ctx.scale(dpr,dpr);
-  ctx.fillStyle='#141618';ctx.fillRect(0,0,W,H);
-
-  const hasFont=IS_GLYPHS?Object.keys(glyphsByName||{}).length>0:!!fontObj;
-  if(!hasFont)return;
-
-  const upm=IS_GLYPHS?currentUPM:fontObj.unitsPerEm;
-  const xh=cadXHeight();
-  let AW=upm;
-  if(!IS_GLYPHS&&fontObj){const g=fontObj.charToGlyph('n');if(g)AW=g.advanceWidth||upm;}
-  else if(IS_GLYPHS){const gd=glyphsByName?.['n'];if(gd)AW=gd.advanceWidth||upm;}
-
-  const drawW=W,drawH=H;
-  const scale=drawH*0.66/xh;
-  const topM=drawH*0.17;
-  const baseY=topM+xh*scale;
-  const awPx=AW*scale;
-  const xOff=Math.max(8,(drawW-awPx)/2);
-  const fxA=fu=>xOff+fu*scale;
-  const fy=fu=>baseY-fu*scale;
-
-  // Dimmed glyph
-  ctx.save();ctx.globalAlpha=0.28;ctx.fillStyle='#d4d8de';
-  if(!IS_GLYPHS&&fontObj){
-    const g=fontObj.charToGlyph('n');
-    if(g&&g.path&&g.path.commands.length>0)ctx.fill(new Path2D(g.getPath(xOff,baseY,scale*upm).toPathData(2)));
-  } else if(IS_GLYPHS){
-    const gd=glyphsByName?.['n'];
-    if(gd&&gd.commands){const p2d=commandsToPath2D(gd.commands,xOff,baseY,scale);if(p2d)ctx.fill(p2d);}
-  }
-  ctx.restore();
-
-  // Amber baseline & x-height
-  ctx.setLineDash([]);
-  [0,xh].forEach(yFU=>{
-    ctx.strokeStyle='rgba(232,160,32,.7)';ctx.lineWidth=0.8;
-    ctx.beginPath();ctx.moveTo(0,fy(yFU));ctx.lineTo(drawW,fy(yFU));ctx.stroke();
-  });
-
-  // White equator
-  let equFU=parseFloat(document.getElementById('cad-equator').value);
-  if(isNaN(equFU))equFU=Math.round(xh/2);
-  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=0.8;
-  ctx.beginPath();ctx.moveTo(0,fy(equFU));ctx.lineTo(drawW,fy(equFU));ctx.stroke();
-
-  // Cadence vertical lines
-  const cadL=parseFloat(document.getElementById('cad-left').value);
-  const cadSt=parseFloat(document.getElementById('cad-stem').value);
-  const cadIv=parseFloat(document.getElementById('cad-interval').value);
-  const cadDiv=Math.max(1,parseInt(document.getElementById('cad-divider').value)||4);
-  const glyphTop=fy(xh),glyphBot=fy(0);
-
-  function vline(xFU,color,lw,dash,y0,y1){
-    const cx=fxA(xFU);
-    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash);
-    ctx.beginPath();ctx.moveTo(cx,y0);ctx.lineTo(cx,y1);ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  if(!isNaN(cadL)&&!isNaN(cadSt)&&cadSt>0){
-    const divStep=cadSt/cadDiv;
-    const nMin=Math.ceil((0-cadL)/divStep),nMax=Math.floor((AW-cadL)/divStep);
-    for(let n=nMin;n<=nMax;n++){
-      if(n===0||n===cadDiv)continue;
-      vline(cadL+n*divStep,'rgba(160,160,160,.38)',0.6,[3,3],glyphTop,glyphBot);
-    }
-    vline(cadL,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
-    vline(cadL+cadSt,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
-    if(!isNaN(cadIv)){
-      vline(cadL+cadIv,'rgba(255,255,255,.8)',0.8,[],glyphTop,glyphBot);
-      vline(cadL+cadIv+cadSt,'rgba(255,255,255,.4)',0.8,[],glyphTop,glyphBot);
-    }
-  }
-}
-
-// ══════════════════════════════════════════════════════
 // TESTPAGE
 // ══════════════════════════════════════════════════════
 const LOREM={
@@ -3023,9 +3062,9 @@ function openTestPage(){
       `\\a\\b\\c\\d\\e\\f\\g\\h\\i\\j\\k\\l\\m\\n\\o\\p\\q\\r\\s\\t\\u\\v\\w\\x\\y\\z\\`,
       `»a« »b« »c« »d« »e« »f« »g« »h« »i« »j« »k« »l« »m« »n« »o« »p« »q« »r« »s« »t« »u« »v« »w« »x« »y« »z«`,
       `«a» «b» «c» «d» «e» «f» «g» «h» «i» «j» «k» «l» «m» «n» «o» «p» «q» «r» «s» «t» «u» «v» «w» «x» «y» «z»`,
-      `“a” “b” “c” “d” “e” “f” “g” “h” “i” “j” “k” “l” “m” “n” “o” “p” “q” “r” “s” “t” “u” “v” “w” “x” “y” “z”`,
-      `nn’a nn’b nn’c nn’d nn’e nn’f nn’g nn’h nn’i nn’j nn’k nn’l nn’m nn’n nn’o nn’p nn’q nn’r nn’s nn’t nn’u nn’v nn’w nn’x nn’y nn’z`,
-      `na’n nb’n nc’n nd’n ne’n nf’n ng’n nh’n ni’n nj’n nk’n nl’n nm’n nn’n no’n np’n nq’n nr’n ns’n nt’n nu’n nv’n nw’n nx’n ny’n nz’n`,
+      `"a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"`,
+      `nn'a nn'b nn'c nn'd nn'e nn'f nn'g nn'h nn'i nn'j nn'k nn'l nn'm nn'n nn'o nn'p nn'q nn'r nn's nn't nn'u nn'v nn'w nn'x nn'y nn'z`,
+      `na'n nb'n nc'n nd'n ne'n nf'n ng'n nh'n ni'n nj'n nk'n nl'n nm'n nn'n no'n np'n nq'n nr'n ns'n nt'n nu'n nv'n nw'n nx'n ny'n nz'n`,
       `!a!b!c!d!e!f!g!h!i!j!k!l!m!n!o!p!q!r!s!t!u!v!w!x!y!z!`,
       `¡a ¡b ¡c ¡d ¡e ¡f ¡g ¡h ¡i ¡j ¡k ¡l ¡m ¡n ¡o ¡p ¡q ¡r ¡s ¡t ¡u ¡v ¡w ¡x ¡y ¡z`,
       `?a?b?c?d?e?f?g?h?i?j?k?l?m?n?o?p?q?r?s?t?u?v?w?x?y?z?`,
@@ -3050,9 +3089,9 @@ function openTestPage(){
       `\\A\\B\\C\\D\\E\\F\\G\\H\\I\\J\\K\\L\\M\\N\\O\\P\\Q\\R\\S\\T\\U\\V\\W\\X\\Y\\Z\\`,
       `»A« »B« »C« »D« »E« »F« »G« »H« »I« »J« »K« »L« »M« »N« »O« »P« »Q« »R« »S« »T« »U« »V« »W« »X« »Y« »Z«`,
       `«A» «B» «C» «D» «E» «F» «G» «H» «I» «J» «K» «L» «M» «N» «O» «P» «Q» «R» «S» «T» «U» «V» «W» «X» «Y» «Z»`,
-      `“A” “B” “C” “D” “E” “F” “G” “H” “I” “J” “K” “L” “M” “N” “O” “P” “Q” “R” “S” “T” “U” “V” “W” “X” “Y” “Z”`,
-      `OH’A OH’B OH’C OH’D OH’E OH’F OH’G OH’H OH’I OH’J OH’K OH’L OH’M OH’N OH’O OH’P OH’Q OH’R OH’S OH’T OH’U OH’V OH’W OH’X OH’Y OH’Z`,
-      `HA’H HB’H HC’H HD’H HE’H HF’H HG’H HH’H HI’H HJ’H HK’H HL’H HM’N OH’H HO’H HP’H HQ’H HR’H HS’H HT’H HU’H HV’H HW’H HX’H HY’H HZ’H`,
+      `"A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"`,
+      `OH'A OH'B OH'C OH'D OH'E OH'F OH'G OH'H OH'I OH'J OH'K OH'L OH'M OH'N OH'O OH'P OH'Q OH'R OH'S OH'T OH'U OH'V OH'W OH'X OH'Y OH'Z`,
+      `HA'H HB'H HC'H HD'H HE'H HF'H HG'H HH'H HI'H HJ'H HK'H HL'H HM'N OH'H HO'H HP'H HQ'H HR'H HS'H HT'H HU'H HV'H HW'H HX'H HY'H HZ'H`,
       `!A!B!C!D!E!F!G!H!I!J!K!L!M!N!O!P!Q!R!S!T!U!V!W!X!Y!Z!`,
       `¡A ¡B ¡C ¡D ¡E ¡F ¡G ¡H ¡I ¡J ¡K ¡L ¡M ¡N ¡O ¡P ¡Q ¡R ¡S ¡T ¡U ¡V ¡W ¡X ¡Y ¡Z`,
       `¡A ¡B ¡C ¡D ¡E ¡F ¡G ¡H ¡I ¡J ¡K ¡L ¡M ¡N ¡O ¡P ¡Q ¡R ¡S ¡T ¡U ¡V ¡W ¡X ¡Y ¡Z`,
@@ -3084,9 +3123,9 @@ function openTestPage(){
       `—1—2—3—4—5—6—7—8—9—0—`,
       `/1/2/3/4/5/6/7/8/9/0/`,
       `\\1\\2\\3\\4\\5\\6\\7\\8\\9\\0\\`,
-      `“1” “2” “3” “4” “5” “6” “7” “8” “9” “0”`,
-      `“1“2“3“4“5“6“7“8“9“0“`,
-      `”1”2”3”4”5”6”7”8”9”0”`,
+      `"1" "2" "3" "4" "5" "6" "7" "8" "9" "0"`,
+      `"1"2"3"4"5"6"7"8"9"0"`,
+      `"1"2"3"4"5"6"7"8"9"0"`,
       `!1!2!3!4!5!6!7!8!9!0!`,
       `¡1 ¡2 ¡3 ¡4 ¡5 ¡6 ¡7 ¡8 ¡9 ¡0`,
       `?1?2?3?4?5?6?7?8?9?0?`,
@@ -3119,22 +3158,22 @@ function openTestPage(){
       `Aardvark Ablution Acrimonious Adventures Aeolian Africa Agamemnon Ahoy Aileron Ajax Akimbo Altruism America Anecdote Aorta Aptitude Aquarium Arcade Aspartame Attrition Aurelius Avuncular Awning Axminster Ayers Azure Banishment Benighted Bhagavad Biblical Bjorn Blancmange Bolton Brusque Burnish Bwana Byzantium Cabbala Cetacean Charlemagne Cicero Clamorous Cnidarian Conifer Crustacean Ctenoid Culled Cynosure Czarina Dalmatian Delphi Dhurrie Dinner Djinn Document Drill Dunleary Dvorak Dwindle Dynamo Eames Ebullient Echo Edify Eels Eftsoons Egress Ehrlich Eindhoven Eject Ekistics Elzevir Eminence Ennoble Eocene Ephemeral Equator Erstwhile Estienne Etiquette Eucalyptus Everyman Ewen Exeter Eyelet Ezekiel Fanfare Ferocious Ffestiniog Finicky Fjord Flanders Forestry Frills Furniture Fylfot Garrulous Generous Ghastly Gimlet Glorious Gnomon Golfer Grizzled Gumption Gwendolyn Gymkhana Harrow Heifer Hindemith Horace Hsi Hubris Hybrid Iambic Ibarra Ichthyology Identity Ievgeny Ifrit Ignite Ihre Ikon Iliad Imminent Innovation Iolanthe Ipanema Irascible Island Italic Ivory Iwis Ixtapa Iyar Izzard Janacek Jenson Jitter Joinery Jr. Jungian Kaiser Kenilworth Khaki Kindred Klondike Knowledge Kohlrabi Kraken Kudzu Kvetch Kwacha Kyrie Labrador Lent Lhasa Liniment Llama Longboat Luddite Lyceum Mandarin Mbandaka Mcintyre Mdina Mendacious Mfg. Mg Millinery Mlle. Mme. Mnemonic Moribund Mr. Ms. Mtn. Munitions Myra Narragansett Nefarious Nguyen Nile Nkoso Nnenna Nonsense Nr. Nunnery Nyack Oarsman Oblate Ocular Odessa Oedipus Often Ogre Ohms Oilers Okra Olfactory Ominous Onerous Oogamous Opine Ornate Ossified Othello Oubliette Ovens Owlish Oxen Oyster Ozymandias Parisian Pb Pd. Penrose Pfennig Pg. Pharmacy Pirouette Pleistocene Pneumatic Porridge Pp. Principle Psaltery Ptarmigan Pundit Pyrrhic Qaid Qed Qibris Qom Quill Ransom Rb. Rd. Renfield Rheumatic Ringlet Rm. Ronsard Rp. Rte. Runcible Rwanda Rye Salacious Sbeitla Scherzo Serpentine Sforza Shackles Sinful Sjoerd Skull Slalom Smelting Snipe Sorbonne Spartan Squire Sri Stultified Summoner Svelte Swarthy Sykes Szentendre Tarragon Tblisi Tcherny Tennyson Thaumaturge Tincture Tlaloc Toreador Treacherous Tsunami Turkey Twine Tyrolean Tzara Ubiquitous Ucello Udder Ufology Ugric Uhlan Uitlander Ukulele Ulster Umber Unguent Uomo Uplift Ursine Usurious Utrecht Uvula Uxorious Uzbek Vanished Vd. Venomous Vindicate Voracious Vrillier Vs. Vt. Vulnerable Vying Washington Wendell Wharf Window Wm. Worth Wrung Wt. Wunderman Wyes Xanthan Xenon Xiao Xmas Xray Xuxa Xylem Yarrow Ybarra Ycair Yds. Yellowstone Yggdrasil Yin Ylang Yours Ypsilanti Yquem Yrs. Ys. Ytterbium Yunnan Yvonne Zanzibar Zero Zhora Zinfandel Zone Zuni Zwieback Zygote`,
     ]},
     {hdr:'English language text',subs:[
-      {label:'7pt',fs:7,lh:7,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the truth, the master-builder of human happiness. No one rejects, ‘dislikes,’ or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, “which” of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
-      {label:'8pt',fs:8,lh:8,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the truth, the master-builder of human happiness. No one rejects, ‘dislikes,’ or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, “which” of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
-      {label:'9pt',fs:9,lh:9,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the truth, the master-builder of human happiness. No one rejects, ‘dislikes,’ or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, “which” of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
-      {label:'10pt',fs:10,lh:10,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46’ 36.0336’’ N truth, the master-builder of human happiness. No one rejects, ‘dislikes,’ or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, “which” of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
-      {label:'12pt',fs:12,lh:12,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46’ 36.0336’’ N truth, the master-builder of human happiness. No one rejects, ‘dislikes,’ or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, “which” of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
-      {label:'14pt',fs:14,lh:14,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46’ 36.0336’’ N truth, the master-builder of human happiness. No one rejects, ‘dislikes,’ or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, “which” of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
-      {label:'16pt',fs:16,lh:16,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46’ 36.0336’’ N truth, the master-builder of human happiness. No one rejects, ‘dislikes,’ or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, “which” of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
+      {label:'7pt',fs:7,lh:7,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the truth, the master-builder of human happiness. No one rejects, 'dislikes,' or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, "which" of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
+      {label:'8pt',fs:8,lh:8,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the truth, the master-builder of human happiness. No one rejects, 'dislikes,' or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, "which" of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
+      {label:'9pt',fs:9,lh:9,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the truth, the master-builder of human happiness. No one rejects, 'dislikes,' or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, "which" of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
+      {label:'10pt',fs:10,lh:10,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46' 36.0336'' N truth, the master-builder of human happiness. No one rejects, 'dislikes,' or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, "which" of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
+      {label:'12pt',fs:12,lh:12,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46' 36.0336'' N truth, the master-builder of human happiness. No one rejects, 'dislikes,' or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, "which" of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
+      {label:'14pt',fs:14,lh:14,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46' 36.0336'' N truth, the master-builder of human happiness. No one rejects, 'dislikes,' or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, "which" of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
+      {label:'16pt',fs:16,lh:16,lines:[`ON THE ENDS OF GOOD AND EVIL BY THE ROMAN ORATOR, POLITICIAN AND PHILOSOPHER MARCUS TULLIUS CICERO FOR ZANY QUALITY KILOWATT JUX. But I must explain to you how all this mistaken* idea of denouncing of a pleasure and praising pain was born and I will give you a complete account of the system, and expound the actual teachings of 2014 the great explorer of the DMS Lat: 40° 46' 36.0336'' N truth, the master-builder of human happiness. No one rejects, 'dislikes,' or avoids pleasure itself, because it is pleasure, but because those who do not know how to pursue pleasure and/or rationally encounter consequences that are extremely painful. Nor again—is there anyone 1967 who loves or pursues or desires $5,238 to obtain pain of itself, because it is pain, but occasionally circumstances occur in which toil and (pain can procure) him some great pleasure. Quality means to take a trivial example, "which" of us ever undertakes laborious physical exercise, except to obtain some advantage from it! But who H&M has any right to find fault with a man 9–5 who chooses to enjoy a pleasure that has no annoying consequences, or one who avoids a pain that produces no resultant pleasure? Wilwright Electrical Co.`]},
     ]},
     {hdr:'9pt  multilanguage text proof',subs:[
-      {label:'Hungarian',fs:9,lh:9,lines:[`A zene a hangok és a csend érzelmeket kiváltó elrendezése, létezésének lényege az idő. A pontos meghatározás nem könnyű, de abban általában egyetértés mutatkozik, hogy a zene a hangok tudatosan elrendezett folyamata. A zene egy művészi kifejezési forma, a hangok és „nem-hangok” (csendek) időbeni váltakozásának többnyire tudatosan előállított sorrendje, mely nem utasít konkrét cselekvésre, viszont érzelmeket, indulatokat kelt és gondolatokat ébreszt. Az olyan hangkombinációkat, amelyek ugyan tudatosan jönnek létre, de konkrét üzenetük van (vagyis valamilyen cselekvésre ösztönöznek), általában nem nevezzük zenének. Kizárólagos céljuk a figyelem felkeltése (autóduda, dallamkürtök, szirénák, telefon, ébresztőóra, tömegközlekedés felhívó hangjelzései, rádióadók szignáljai, áruhoz kapcsolt dallamok, templomi harang, egykoron a vadászok vagy a katonák kürtjelei`]},
+      {label:'Hungarian',fs:9,lh:9,lines:[`A zene a hangok és a csend érzelmeket kiváltó elrendezése, létezésének lényege az idő. A pontos meghatározás nem könnyű, de abban általában egyetértés mutatkozik, hogy a zene a hangok tudatosan elrendezett folyamata. A zene egy művészi kifejezési forma, a hangok és „nem-hangok" (csendek) időbeni váltakozásának többnyire tudatosan előállított sorrendje, mely nem utasít konkrét cselekvésre, viszont érzelmeket, indulatokat kelt és gondolatokat ébreszt. Az olyan hangkombinációkat, amelyek ugyan tudatosan jönnek létre, de konkrét üzenetük van (vagyis valamilyen cselekvésre ösztönöznek), általában nem nevezzük zenének. Kizárólagos céljuk a figyelem felkeltése (autóduda, dallamkürtök, szirénák, telefon, ébresztőóra, tömegközlekedés felhívó hangjelzései, rádióadók szignáljai, áruhoz kapcsolt dallamok, templomi harang, egykoron a vadászok vagy a katonák kürtjelei`]},
       {label:'Polish',fs:9,lh:9,lines:[`Muzyka – sztuka organizacji struktur dźwiękowych w czasie. Jedna z dziedzin sztuk pięknych, która wpływa na psychikę człowieka przez dźwięki. Struktury dźwiękowe składają się z zestawów fal akustycznych o celowo dobranych częstotliwościach i amplitudach oraz ciszy pomiędzy nimi. Jednym z celów muzyki jest samoekspresja oraz przekaz subiektywnych odczuć kompozytora lub wykonawcy, który ma wpływ na odczucia, reakcje i świadomość słuchacza przetwarzającego te doznania w sposób zupełnie indywidualny. Od mowy ludzkiej różni się znacznie większą abstrakcyjnością przekazywanych treści oraz wykorzystaniem, oprócz głosu ludzkiego, instrumentów muzycznych oraz wszelkich dźwięków elektronicznych, naturalnych i nieartykułowalnych. Muzyka jest jednym z przejawów ludzkiej kultury. Można przyjąć, że muzyka od zawsze towarzyszyła człowiekowi w`]},
       {label:'Turkish',fs:9,lh:9,lines:[`Macarca (kendi dilinde Bu ses hakkındamagyar nyelv (yardım·bilgi)), Ural dil ailesi içinde yer alan ve muhtemelen Ugor dilleri koluna ait, başlıca Macaristan ve çevresindeki ülkelerde konuşulan bir dildir. Dilin yaklaşık 14.5 milyon konuşanı vardır ve bunların 10 milyonu Macaristan'da yaşar. En büyük ikinci topluluk, 1.5 milyon konuşanı ile komşu Romanya'daki Transilvanya bölgesindedir. Macarca Ural dil ailesine mensuptur. Bu aile içerisinde ise Batı Sibirya ile Kuzey Norveç arasında yaşayan kavimlerin konuştukları Fin- Ugor dilleri grubunda yer alır. Lapça, Fince, Estonca, Mordvince, Çeremisçe, Züryence, Votyakça, Vogulca, Ostyakça da bu dil ailesi içinde yer almaktadır. Buna rağmen Fin-Ugor dillerinin gerçek bir Ural dil ailesi alt grubu olup olmadığı tartışmalıdır.[2] Fin-Ugor dilleri içerisinde, Macarca, Hantıca ve Mansice Ugor dillerini oluşturur ve aile içinde birbirlerine en yakın akrabalık ilişkisini gösterirler.`]},
       {label:'Slovak',fs:9,lh:9,lines:[`Hudba sa vo všeobecnosti definuje ako špecifická ľudská aktivita, ktorá sa pomocou v priestore a čase charakteristicky zoskupených tónov a zvukov a na základe spoločenských skúseností usiluje o (hlavne estetickú) komunikáciu. Hudba je konkrétnejší druh umenia, ktorého výrazovými prostriedkami sú tóny a základnými komponentmi harmónia, melódia, rytmus a farba. Podľa Cassiodora je hudba matematická veda. Slovenská populárna hudba, v zmysle pop music, sa začala rozvíjať v tridsiatych rokoch dvadsiateho storočia. Každé obdobie je charakteristické nástupom rôznych generácii či už hudobníkov, skladateľov, alebo textárov. Hudobná veda je veda o hudbe, teda o celkovej aktivite ľudskej spoločnosti v oblasti hudobného prejavu. Zvuk je každé pozdĺžne mechanické vlnenie v látkovom prostredí, ktoré je schopné vyvolať v ľudskom uchu sluchový vnem. Frekvencia tohto vlnenia leží približne v rozsahu 16 Hz až 20`]},
-      {label:'Icelandic',fs:9,lh:9,lines:[`Tónlist sem upplifun: Önnur algeng skilgreining tónlistar heldur því fram að tónlist verði að vera falleg eða melódísk. Þessi skilgreining hefur verið notuð til þess að halda því fram að sumar tegundir raðaðra hljóðruna séu ekki tónlist, en að aðrar séu það. Vegna þess hversu misjafn smekkur fólks á tónlist er milli menningarsvæða og tímabilia er þessi skoðun neydd til þess að taka upp ögn breiðari sjónarmið, þar sem að sagt er að tónlist þróist með tíma og þjóðfélagi. Þessi skilgreining var öllum öðrum algengari á 18. öld, en á því tímabili hélt Mozart því meðal annars fram að „Tónlist má aldrei gleyma sér, og má aldrei hætta að vera tónlist.“ Tónlist sem flokkur skynjunar: Sjaldgæfari þykir hin skynjunarlega skilgreining tónlistar, þar sem því er haldið fram að tónlist sé ekki eingöngu hljóð, eða skynjun hljóða, heldur aðferð sem að skynjanir, aðgerðir og minningar raðast eftir. Þessi skilgreining hefur haft töluverð áhrif á`]},
-      {label:'Romanian',fs:9,lh:9,lines:[`Muzica (din gr. mousikē) este arta combinării notelor în succesiune și simultan într-o formă plăcută estetic, organizarea ritmică a acestor note și integrarea lor într-o lucrare completă. Instrumentele muzicale sunt utilizate în interpretarea compozițiilor muzicale și sunt de obicei clasificate în patru mari grupe tradiționale: cu coarde, suflători din lemn, suflători din alamă și instrumente de percuție, la care se adaugă suflători cu structură complexă și instrumentele electronice. Acestea se folosesc pentru a crea muzica, fiind făcute din plastic, sârma, pânza etc. Există numeroase clasificări ale genurilor muzicale: vocal și instrumental, sacru și laic, cult și comercial („de consum”), rock, de origine afro-americană, muzică electronică etc. Antichitate: s-au păstrat puține exemple de compoziții. Acestea sunt bazate pe moduri. Instrumentele reprezentative ale Greciei Antice sunt lira (cu care este reprezentat`]},
-      {label:'Maltese',fs:9,lh:9,lines:[`Żgur li kull wieħed u waħda minna, matul ilġurnata jisma’ biċċa mużika. Il-mużika hija ħaġa li l-bniedem ma jistax jgħix mingħajrha. F’kull ġurnata, minn fuq il-mezzi tax-xandir tisma’ l-mużika ta’ għamla differenti, dik klassika, dik romantika, dik moderna u ta’ tipi oħra. Madwar id-dinja kollha, eluf ta’ nies jattendu għal kunċerti minn gruppi, orkestri, baned u għal spettakli kbar mużikali, bħal opri, operetti u balletti, imtellgħa min nies professjonali. Kull ġens u kull razza ħalqu l-mużika tagħhom, il-mużika folkloristika. Kull ġens u razza għandha l-melodiji marbuta magħha. Il-mużika li hi rifless sħiħ ta’ l-emozzjoni tal-bniedem hi mezz ta’ komunikazzjoni ta’ ħsibijiet u idejat. Biss, dan il-fenomenu, li sar hekk integrali mal-ħajja tagħna l-bnedmin, minn fejn kellu l-bidu? L-ewwel mużika li ġiet ispirata f’moħħ ilbniedem, żgur li waslet permezz ta’ l-elementi tan-natura: ir-riħ, ir-ragħad, it-tfaqqiegħa tas-`]},
+      {label:'Icelandic',fs:9,lh:9,lines:[`Tónlist sem upplifun: Önnur algeng skilgreining tónlistar heldur því fram að tónlist verði að vera falleg eða melódísk. Þessi skilgreining hefur verið notuð til þess að halda því fram að sumar tegundir raðaðra hljóðruna séu ekki tónlist, en að aðrar séu það. Vegna þess hversu misjafn smekkur fólks á tónlist er milli menningarsvæða og tímabilia er þessi skoðun neydd til þess að taka upp ögn breiðari sjónarmið, þar sem að sagt er að tónlist þróist með tíma og þjóðfélagi. Þessi skilgreining var öllum öðrum algengari á 18. öld, en á því tímabili hélt Mozart því meðal annars fram að „Tónlist má aldrei gleyma sér, og má aldrei hætta að vera tónlist." Tónlist sem flokkur skynjunar: Sjaldgæfari þykir hin skynjunarlega skilgreining tónlistar, þar sem því er haldið fram að tónlist sé ekki eingöngu hljóð, eða skynjun hljóða, heldur aðferð sem að skynjanir, aðgerðir og minningar raðast eftir. Þessi skilgreining hefur haft töluverð áhrif á`]},
+      {label:'Romanian',fs:9,lh:9,lines:[`Muzica (din gr. mousikē) este arta combinării notelor în succesiune și simultan într-o formă plăcută estetic, organizarea ritmică a acestor note și integrarea lor într-o lucrare completă. Instrumentele muzicale sunt utilizate în interpretarea compozițiilor muzicale și sunt de obicei clasificate în patru mari grupe tradiționale: cu coarde, suflători din lemn, suflători din alamă și instrumente de percuție, la care se adaugă suflători cu structură complexă și instrumentele electronice. Acestea se folosesc pentru a crea muzica, fiind făcute din plastic, sârma, pânza etc. Există numeroase clasificări ale genurilor muzicale: vocal și instrumental, sacru și laic, cult și comercial („de consum"), rock, de origine afro-americană, muzică electronică etc. Antichitate: s-au păstrat puține exemple de compoziții. Acestea sunt bazate pe moduri. Instrumentele reprezentative ale Greciei Antice sunt lira (cu care este reprezentat`]},
+      {label:'Maltese',fs:9,lh:9,lines:[`Żgur li kull wieħed u waħda minna, matul ilġurnata jisma' biċċa mużika. Il-mużika hija ħaġa li l-bniedem ma jistax jgħix mingħajrha. F'kull ġurnata, minn fuq il-mezzi tax-xandir tisma' l-mużika ta' għamla differenti, dik klassika, dik romantika, dik moderna u ta' tipi oħra. Madwar id-dinja kollha, eluf ta' nies jattendu għal kunċerti minn gruppi, orkestri, baned u għal spettakli kbar mużikali, bħal opri, operetti u balletti, imtellgħa min nies professjonali. Kull ġens u kull razza ħalqu l-mużika tagħhom, il-mużika folkloristika. Kull ġens u razza għandha l-melodiji marbuta magħha. Il-mużika li hi rifless sħiħ ta' l-emozzjoni tal-bniedem hi mezz ta' komunikazzjoni ta' ħsibijiet u idejat. Biss, dan il-fenomenu, li sar hekk integrali mal-ħajja tagħna l-bnedmin, minn fejn kellu l-bidu? L-ewwel mużika li ġiet ispirata f'moħħ ilbniedem, żgur li waslet permezz ta' l-elementi tan-natura: ir-riħ, ir-ragħad, it-tfaqqiegħa tas-`]},
       {label:'Danish',fs:9,lh:9,lines:[`Musik opfattes traditionelt som en sammensætning af toner, der synges eller spilles på et instrument. En tænketank hvilken? USA definerede musik som "mønstre af lyde, der varierer i højde og varighed og som frembringes af følelsesmæssige, sociale, kulturelle og intellektuelle grunde". Den bredeste definition er, at musik er organiserede lydbegivenheder der opfattes æstetisk. Musik kan inddeles i tre hovedgrupper:partiturmusik, det vil sige den nedskrevne musik, populærmusik og den mundtlig overleverede musik som folkeviser, børnesange og skillingsviser. Musik anvendes overalt i verden. Samtlige kulturer har udviklet og brugt musikken til for eksempel dans og fest. Musikken er højst sandsynligt opstået meget tidligt i menneskets historie. Mennesket har dyrket musik i flere tusinde år. I Slovenien er der fundet nogle 53.000 år gamle fløjter af ben, som neandertalere har spillet på.`]},
     ]},
   ];
@@ -3165,6 +3204,10 @@ function openTestPage(){
   w.document.write(html);
   w.document.close();
 }
+
+// ══════════════════════════════════════════════════════
+// GLYPHS INTEROP — setFontInfo + UI init
+// ══════════════════════════════════════════════════════
 
 // Called by Python immediately on page load (identify cmd) and after data arrives.
 function setFontInfo(fontName, masterName, glyphCount){
@@ -3220,6 +3263,284 @@ if(IS_GLYPHS){
   // Navigate to coupler://identify so Python sends font/master name immediately.
   window.location.href = 'coupler://identify';
 }
+
+// ══════════════════════════════════════════════════════
+// AUTOPARAM — automatic parameter detection
+// ══════════════════════════════════════════════════════
+// Test text covers a broad mix of upper/lower, round/diagonal, straight shapes.
+const _AP_TEXT = 'Arrowroot Barley Chervil Dumpling Endive Flaxseed Garbanzo Hijiki Ishtu Jicama Kale Lychee Marjoram Nectarine Oxtail Pizza Quinoa Roquefort Squash Tofu Uppuma Vanilla Wheat Xergis Yogurt Zweiback';
+
+let _apRunning = false;
+
+// ── Field helpers ─────────────────────────────────────
+function _apSaveFields() {
+  return {
+    zones:     document.getElementById('p-zones').value,
+    smooth:    document.getElementById('p-smooth').value,
+    blur:      document.getElementById('p-blur').value,
+    mingap:    document.getElementById('p-mingap').value,
+    glowblur:  document.getElementById('p-glowblur').value,
+    round:     document.getElementById('p-round').value,
+    threshold: document.getElementById('p-threshold').value,
+    lazy:      document.getElementById('p-lazy').value,
+    pairlimit: document.getElementById('p-pairlimit').value,
+    glow:      document.getElementById('p-glow').checked,
+    baselc:    document.getElementById('p-baselc').value,
+    baseuc:    document.getElementById('p-baseuc').value,
+    tracking:  document.getElementById('p-tracking').value,
+  };
+}
+
+function _apRestoreFields(saved) {
+  document.getElementById('p-zones').value     = saved.zones;
+  document.getElementById('p-smooth').value    = saved.smooth;
+  document.getElementById('p-blur').value      = saved.blur;
+  document.getElementById('p-mingap').value    = saved.mingap;
+  document.getElementById('p-glowblur').value  = saved.glowblur;
+  document.getElementById('p-round').value     = saved.round;
+  document.getElementById('p-threshold').value = saved.threshold;
+  document.getElementById('p-lazy').value      = saved.lazy;
+  document.getElementById('p-pairlimit').value = saved.pairlimit;
+  document.getElementById('p-glow').checked    = saved.glow;
+  document.getElementById('p-baselc').value    = saved.baselc;
+  document.getElementById('p-baseuc').value    = saved.baseuc;
+  document.getElementById('p-tracking').value  = saved.tracking;
+}
+
+function _apSetField(key, value) {
+  const el = document.getElementById('p-' + key);
+  if (!el) return;
+  if (el.type === 'checkbox') el.checked = !!value;
+  else el.value = value;
+}
+
+// ── Char map: char → {aw, charLabel} ─────────────────
+// Built once per font; stays valid across all scan iterations.
+function _apBuildCharMap() {
+  const map = {};
+  for (const ch of _AP_TEXT) {
+    if (ch === ' ' || map[ch]) continue;
+    if (IS_GLYPHS) {
+      const cp = ch.codePointAt(0);
+      const gname = unicodeToGlyphName[cp];
+      const g = gname ? glyphsByName[gname] : null;
+      if (g && g.commands && g.commands.length > 0) {
+        map[ch] = { charLabel: ch, aw: g.advanceWidth || 0 };
+      }
+    } else {
+      const g = fontObj ? fontObj.charToGlyph(ch) : null;
+      if (g && g.name && g.name !== '.notdef') {
+        map[ch] = { charLabel: ch, aw: g.advanceWidth || 0 };
+      }
+    }
+  }
+  // Space advance width
+  if (IS_GLYPHS) {
+    const gname = unicodeToGlyphName[32];
+    const sp = gname ? glyphsByName[gname] : null;
+    map[' '] = { charLabel: ' ', aw: sp && sp.advanceWidth ? sp.advanceWidth : Math.round(currentUPM * 0.25) };
+  } else {
+    const sp = fontObj ? fontObj.charToGlyph(' ') : null;
+    map[' '] = { charLabel: ' ', aw: sp && sp.advanceWidth ? sp.advanceWidth : Math.round(currentUPM * 0.25) };
+  }
+  return map;
+}
+
+// ── Laufweite: sum of AW + kerning for test string ────
+function _apWidth(charMap, corrMap) {
+  let width = 0, prev = null;
+  for (const ch of _AP_TEXT) {
+    const entry = charMap[ch];
+    if (!entry) { prev = null; continue; }
+    if (ch === ' ') { width += entry.aw; prev = null; continue; }
+    width += entry.aw;
+    if (prev) width += corrMap[prev.charLabel + '|' + entry.charLabel] || 0;
+    prev = entry;
+  }
+  return width;
+}
+
+// ── Lite analysis: only the glyphs and pairs the test string needs ────────────
+// No KERNING_PAIRS filter, no SC/OSF expansion, no UI updates.
+// Works in both browser mode (fontObj) and Glyphs mode (glyphsByName).
+async function _apLiteAnalysis(charMap) {
+  await new Promise(r => setTimeout(r, 0)); // yield so log messages paint
+
+  const p   = P();
+  const upm = currentUPM;
+  const yBot = yBotGlobal, yTop = yTopGlobal;
+
+  // Margins for unique chars in test string + base glyphs
+  const localGC = {};
+  const needed  = new Set([...Object.keys(charMap).filter(c => c !== ' '), p.baselc, p.baseuc]);
+
+  for (const ch of needed) {
+    if (IS_GLYPHS) {
+      const cp    = ch.codePointAt(0);
+      const gname = unicodeToGlyphName[cp];
+      const g     = gname ? glyphsByName[gname] : null;
+      if (!g || !g.commands || g.commands.length === 0) continue;
+      const margins = computeMarginsFromCommands(g.commands, g.advanceWidth, p, yBot, yTop);
+      localGC[ch]   = { ...margins, charLabel: ch, glyphName: g.name, cls: classifyGlyph(g.unicode, g.name) };
+    } else {
+      const g = fontObj.charToGlyph(ch);
+      if (!g || !g.path || g.path.commands.length === 0) continue;
+      const unicode = g.unicodes?.[0] ?? null;
+      const gk      = g.name ?? ch;
+      const margins = computeGlyphMargins(g, upm, p, yBot, yTop);
+      localGC[ch]   = { ...margins, charLabel: ch, glyphName: gk, cls: classifyGlyph(unicode, gk) };
+    }
+  }
+
+  // Baselines from base-glyph self-pairs
+  const lcGC  = localGC[p.baselc], ucGC = localGC[p.baseuc];
+  const lcC   = lcGC ? pairMean(lcGC.right, lcGC.left) : null;
+  const lcBase = (lcC ? lcC.mean : 0) + p.tracking;
+  const ucC   = ucGC ? pairMean(ucGC.right, ucGC.left) : null;
+  const ucBase = (ucC ? ucC.mean : (lcBase - p.tracking)) + p.tracking;
+  const minGapFU = upm * p.mingap;
+
+  // Corrections for every unique consecutive pair in the test string —
+  // no KERNING_PAIRS filter, the test string defines the pairs directly.
+  const corrMap = {};
+  let prev = null;
+  for (const ch of _AP_TEXT) {
+    if (ch === ' ') { prev = null; continue; }
+    if (prev !== null) {
+      const key = prev + '|' + ch;
+      if (!(key in corrMap)) {
+        const gcA = localGC[prev], gcB = localGC[ch];
+        if (gcA && gcB) {
+          const calc = pairMean(gcA.right, gcB.left);
+          if (calc) {
+            const bothUC = gcA.cls === 'UC' && gcB.cls === 'UC';
+            const base   = bothUC ? ucBase : lcBase;
+            let corr = rtm(base - calc.mean, p.round);
+            if (p.lazy > 0) corr = rtm(corr * (1 - p.lazy / 100), p.round);
+            if (minGapFU > 0) {
+              const rawSums = [];
+              for (let z = 0; z < gcA.rightGeom.length; z++) {
+                const a = gcA.rightGeom[z], b = gcB.leftGeom[z];
+                if (a !== null && b !== null) rawSums.push(a + b);
+              }
+              if (rawSums.length > 0) {
+                const minZG  = Math.min(...rawSums);
+                const room   = minZG - minGapFU;
+                const minCorr = room >= 0
+                  ? -(p.round > 1 ? Math.floor(room / p.round) * p.round : Math.floor(room))
+                  :  (p.round > 1 ? Math.ceil(-room / p.round) * p.round : Math.ceil(-room));
+                if (corr < minCorr) corr = minCorr;
+              }
+            }
+            if (p.threshold > 0 && Math.abs(corr) < p.threshold) corr = 0;
+            corrMap[key] = corr;
+          }
+        }
+      }
+    }
+    prev = ch;
+  }
+  return corrMap;
+}
+
+// ── Single scan iteration: set fields → lite analysis → Laufweite ────────────
+async function _apRun(base, optimal, paramKey, testValue, charMap) {
+  _apRestoreFields(base);
+  for (const [k, v] of Object.entries(optimal)) _apSetField(k, v);
+  _apSetField(paramKey, testValue);
+  const corrMap = await _apLiteAnalysis(charMap);
+  return _apWidth(charMap, corrMap);
+}
+
+// ── Scan one parameter across its candidate values ────────────────────────────
+// Returns the candidate whose Laufweite is closest to the lower average:
+// mean of all widths at or below the overall mean — the converged stable state.
+async function _apScan(label, paramKey, candidates, base, optimal, charMap, stepN, totalSteps) {
+  const btn = document.getElementById('btn-autoparam');
+  if (btn) btn.textContent = `⚙ ${label} (${stepN}/${totalSteps})`;
+  log(`AutoParam ${stepN}/${totalSteps}: scanning ${label} [${candidates.join(', ')}]`, 'info');
+
+  const widths = [];
+  for (const v of candidates) {
+    const w = await _apRun(base, optimal, paramKey, v, charMap);
+    widths.push(w);
+    log(`  ${label}=${v} → Laufweite ${Math.round(w)} fu`, 'info');
+  }
+
+  const globalMean = widths.reduce((s, w) => s + w, 0) / widths.length;
+  const below      = widths.filter(w => w <= globalMean);
+  const lowerAvg   = below.length ? below.reduce((s, w) => s + w, 0) / below.length : globalMean;
+  let bestIdx = 0, bestDiff = Infinity;
+  for (let i = 0; i < candidates.length; i++) {
+    const d = Math.abs(widths[i] - lowerAvg);
+    if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+  }
+
+  const best = candidates[bestIdx];
+  log(`AutoParam ${stepN}/${totalSteps}: ${label} → ${best} (Laufweite ${Math.round(widths[bestIdx])} fu, lower avg ${Math.round(lowerAvg)} fu)`, 'ok');
+  return best;
+}
+
+// ── Main entry point ──────────────────────────────────────────────────────────
+async function autoParam() {
+  if (_apRunning) { log('AutoParam already running — please wait', 'info'); return; }
+  if (isComputing){ log('AutoParam: waiting for current computation to finish', 'info'); return; }
+
+  // Guard: need font data loaded in either mode
+  if (IS_GLYPHS && Object.keys(glyphsByName).length === 0) {
+    alert('No font loaded — click Load & Compute first.');
+    return;
+  }
+  if (!IS_GLYPHS && !fontObj) {
+    alert('No font loaded — drop a TTF/OTF first.');
+    return;
+  }
+
+  _apRunning = true;
+  document.body.classList.add('ap-running');
+  const btn = document.getElementById('btn-autoparam');
+  if (btn) { btn.disabled = true; btn.textContent = '⚙ Starting…'; }
+  log('AutoParam: starting — building char map…', 'ok');
+
+  try {
+    const base    = _apSaveFields();
+    const charMap = _apBuildCharMap();
+    const mapped  = Object.keys(charMap).length - 1; // exclude space
+    if (mapped === 0) { log('AutoParam: no test-string glyphs found in font', 'err'); return; }
+    log(`AutoParam: ${mapped} unique chars, lite analysis (no KERNING_PAIRS lookup)`, 'info');
+
+    const optimal = {};
+    const TOTAL   = 8;
+
+    optimal.zones     = await _apScan('Zones',     'zones',     [3,9,18,36,48,96],  base, optimal, charMap, 1, TOTAL);
+    optimal.smooth    = await _apScan('Smooth',    'smooth',    [11,33,50,66,88],   base, optimal, charMap, 2, TOTAL);
+    optimal.blur      = await _apScan('Blur',      'blur',      [1,2,4,8,16],       base, optimal, charMap, 3, TOTAL);
+    optimal.glowblur  = await _apScan('GlowBlur',  'glowblur',  [0,1,2,3,4,5],     base, optimal, charMap, 4, TOTAL);
+    optimal.round     = await _apScan('Round',     'round',     [1,5,10,20,40],     base, optimal, charMap, 5, TOTAL);
+    optimal.threshold = await _apScan('Threshold', 'threshold', [0,5,10,20,40],     base, optimal, charMap, 6, TOTAL);
+    optimal.lazy      = await _apScan('Lazy',      'lazy',      [0,20,40,60,80],    base, optimal, charMap, 7, TOTAL);
+    optimal.mingap    = await _apScan('MinGap',    'mingap',    [0,1,2,4,6,8],      base, optimal, charMap, 8, TOTAL);
+
+    // Apply all optimal values, then trigger the full analysis to refresh the UI
+    if (btn) btn.textContent = '⚙ Applying…';
+    _apRestoreFields(base);
+    for (const [k, v] of Object.entries(optimal)) _apSetField(k, v);
+    log('AutoParam: optimal parameters applied — running full analysis…', 'ok');
+    // In Glyphs mode runAnalysis() navigates to Python and returns immediately;
+    // the panel is restored in finally so the user sees params while Python responds.
+    runAnalysis();
+    log('AutoParam complete.', 'ok');
+  } catch (e) {
+    log('AutoParam error: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    _apRunning = false;
+    document.body.classList.remove('ap-running');
+    if (btn) { btn.disabled = false; btn.textContent = '⚙ AutoParam'; }
+  }
+}
+
+
 </script>
 </body>
 </html>

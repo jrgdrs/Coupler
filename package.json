@@ -1,0 +1,21 @@
+{
+  "name": "coupler",
+  "version": "5.4.21",
+  "description": "Optical kerning engine — build tools and unit tests",
+  "scripts": {
+    "build": "node build.js",
+    "build:obf": "node build.js --obfuscate",
+    "test": "jest --testPathPattern=tests/js",
+    "test:all": "jest"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^4.2.2",
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/js/**/*.test.js"
+    ]
+  }
+}

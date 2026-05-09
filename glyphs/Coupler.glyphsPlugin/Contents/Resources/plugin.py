@@ -528,6 +528,14 @@ class CouplerDialog(object):
             self._js('dbg("Python ERROR in _send_glyph_data — check Glyphs console")')
 
     def _apply_kerning(self, pairs):
+        # Disable cyclic GC during ObjC proxy access to prevent gc_collect_main crash.
+        gc.disable()
+        try:
+            self._apply_kerning_inner(pairs)
+        finally:
+            gc.enable()
+
+    def _apply_kerning_inner(self, pairs):
         try:
             if not pairs:
                 return
@@ -573,6 +581,14 @@ class CouplerDialog(object):
             traceback.print_exc()
 
     def _apply_spacing(self, items):
+        # Disable cyclic GC during ObjC proxy access to prevent gc_collect_main crash.
+        gc.disable()
+        try:
+            self._apply_spacing_inner(items)
+        finally:
+            gc.enable()
+
+    def _apply_spacing_inner(self, items):
         try:
             if not items:
                 return
