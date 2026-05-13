@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coupler — Font Kerning Analyzer - v5.9.17b</title>
+<title>Coupler — Font Kerning Analyzer - v5.13.22</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/opentype.js/1.3.4/opentype.min.js"></script>
 <style>
 %%STYLE%%
@@ -14,7 +14,7 @@
 <header>
   <div class="header-title">
     <div class="logo-mark" ondblclick="toggleLightMode()" title="Double-click to switch panel mode" style="cursor:pointer;user-select:none">Coupler</div>
-    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.9.17b</span>
+    <span style="font-size:9px;color:var(--text);margin-left:4px;opacity:.7">v5.13.22</span>
   </div>
   <div class="header-sep"></div>
   <div class="header-font-info" id="header-font-info">No font loaded</div>
@@ -292,7 +292,7 @@
       <div class="pl" data-tip="Lazy %&#10;&#10;Reduces all computed kerning corrections by this percentage before output.&#10;&#10;The reduced value is re-snapped to the Round module, so results stay on the rounding grid.&#10;&#10;Example: lazy=10, computed correction=110 → 110 × 0.9 = 99 → snapped to 100.&#10;Example: lazy=10, computed correction=55 → 55 × 0.9 = 49.5 → snapped to 50.&#10;&#10;Use to produce softer, less aggressive kerning tables. Min gap is still enforced after reduction.&#10;Set to 0 to use the full computed correction (default).&#10;Default: 0">
         Lazy % <span style="color:var(--text3);font-style:italic;font-size:9px">(soften output)</span><span>--lazy · reduce corrections by %</span>
       </div>
-      <input type="number" id="p-lazy" value="20" min="0" max="99" step="1">
+      <input type="number" id="p-lazy" value="50" min="0" max="99" step="1">
     </div>
 
     <div class="pr">
@@ -320,7 +320,7 @@
       <div class="pl" data-tip="Pair limit&#10;&#10;Maximum number of kerning pairs to generate, ranked by frequency of occurrence in real-world text (based on the Andre Fuchs kerning-pairs corpus).&#10;&#10;Only the top N most common pairs are computed and included in the output. This drastically reduces computation time for large fonts.&#10;&#10;Set to 0 to generate all pairs.&#10;Default: 0 (all)">
         Pair limit <span style="color:var(--text3);font-style:italic;font-size:9px">(top N by frequency)</span><span>--pairs · 0 = all pairs</span>
       </div>
-      <input type="number" id="p-pairlimit" value="0" min="0">
+      <input type="number" id="p-pairlimit" value="2000" min="0">
     </div>
 
     <div class="sec" style="margin-top:4px">Results</div>

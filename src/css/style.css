@@ -48,6 +48,8 @@ header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:
 .sec-action:disabled{opacity:.4;cursor:not-allowed;pointer-events:none;}
 
 .pr{display:grid;grid-template-columns:1fr 72px;gap:4px;align-items:start;margin-bottom:7px;}
+body.light-mode .pr:has(#p-lazy),
+body.light-mode .pr:has(#p-pairlimit) {display:none;}
 .pl{font-size:11.5px;color:var(--text2);padding-top:5px;cursor:help;position:relative;}
 .pl span{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:1px;}
 /* Tooltip */

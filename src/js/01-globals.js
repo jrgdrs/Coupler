@@ -31,7 +31,7 @@ let currentUPM=1000,yBotGlobal=0,yTopGlobal=0,xHeightGlobal=0;
 let glyphsByName={};         // name → {commands, advanceWidth, unicode} (Glyphs mode)
 let unicodeToGlyphName={};   // codepoint → glyph name (Glyphs mode)
 
-const DEFAULTS={zones:16,smooth:50,round:20,blur:1,mingap:4,threshold:0,lazy:20,baselc:'o',baseuc:'O',tracking:0,pairlimit:0,glowblur:20,glow:true};
+const DEFAULTS={zones:16,smooth:50,round:20,blur:1,mingap:4,threshold:0,lazy:50,baselc:'o',baseuc:'O',tracking:0,pairlimit:2000,glowblur:20,glow:true};
 
 function P(){
   const mg=parseFloat(document.getElementById('p-mingap').value);
